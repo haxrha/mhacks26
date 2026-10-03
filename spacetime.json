@@ -1,1 +1,1 @@
-{"database":"earthshare-game","server":"http://127.0.0.1:3001","module-path":"./spacetime","generate":[{"language":"typescript","out-dir":"./apps/web/src/module_bindings"}]}
+{"database":"earthshare-game-local","server":"http://127.0.0.1:3001","module-path":"./spacetime","generate":[{"language":"typescript","out-dir":"./apps/web/src/module_bindings"}]}

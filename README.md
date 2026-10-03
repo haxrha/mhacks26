@@ -6,11 +6,11 @@ Four towns share one river valley. Every decade each town is hit by an event (a 
 
 Modes: offline solo with AI neighbors, four-player hot-seat, and live SpacetimeDB rooms with AI filling unclaimed towns. The map is drawn live from `src/data/worldmap.json`; see `AGENTS.md` §0 for the full design.
 
-## Run locally on Windows
+## Run locally (macOS and Windows)
 
 Install Node.js 24 and [SpacetimeDB 2.10.2](https://spacetimedb.com/install). This workspace also has an ignored portable CLI under `.tools/spacetime/`.
 
-```powershell
+```sh
 npm ci --prefix apps/web
 npm ci --prefix spacetime
 npm run db:start
@@ -18,19 +18,30 @@ npm run db:start
 
 Keep that terminal open. In a second terminal at the repository root:
 
-```powershell
+```sh
 npm run db:publish
 npm run db:generate
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. The frontend defaults to `ws://127.0.0.1:3001` and database `earthshare-game`. Select **Create saved solo world**, or select **4-player hot-seat** then **Create multiplayer world**. Friends select an unclaimed civilization and join with the six-character room code. The practice button plays locally without the database.
+Open http://127.0.0.1:3000. The frontend defaults to `ws://127.0.0.1:3001` and local database `earthshare-game-local`. Select **Create saved solo world**, or select **4-player hot-seat** then **Create multiplayer world**. Friends select an unclaimed civilization and join with the six-character room code. The practice button plays locally without the database.
 
-Every real player locks their plan before resolution. The host advances the flow and debrief phases. Each player answers their own emergency quiz. To reconnect, use the same browser and room code: the SDK identity is retained locally. A different browser profile is a different player. For multiple computers, use a reachable backend URL as described below.
+The root database scripts use the same Node launcher on macOS and Windows, keep local data and publisher identity under ignored `.tools/`, and require CLI version 2.10.2. Use `spacetime login` only when publishing to Maincloud; never put publisher credentials in browser environment variables.
+
+The host advances the opening event narration. Each player answers their own server-timed quiz, hears the neighbor response, chooses, builds and ends their turn; shared phases wait for every claimed seat while unclaimed towns use AI. To reconnect, use the same browser and room code: the SDK identity is retained locally. A different browser profile is a different player. For multiple computers, use a reachable backend URL as described below.
+
+## Core decade loop
+
+1. **Event:** each town draws one of 16 hazards. Geography sets the base weight; warming amplifies the checked climate hazards; dirty buildings upstream or upwind can identify a source. Earthquakes and floods can deterministically trigger rare tsunami or dam-break cascades.
+2. **Advisor quiz:** the town's advisor asks one sourced 20-second question. A correct answer reduces every listed resource loss by one.
+3. **Neighbor response:** the affected neighbor explains how the carrier—river, wind, coast, fault or shared network—connects the towns. Live and hot-seat games wait until every human has heard this response.
+4. **Management choice:** a cheap response prevents local loss but moves damage to a neighbor or increases warming; a sustainable response costs more, halves current loss and earns a permanent mitigation; bracing takes the full loss.
+5. **Resolution and build:** all choices resolve together, reports name sources and victims, then towns build or exchange resources at 3:1.
+6. **Next decade:** production is collected, building emissions change warming, new events roll, and the game ends after ten decades or immediately at +3°C.
 
 ## Verify
 
-```powershell
+```sh
 npm run typecheck
 npm test
 npm run build
