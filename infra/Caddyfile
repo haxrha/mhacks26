@@ -1,0 +1,4 @@
+# Automatic Let's Encrypt cert for <elastic-ip>.sslip.io; proxies HTTPS + WebSocket (wss) to SpacetimeDB.
+{$GAME_HOST} {
+	reverse_proxy spacetimedb:3000
+}

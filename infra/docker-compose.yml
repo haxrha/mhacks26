@@ -1,0 +1,45 @@
+# Game server stack (runs on the EC2 instance; also works locally with GAME_HOST=localhost).
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      GAME_HOST: ${GAME_HOST}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [spacetimedb]
+
+  spacetimedb:
+    image: clockworklabs/spacetime:latest
+    restart: unless-stopped
+    # NOTE: verify the start flags / data path against the SpacetimeDB self-hosting docs on first deploy.
+    command: start --listen-addr 0.0.0.0:3000
+    volumes:
+      - stdb_data:/home/spacetime/.local/share/spacetime/data
+    expose: ["3000"]
+
+  orchestrator:
+    build: ../apps/orchestrator
+    restart: unless-stopped
+    environment:
+      SPACETIME_URI: ws://spacetimedb:3000
+      SPACETIME_DB: survival
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on: [spacetimedb]
+
+  # One-shot: builds and publishes ../spacetime into the running server. Used by deploy.sh.
+  publisher:
+    image: clockworklabs/spacetime:latest
+    profiles: ["tools"]
+    working_dir: /module
+    volumes:
+      - ../spacetime:/module
+    entrypoint: ["spacetime"]
+    command: ["publish", "--server", "http://spacetimedb:3000", "--yes", "survival"]
+    depends_on: [spacetimedb]
+
+volumes:
+  caddy_data:
+  stdb_data:

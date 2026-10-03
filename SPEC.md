@@ -163,10 +163,12 @@ mhacks26/
 6. Polish: evacuation cutscene, a distinct look per tier, a winner screen showing each tier's ecosystem health.
 7. Stretch: ElevenLabs voices, a spectator betting market.
 
-## Deploy
-- Web on Vercel.
-- Module on SpacetimeDB Maincloud (or self-hosted).
-- Orchestrator on a small always-on host (DigitalOcean + PM2) holding `ANTHROPIC_API_KEY`.
+## Deploy (AWS, nothing runs locally)
+- **Web:** AWS Amplify Hosting (`apps/web`, auto-deploys on push to `main`, build spec in `amplify.yml`).
+- **Game server:** one EC2 t3.small with an Elastic IP, defined in CloudFormation (`infra/aws/stack.yaml`). It runs docker compose (`infra/docker-compose.yml`) with **Caddy** (automatic HTTPS/WSS at `<ip>.sslip.io`), **SpacetimeDB**, and the **AI orchestrator**.
+- **Secrets:** `ANTHROPIC_API_KEY` is kept in SSM Parameter Store and never committed to git.
+- **CI/CD:** GitHub Actions (`.github/workflows/deploy.yml`) authenticates to AWS through OIDC and runs `infra/aws/deploy.sh` on the instance via SSM.
+- Setup steps are in [`infra/README.md`](infra/README.md).
 
 ## Verification
 - Run locally with 2 servers per tier, 2 players per server, K = 1, and 30-second rounds, using 4+ browser tabs. Check that players die when stats hit 0, the fittest move to the next server's new world, and one winner is declared.

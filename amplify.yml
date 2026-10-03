@@ -1,0 +1,21 @@
+# AWS Amplify Hosting build spec for the Next.js web app in apps/web (monorepo).
+# Amplify env var required: NEXT_PUBLIC_SPACETIME_URI = wss://<elastic-ip>.sslip.io (CloudFormation output SpacetimeUri)
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: .next
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*
+          - .next/cache/**/*

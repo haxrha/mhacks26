@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  MHacks 26 game server: one EC2 instance running SpacetimeDB + AI orchestrator + Caddy (HTTPS/WSS)
+  via docker compose. Reached at https://<elastic-ip>.sslip.io. No SSH; admin access is through SSM Session Manager.
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues: [t3.small, t3.medium, t3.large]
+  RepoUrl:
+    Type: String
+    Default: https://github.com/john-yang-11/mhacks26.git
+  GitHubRepo:
+    Type: String
+    Default: john-yang-11/mhacks26
+    Description: owner/name allowed to deploy via GitHub Actions OIDC
+  CreateGitHubOIDCProvider:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Set to false if this AWS account already has the token.actions.githubusercontent.com OIDC provider
+  UbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Conditions:
+  MakeOIDC: !Equals [!Ref CreateGitHubOIDCProvider, "true"]
+
+Resources:
+  GameEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  GameSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Game server - HTTP/HTTPS only (no SSH, use SSM)
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: read-game-secrets
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/mhacks26/*
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  GameInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref UbuntuAmi
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SecurityGroupIds: [!GetAtt GameSG.GroupId]
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs: { VolumeSize: 30, VolumeType: gp3, DeleteOnTermination: true }
+      Tags:
+        - { Key: Name, Value: mhacks26-game }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+          apt-get update
+          apt-get install -y ca-certificates curl git unzip
+          # Docker + compose plugin
+          curl -fsSL https://get.docker.com | sh
+          # AWS CLI (for reading secrets from SSM)
+          curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscli.zip
+          unzip -q /tmp/awscli.zip -d /tmp && /tmp/aws/install
+          # App checkout
+          git clone ${RepoUrl} /opt/game
+          echo "GAME_HOST=${GameEIP}.sslip.io" > /opt/game/infra/.host
+          echo "AWS_REGION=${AWS::Region}" >> /opt/game/infra/.host
+          bash /opt/game/infra/aws/deploy.sh
+
+  GameEIPAssoc:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt GameEIP.AllocationId
+      InstanceId: !Ref GameInstance
+
+  GitHubOIDC:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeOIDC
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepo}:ref:refs/heads/main
+      Policies:
+        - PolicyName: run-deploy-on-game-instance
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:SendCommand
+                Resource:
+                  - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${GameInstance}
+                  - !Sub arn:aws:ssm:${AWS::Region}::document/AWS-RunShellScript
+              - Effect: Allow
+                Action: [ssm:GetCommandInvocation, ssm:ListCommandInvocations]
+                Resource: "*"
+
+Outputs:
+  GameHost:
+    Description: Public hostname for the game server (HTTPS + WSS)
+    Value: !Sub ${GameEIP}.sslip.io
+  SpacetimeUri:
+    Description: Set this as NEXT_PUBLIC_SPACETIME_URI in Amplify
+    Value: !Sub wss://${GameEIP}.sslip.io
+  InstanceId:
+    Value: !Ref GameInstance
+  GitHubDeployRoleArn:
+    Description: Add as the AWS_DEPLOY_ROLE_ARN GitHub repo variable
+    Value: !GetAtt GitHubDeployRole.Arn
