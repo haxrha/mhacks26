@@ -180,16 +180,14 @@ def free(x0, y0, w, h, region=None):
     return True
 
 # ---------- provinces (areas) with castles ----------
+# One town per civilization: a keep the town grows around (AGENTS.md §5.1a).
 PROV = [
-    ("frostpeak", "Frostpeak", 0, True, (112, 52)), ("glacier-gate", "Glacier Gate", 0, False, (236, 36)),
-    ("damwatch", "Damwatch", 0, False, (186, 60)), ("ironvein", "Ironvein", 0, False, (52, 50)),
-    ("mossholm", "Mossholm", 1, True, (84, 112)), ("elderwood", "Elderwood", 1, False, (40, 92)),
-    ("fenmarsh", "Fenmarsh", 1, False, (118, 138)), ("millbrook", "Millbrook", 1, False, (122, 80)),
-    ("brasshold", "Brasshold", 2, True, (236, 104)), ("cinderfield", "Cinderfield", 2, False, (198, 80)),
-    ("sootvale", "Sootvale", 2, False, (270, 124)), ("windridge", "Windridge", 2, False, (206, 136)),
-    ("harborkeep", "Harborkeep", 3, True, (210, 168)), ("saltmarsh", "Saltmarsh", 3, False, (96, 162)),
-    ("lighthouse-point", "Lighthouse Pt", 3, False, (256, 156)), ("coral-isles", "Coral Isles", 3, False, (284, 179)),
+    ("frostpeak", "Frostpeak", 0, True, (120, 44)),
+    ("mossholm", "Mossholm", 1, True, (80, 108)),
+    ("brasshold", "Brasshold", 2, True, (232, 104)),
+    ("harborkeep", "Harborkeep", 3, True, (200, 166)),
 ]
+TOWN_R = (17, 11)   # clearing around each keep (x, y radius)
 
 def castle_rows(big):
     """Build castle sprite rows: towers + keep with crenels, 1px ink outline, civ flag."""
@@ -248,15 +246,16 @@ for (pid, name, c, cap, (cx, cy)) in PROV:
     castles.append(dict(id=pid, name=name, civ=CIVS[c], capital=cap, rows=rows,
                         x0=x0 + 1, y0=y0 + 1, w=w, h=h, cx=x0 + 1 + w // 2, cy=y0 + 1 + h - 2))
     occupied[y0 - 3:y0 + h + 6, x0 - 3:x0 + w + 5] = True     # keep clear around castles + label
+    # a grass clearing for the town to grow into: no trees or mountains, meadow underfoot
+    kcx, kcy = x0 + 1 + w // 2, y0 + 1 + h // 2
+    clearing = (((xx - kcx) / TOWN_R[0]) ** 2 + ((yy - kcy) / TOWN_R[1]) ** 2 < 1) & (civ == c) & ~water
+    img[clearing] = P["grass"]
+    img[clearing & (rnd < 0.25)] = P["grass_l"]
+    img[clearing & (rnd > 0.93)] = P["meadow"]
+    occupied |= clearing
 
-# province map: nearest castle of the same civ
-prov = np.full((H, W), -1)
-for c in range(4):
-    idx = [i for i, k in enumerate(castles) if k["civ"] == CIVS[c]]
-    pts = np.array([[castles[i]["cx"], castles[i]["cy"]] for i in idx])
-    m = civ == c
-    dd = (xx[m][:, None] - pts[None, :, 0]) ** 2 + (yy[m][:, None] - pts[None, :, 1]) ** 2
-    prov[m] = np.array(idx)[dd.argmin(1)]
+# one area per civilization, owned by its town
+prov = np.where(civ >= 0, civ, -1)
 
 # ---------- landmarks & scenery ----------
 MOUNT = {"L": "rock_l", "R": "rock", "D": "rock_d", "S": "snow", "s": "snow_d", "O": "ink"}
@@ -338,18 +337,7 @@ for near in [(150, 156), (240, 170)]:
     field(3, near, 7, 4, "crop")
 # windmill (Verdant)
 place(["x.x", ".x.", "x.x", ".B.", ".B.", "BBB"], {"x": "white", "B": "plank"}, 1, (100, 92))
-# factories + smoke (Forge)
-FACT = ["..s.s", "...c.", "s..c.", ".c.c.", "MMMMM", "MddMM", "MMMMM"]
-fpal = {"s": "smoke", "c": "metal_d", "M": "metal", "d": "ink"}
-for near in [(222, 84), (252, 92), (230, 122)]:
-    place(FACT, fpal, 2, near, dyn="factory")
-# sludge pond
-place([".ssss.", "sSSSSs", "sSSSSs", ".ssss."], {"s": "sludge_d", "S": "sludge"}, 2, (244, 112))
-# wind farm + solar (Forge)
-TURB = ["x.x", ".x.", "x|x", ".|.", ".|.", ".|."]
-for near in [(274, 96), (282, 100), (276, 106)]:
-    place(TURB, {"x": "white", "|": "white"}, 2, near, dyn="turbine")
-place(["NnNnNnNn", "nNnNnNnN", "NnNnNnNn"], {"N": "navy", "n": "navy_l"}, 2, (262, 138))
+# (Kilns, mines, windmills and the rest are built by players and drawn by the game around each town.)
 
 # Tidehaven: lighthouse + docks + boats
 def coast_point(xc, ycmin):
@@ -448,18 +436,40 @@ def banner(cx, top, text, font, fill="#efe2bc", stripe=None, ink="#2a1a0e", pad=
         dr.rectangle([x0 + 2, y0 + 2, x0 + 5, y0 + h - 2], fill=C(stripe)); tx += 6
     dr.text((tx, y0 + pad + 1), text, font=font, fill=ink)
 for k in castles:
-    banner(k["cx"] * S, (k["y0"] + k["h"]) * S + 2, k["name"].upper(), f8,
-           fill="#f5c542" if k["capital"] else "#efe2bc", stripe=k["civ"])
+    banner(k["cx"] * S, (k["y0"] + k["h"]) * S + 2, k["name"].upper(), f8, fill="#f5c542", stripe=k["civ"])
 REG = [("HIGHLAND HOLD", "highland", (150, 4)), ("VERDANT REACH", "verdant", (58, 68)),
        ("FORGE DOMINION", "forge", (262, 68)), ("TIDEHAVEN", "tidehaven", (60, 148))]
 for (t, c, (x, y)) in REG:
     banner(x * S, y * S, t, f16, fill=C(c), ink="#1a120a", pad=6)
 lab.save(f"{OUT}/world-map-labeled.png")
 
-json.dump({"tileSize": S, "tiles": [W, H], "cellTiles": 8, "provinces": [
-    {"id": k["id"], "name": k["name"], "civ": k["civ"], "capital": k["capital"],
-     "castleTile": [k["cx"], k["cy"]], "castleCell": [k["cx"] // 8, k["cy"] // 8]} for k in castles]},
-    open(f"{OUT}/provinces.json", "w"), indent=2)
+json.dump({"tileSize": S, "tiles": [W, H], "towns": [
+    {"id": k["id"], "name": k["name"], "civ": k["civ"], "keepTile": [k["cx"], k["cy"]]} for k in castles]},
+    open(f"{OUT}/towns.json", "w"), indent=2)
+
+# ---------- building plots: where each town grows, nearest the keep first ----------
+SLOT_W, SLOT_H = 7, 7
+def town_slots(k, ci, n=44):
+    taken = np.zeros((H, W), bool)
+    taken[k["y0"] - 1:k["y0"] + k["h"] + 1, k["x0"] - 1:k["x0"] + k["w"] + 1] = True
+    taken[k["y0"] + k["h"]:k["y0"] + k["h"] + 8, k["cx"] - 16:k["cx"] + 16] = True   # nameplate
+    kcx, kcy = k["x0"] + k["w"] / 2, k["y0"] + k["h"] / 2
+    cands = []
+    for y in range(max(0, int(kcy) - 34), min(H - SLOT_H, int(kcy) + 34)):
+        for x in range(max(0, int(kcx) - 50), min(W - SLOT_W, int(kcx) + 50)):
+            box = (slice(y, y + SLOT_H), slice(x, x + SLOT_W))
+            if not (civ[box] == ci).all() or water[box].any(): continue
+            if ((yy[box] == 65) | (yy[box] == 145)).any(): continue
+            d = ((x + SLOT_W / 2 - kcx) / 1.4) ** 2 + (y + SLOT_H / 2 - kcy) ** 2
+            cands.append((d, x, y))
+    out = []
+    for d, x, y in sorted(cands):
+        box = (slice(y, y + SLOT_H), slice(x, x + SLOT_W))
+        if taken[box].any(): continue
+        taken[y - 1:y + SLOT_H + 1, x - 1:x + SLOT_W + 1] = True
+        out.append([x, y])
+        if len(out) >= n: break
+    return out
 # ---------- live-render layers ----------
 import base64
 def rle(a):
@@ -493,7 +503,8 @@ layers = {
     "near": rle(np.where(near >= 0, near, 255)),
     "sprites": [{k: v for k, v in d_.items()} for d_ in DYN],
     "castles": [{"id": k["id"], "x": k["x0"], "y": k["y0"], "rows": k["rows"],
-                 "pal": {c: "#%02x%02x%02x" % tuple(P[n]) for c, n in CASTLE_PAL.items()}} for k in castles],
+                 "pal": {c: "#%02x%02x%02x" % tuple(P[n]) for c, n in CASTLE_PAL.items()},
+                 "slots": town_slots(k, i)} for i, k in enumerate(castles)],
 }
 json.dump(layers, open(f"{OUT}/worldmap.json", "w"), separators=(",", ":"))
 print("ok", [(k["name"], k["cx"], k["cy"]) for k in castles])

@@ -1,14 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createGame } from "../src/game/engine";
-import { PROVINCES, districts } from "../src/game/provinces";
+import {
+  advance,
+  applyAction,
+  createGame,
+  questionFor,
+  answerQuiz,
+} from "../src/game/engine";
+import { TOWNS, townIndex } from "../src/game/towns";
 import {
   MAP_H,
   MAP_W,
   renderWorld,
   worldLayers,
 } from "../src/game/worldRender";
-import type { DisasterId, GameState } from "../src/game/types";
+import type { CivId, EventId, GameState } from "../src/game/types";
 
 const render = (state: GameState | undefined, frame = 0) => {
   const out = new Uint8ClampedArray(MAP_W * MAP_H * 4);
@@ -22,21 +28,23 @@ const changed = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
       px.push(i / 4);
   return px;
 };
-function withHazard(id: string, effect: DisasterId) {
-  const s = createGame();
-  const area = PROVINCES.find((p) => p.id === id)!;
-  const tile = districts(s, area)[0];
-  tile.effect = effect;
-  tile.disruption = 2;
-  return s;
+/** Everyone braces, so the map shows each town's own event during the build phase. */
+function withEvent(civ: CivId, type: EventId) {
+  let s = createGame("heartland", "solo", 11);
+  for (const c of Object.keys(s.events) as CivId[])
+    s.events[c] = { type: "heatwave", loss: {} };
+  s.events[civ] = { type, loss: {} };
+  s = advance(s);
+  const q = questionFor(s, "heartland")!;
+  s = answerQuiz(s, "heartland", q.correct, 1000);
+  return applyAction(s, { type: "choose", civ: "heartland", option: 2 }).state;
 }
 
-test("world layers decode to a full 320x200 map", () => {
+test("world layers decode to a full 320x200 map with one town per civilization", () => {
   const L = worldLayers();
   for (const layer of [L.base, L.kind, L.area, L.near])
     assert.equal(layer.length, MAP_W * MAP_H);
-  assert(L.palette.length > 10);
-  assert.equal(PROVINCES.length, 16);
+  assert.equal(TOWNS.length, 4);
 });
 
 test("rendering is deterministic for the same state and frame", () => {
@@ -44,24 +52,19 @@ test("rendering is deterministic for the same state and frame", () => {
   assert.deepEqual(render(s, 3), render(s, 3));
 });
 
-test("a flood only recolours land in the area it hits", () => {
-  const calm = createGame();
-  const flooded = withHazard("fenmarsh", "flood");
-  const area = PROVINCES.findIndex((p) => p.id === "fenmarsh");
+test("a flood only recolours the region it hits", () => {
+  const civ: CivId = "enclave";
+  const calm = withEvent(civ, "heatwave");
+  const flooded = withEvent(civ, "flood");
+  const area = townIndex(civ);
   const L = worldLayers();
   const diff = changed(render(calm), render(flooded));
   assert(diff.length > 50, "flood should be visible on the map");
   for (const i of diff)
     assert(
       L.area[i] === area || L.near[i] === area,
-      `pixel ${i} outside Fenmarsh changed`,
+      `pixel ${i} outside the region changed`,
     );
-});
-
-test("a wildfire turns forest to ash and smokes the castle", () => {
-  const before = render(createGame());
-  const after = render(withHazard("elderwood", "wildfire"));
-  assert(changed(before, after).length > 100);
 });
 
 test("warming melts mountain snow", () => {
@@ -79,10 +82,9 @@ test("warming melts mountain snow", () => {
   assert(snowWhite(render(hot)) < snowWhite(render(cool)) / 2);
 });
 
-test("player buildings appear on the map", () => {
+test("towns grow as you build", () => {
   const s = createGame();
-  const area = PROVINCES.find((p) => p.id === "brasshold")!;
   const before = render(s);
-  districts(s, area)[0].building = "solar";
-  assert(changed(before, render(s)).length > 10);
+  s.civs.heartland.buildings.push("house", "farm", "kiln");
+  assert(changed(before, render(s)).length > 30);
 });

@@ -1,0 +1,45 @@
+{
+  "tileSize": 4,
+  "tiles": [
+    320,
+    200
+  ],
+  "towns": [
+    {
+      "id": "frostpeak",
+      "name": "Frostpeak",
+      "civ": "highland",
+      "keepTile": [
+        120,
+        53
+      ]
+    },
+    {
+      "id": "mossholm",
+      "name": "Mossholm",
+      "civ": "verdant",
+      "keepTile": [
+        79,
+        118
+      ]
+    },
+    {
+      "id": "brasshold",
+      "name": "Brasshold",
+      "civ": "forge",
+      "keepTile": [
+        232,
+        113
+      ]
+    },
+    {
+      "id": "harborkeep",
+      "name": "Harborkeep",
+      "civ": "tidehaven",
+      "keepTile": [
+        198,
+        173
+      ]
+    }
+  ]
+}

@@ -1,140 +1,68 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
   ChevronRight,
-  Compass,
   Download,
-  Globe2,
-  Handshake,
-  History,
   Leaf,
-  Play,
-  Radio,
   RotateCcw,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
   X,
 } from "lucide-react";
+import { BUILDINGS, CIVS, EVENTS, RESOURCE_META } from "@/game/content";
 import {
-  BUILDINGS,
-  CIVS,
-  DISASTERS,
-  RESOURCE_META,
-  TECHS,
-  TERRAIN,
-} from "@/game/content";
-import {
+  CLIMATE_LOSS,
+  EXCHANGE_RATE,
+  QUIZ_MS,
+  ROUNDS,
   actionError,
-  advanceFlows,
+  advance,
   answerQuiz,
   applyAction,
+  builtCount,
+  canAfford,
+  choiceCost,
   createGame,
-  demoGame,
-  hazardProbability,
-  marketQuote,
-  nextRound,
-  projectedIncome,
-  resolveRound,
+  cycleClimate,
+  describe,
+  greenCount,
+  income,
+  questionFor,
   score,
-  techCost,
-  yields,
+  spillTarget,
 } from "@/game/engine";
 import { QUESTIONS } from "@/game/questions";
 import {
-  Action,
+  type Action,
   CIV_IDS,
-  CivId,
-  DisasterId,
-  GameState,
+  type CivId,
+  type GameState,
   RESOURCES,
-  Resource,
-  Tile,
+  type Resource,
+  type Stock,
 } from "@/game/types";
-import LeaderSelect from "./LeaderSelect";
-import WorldMap from "./WorldMap";
-import Narrator from "./Narrator";
-import { decadeLine, introLines } from "@/game/leaders";
+import { decadeLine, eventLines, introLines } from "@/game/leaders";
+import { townOf } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
+import LeaderSelect from "./LeaderSelect";
+import Narrator from "./Narrator";
+import WorldMap from "./WorldMap";
 
-type Tab =
-  "world" | "market" | "technology" | "diplomacy" | "almanac" | "timeline";
-const SAVE_KEY = "earthshare-v1";
-const fmt = (n: number) => (Number.isInteger(n) ? n.toString() : n.toFixed(1));
-function Costs({ cost }: { cost: Partial<Record<Resource, number>> }) {
+const SAVE_KEY = "earthshare-v2";
+
+function Costs({ cost }: { cost: Partial<Stock> }) {
+  const entries = RESOURCES.filter((r) => (cost[r] ?? 0) > 0);
+  if (!entries.length) return <span className="costs free">Free</span>;
   return (
     <span className="costs">
-      {Object.entries(cost).map(([r, n]) => (
-        <span key={r} style={{ color: RESOURCE_META[r as Resource].color }}>
-          {RESOURCE_META[r as Resource].icon} {fmt(n!)}
+      {entries.map((r) => (
+        <span key={r} title={RESOURCE_META[r].name}>
+          {cost[r]}
+          {RESOURCE_META[r].icon}
         </span>
       ))}
     </span>
-  );
-}
-function Meter({
-  label,
-  value,
-  max = 100,
-  color,
-  detail,
-}: {
-  label: string;
-  value: number;
-  max?: number;
-  color: string;
-  detail: string;
-}) {
-  return (
-    <div className="global-meter">
-      <div>
-        <span>{label}</span>
-        <b style={{ color }}>
-          {max === 3 ? `+${value.toFixed(2)}°C` : `${Math.round(value)}%`}
-        </b>
-      </div>
-      <div className="meter-track">
-        <i
-          style={{
-            width: `${Math.min(100, (value / max) * 100)}%`,
-            background: color,
-          }}
-        />
-      </div>
-      <small>{detail}</small>
-    </div>
-  );
-}
-function Trend({
-  values,
-  color = "#a6c486",
-}: {
-  values: number[];
-  color?: string;
-}) {
-  const max = Math.max(...values, 1),
-    min = Math.min(...values, 0);
-  return (
-    <svg
-      viewBox="0 0 150 36"
-      className="sparkline"
-      aria-label="Historical trend"
-    >
-      <polyline
-        points={values
-          .map(
-            (v, i) =>
-              `${(i * 150) / Math.max(1, values.length - 1)},${32 - ((v - min) / (max - min || 1)) * 28}`,
-          )
-          .join(" ")}
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-      />
-    </svg>
   );
 }
 
@@ -145,31 +73,15 @@ export default function Game() {
     [choice, setChoice] = useState<CivId>("heartland"),
     [mode, setMode] = useState<"solo" | "hotseat">("solo"),
     [seed, setSeed] = useState("260926");
-  const [tab, setTab] = useState<Tab>("world"),
-    [selected, setSelected] = useState<string>(),
-    [active, setActive] = useState<CivId>("heartland"),
-    [toast, setToast] = useState(""),
+  const [toast, setToast] = useState(""),
     [help, setHelp] = useState(false),
-    [flowIndex, setFlowIndex] = useState(0),
-    [briefed, setBriefed] = useState<string>(),
+    [inspect, setInspect] = useState<CivId>(),
+    [heard, setHeard] = useState<string>(),
     [importError, setImportError] = useState("");
   const world = useWorld(setState);
   const [roomCode, setRoomCode] = useState("");
   const online = !!world.roomId;
-  const onlineQuiz = state?.quizzes.find(
-    (q) => q.civ === world.civilization && !q.tier,
-  );
-  const onlineQuestion = onlineQuiz?.questions[onlineQuiz.answers.length];
-  useEffect(() => {
-    if (onlineQuestion) void world.begin(onlineQuestion);
-  }, [onlineQuestion, world.roomId]);
-  useEffect(() => {
-    if (world.error) setToast(world.error);
-  }, [world.error]);
-  const inGame = state !== null;
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [tab, inGame]);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -181,53 +93,69 @@ export default function Game() {
     setLoaded(true);
   }, []);
   useEffect(() => {
-    if (state)
+    if (state && !online)
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
       } catch {
-        setToast(
-          "Browser storage is unavailable. Export a save to keep your progress.",
-        );
+        setToast("Browser storage is unavailable. Export a save to keep it.");
       }
-  }, [state]);
+  }, [state, online]);
+  useEffect(() => {
+    if (world.error) setToast(world.error);
+  }, [world.error]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Whose turn it is on this device: online = your seat; hot-seat = the next person still to act.
+  const me: CivId | undefined = useMemo(() => {
+    if (!state) return undefined;
+    if (online) return world.civilization;
+    if (state.mode === "solo") return state.player;
+    const pending = state.humans.find((c) => {
+      const civ = state.civs[c];
+      if (state.phase === "quiz") return civ.quiz?.option === undefined;
+      if (state.phase === "choice") return civ.choice === undefined;
+      if (state.phase === "build") return !civ.ready;
+      return false;
+    });
+    return pending ?? state.player;
+  }, [state, online, world.civilization]);
+
+  // Online quizzes are timed by the server clock.
+  const myQuestion = state && me ? state.civs[me].quiz : undefined;
   useEffect(() => {
-    setFlowIndex(0);
-  }, [state?.round, state?.phase]);
-  useEffect(() => {
-    if (state?.phase !== "flows" || !state.flows.length) return;
-    const timer = setInterval(
-      () => setFlowIndex((i) => Math.min(i + 1, state.flows.length - 1)),
-      2800,
-    );
-    return () => clearInterval(timer);
-  }, [state?.phase, state?.flows.length]);
-  const act = useCallback(
-    (a: Action) => {
-      if (online) {
-        void world.act(a);
-        return;
-      }
-      setState((s) => {
-        if (!s) return s;
-        const result = applyAction(s, a);
-        setToast(result.error ?? "Action committed. Your world is changing.");
-        return result.state;
-      });
-    },
-    [online, world.revision, world.roomId],
-  );
-  function start(demo = false, civ: CivId = choice) {
+    if (
+      online &&
+      state?.phase === "quiz" &&
+      myQuestion &&
+      myQuestion.option === undefined
+    )
+      void world.begin(myQuestion.questionId);
+  }, [online, state?.phase, myQuestion?.questionId]);
+
+  function act(a: Action) {
+    if (!state) return;
+    if (online) {
+      void world.act(a);
+      return;
+    }
+    const result = applyAction(state, a);
+    if (result.error) setToast(result.error);
+    setState(result.state);
+  }
+  function start(civ: CivId = choice) {
     world.disconnect();
-    const s = demo ? demoGame() : createGame(civ, mode, Number(seed) || 260926);
-    setState(s);
-    setActive(s.player);
-    setSelected(undefined);
-    setTab("world");
+    setState(createGame(civ, mode, Number(seed) || 260926));
+    setHeard(undefined);
+    setInspect(undefined);
+  }
+  function backToSetup() {
+    if (state && !online) setResume(state);
+    world.disconnect();
+    setState(null);
   }
   function exportSave() {
     if (!state) return;
@@ -245,15 +173,14 @@ export default function Game() {
     try {
       if (file.size > 2_000_000) throw Error("Save is too large.");
       const data = JSON.parse(await file.text());
-      if (!validSave(data))
-        throw Error("This is not a valid Earthshare v1 save.");
+      if (!validSave(data)) throw Error("This is not a valid Earthshare save.");
       setState(data);
-      setActive(data.player);
       setImportError("");
     } catch (e) {
       setImportError((e as Error).message);
     }
   }
+
   if (!state)
     return (
       <>
@@ -261,7 +188,7 @@ export default function Game() {
           choice={choice}
           setChoice={setChoice}
           mode={mode}
-          onConfirm={(civ) => start(false, civ)}
+          onConfirm={(civ) => start(civ)}
         >
           <div className="ls-option-group">
             <b>GAME</b>
@@ -288,16 +215,8 @@ export default function Game() {
               />
             </label>
             <div className="setup-footer">
-              <button onClick={() => start(true)}>
-                <Play size={14} /> Disaster-chain demo
-              </button>
               {loaded && resume && (
-                <button
-                  onClick={() => {
-                    setState(resume);
-                    setActive(resume.player);
-                  }}
-                >
+                <button onClick={() => setState(resume)}>
                   Resume decade {resume.round} <ChevronRight size={14} />
                 </button>
               )}
@@ -323,7 +242,7 @@ export default function Game() {
             <b>PLAY A SHARED WORLD</b>
             <p>
               Live rooms use SpacetimeDB. You claim the leader you picked;
-              unclaimed civilizations become AI neighbors.
+              unclaimed towns are run by AI neighbors.
             </p>
             <label>
               Room code{" "}
@@ -368,32 +287,27 @@ export default function Game() {
         {help && <Help onClose={() => setHelp(false)} />}
       </>
     );
-  const civId = online
-      ? world.civilization!
-      : state.mode === "solo"
-        ? state.player
-        : active,
-    civ = state.civs[civId],
-    meta = CIVS[civId],
-    tile = state.tiles.find((t) => t.id === selected),
-    income = projectedIncome(state, civId);
-  const roundNews = state.news
-    .filter((n) => n.round === state.round)
-    .slice(-7)
-    .reverse();
+
+  const civId = me ?? state.player;
+  const civ = state.civs[civId];
+  const meta = CIVS[civId];
+  const gain = income(state, civId);
   const phaseLabels = {
-    planning: "Plan your decade",
-    flows: "Watch the ripple effects",
-    quiz: "Emergency response",
-    debrief: "Decade debrief",
-    ended: "Your world, remembered",
+    event: "Something is coming",
+    quiz: "Quick question",
+    choice: "Make your choice",
+    build: "Build your town",
+    ended: "Your legacy",
   };
-  // Your civilization's advisor narrates the game to you.
-  const narrator: CivId = (online && world.civilization) || state.player;
+  const waiting = (done: boolean) =>
+    done && state.phase !== "ended" ? (
+      <div className="waiting-banner" role="status">
+        Waiting for the other towns…
+      </div>
+    ) : null;
+
   return (
-    <main
-      className={`game-app ${tab === "world" ? "world-view" : "window-view"}`}
-    >
+    <main className="game-app world-view">
       <aside className="sidebar">
         <a
           href="/"
@@ -408,56 +322,6 @@ export default function Game() {
             earthshare<span className="brand-dot">.</span>
           </span>
         </a>
-        <div className="world-label">
-          <i className="live-dot" /> WORLD{" "}
-          {state.seed.toString(16).slice(0, 6).toUpperCase()}
-        </div>
-        <nav aria-label="Game sections">
-          {(
-            [
-              ["world", "The world", Globe2],
-              ["market", "World exchange", TrendingUp],
-              ["technology", "Technology", Sparkles],
-              ["diplomacy", "Diplomacy", Handshake],
-              ["almanac", "Field guide", BookOpen],
-              ["timeline", "Our footprint", History],
-            ] as const
-          ).map(([id, label, Icon]) => (
-            <button
-              key={id}
-              aria-label={label}
-              title={label}
-              className={tab === id ? "active" : ""}
-              onClick={() => setTab(id)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {tab === id && <i />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-commons">
-          <span className="eyebrow">THE COMMONS</span>
-          <Meter
-            label="Global warming"
-            value={state.climate}
-            max={3}
-            color={state.climate > 2 ? "#e4a17d" : "#dbc793"}
-            detail="+3°C means a collective loss"
-          />
-          <Meter
-            label="Ocean vitality"
-            value={state.ocean}
-            color="#85c3b7"
-            detail="Healthy seas, thriving fisheries"
-          />
-          <Meter
-            label="Global trust"
-            value={state.trust}
-            color="#b5b5db"
-            detail="Cooperation lowers trade friction"
-          />
-        </div>
         <div className="sidebar-bottom">
           <button onClick={() => setHelp(true)}>
             <BookOpen size={15} /> How to play
@@ -465,1232 +329,476 @@ export default function Game() {
           <button onClick={exportSave}>
             <Download size={15} /> Export save
           </button>
-          <button
-            onClick={() => {
-              setResume(state);
-              world.disconnect();
-              setState(null);
-            }}
-          >
+          <button onClick={backToSetup}>
             <RotateCcw size={15} /> Back to setup
           </button>
-          <span>LOCAL WORLD · AUTOSAVED</span>
         </div>
       </aside>
       <div className="main-area">
         <header className="game-header">
           <div>
             <span className="eyebrow">
-              DECADE {String(state.round).padStart(2, "0")} / 10{" "}
+              DECADE {String(state.round).padStart(2, "0")} / {ROUNDS}{" "}
               <span className="header-separator">/</span>{" "}
               {2026 + (state.round - 1) * 10}
             </span>
-            <h1>
-              {phaseLabels[state.phase]}
-              <span className="header-leaf">❧</span>
-            </h1>
+            <h1>{phaseLabels[state.phase]}</h1>
           </div>
           <div className="header-actions">
             <span className="mode-pill">
               {online
-                ? `ROOM ${world.roomId} · ${world.seats.filter((s) => s.ready).length}/${world.seats.length} READY`
+                ? `ROOM ${world.roomId}`
                 : state.mode === "solo"
-                  ? "SOLO PRACTICE"
-                  : "HOT-SEAT PRACTICE"}
+                  ? "SOLO"
+                  : `HOT-SEAT · ${CIVS[civId].name.toUpperCase()}'S TURN`}
             </span>
-            {state.phase === "planning" && (
-              <button
-                className="primary"
-                onClick={() => {
-                  setSelected(undefined);
-                  setTab("world");
-                  if (online) void world.ready();
-                  else setState(resolveRound(state));
-                }}
-              >
-                {online ? "Lock my plan" : "Resolve decade"}{" "}
-                <ArrowRight size={17} />
-              </button>
-            )}
           </div>
         </header>
+
+        <div className="content-area">
+          {state.phase === "ended" ? (
+            <Endgame state={state} onRestart={backToSetup} />
+          ) : (
+            <>
+              <WorldMap
+                state={state}
+                selected={inspect}
+                onSelect={(c) => setInspect(inspect === c ? undefined : c)}
+              />
+              {inspect && (
+                <TownWindow
+                  state={state}
+                  civ={inspect}
+                  onClose={() => setInspect(undefined)}
+                />
+              )}
+
+              {state.phase === "event" &&
+                (heard === `${state.seed}:${state.round}` ? (
+                  waiting(online && !world.isHost)
+                ) : (
+                  <Narrator
+                    civ={civId}
+                    className="narrator-docked"
+                    eyebrow={`DECADE ${state.round} · ${EVENTS[state.events[civId].type].name.toUpperCase()}`}
+                    lines={[
+                      ...(state.round === 1
+                        ? introLines(civId)
+                        : [decadeLine(state.round, state.climate)]),
+                      ...eventLines(state, civId),
+                    ]}
+                    actions={
+                      <button
+                        className="primary"
+                        disabled={online && !world.isHost}
+                        onClick={() => {
+                          setHeard(`${state.seed}:${state.round}`);
+                          if (online) void world.advance();
+                          else setState(advance(state));
+                        }}
+                      >
+                        {online && !world.isHost
+                          ? "Waiting for the host"
+                          : "Face the question"}{" "}
+                        <ArrowRight size={16} />
+                      </button>
+                    }
+                  />
+                ))}
+
+              {state.phase === "quiz" &&
+                (civ.quiz?.option !== undefined ? (
+                  waiting(true)
+                ) : (
+                  <QuizBox
+                    key={`${civId}:${civ.quiz?.questionId}`}
+                    state={state}
+                    civ={civId}
+                    onAnswer={(option, ms) => {
+                      if (online)
+                        void world.answer(civ.quiz!.questionId, option, false);
+                      else setState(answerQuiz(state, civId, option, ms));
+                    }}
+                  />
+                ))}
+
+              {state.phase === "choice" &&
+                (civ.choice !== undefined ? (
+                  waiting(true)
+                ) : (
+                  <ChoiceBox
+                    state={state}
+                    civ={civId}
+                    onChoose={(option) =>
+                      act({ type: "choose", civ: civId, option })
+                    }
+                  />
+                ))}
+
+              {state.phase === "build" &&
+                (civ.ready ? (
+                  waiting(true)
+                ) : heard !== `report:${state.round}:${civId}` ? (
+                  <Narrator
+                    civ={civId}
+                    className="narrator-docked"
+                    eyebrow={`DECADE ${state.round} · WHAT HAPPENED`}
+                    lines={[
+                      ...civ.report,
+                      `Next decade we'll gain ${describe(gain)}. Let's build.`,
+                    ]}
+                    onDone={() => setHeard(`report:${state.round}:${civId}`)}
+                  />
+                ) : (
+                  <BuildPanel
+                    state={state}
+                    civ={civId}
+                    act={act}
+                    onEnd={() =>
+                      online
+                        ? void world.ready()
+                        : act({ type: "ready", civ: civId })
+                    }
+                  />
+                ))}
+            </>
+          )}
+        </div>
+
         <div className="civ-bar">
           <div className="civ-identity">
             <span className="crest" style={{ color: meta.color }}>
               {meta.crest}
             </span>
             <div>
-              {state.mode === "hotseat" && !online ? (
-                <select
-                  aria-label="Active civilization"
-                  value={active}
-                  onChange={(e) => {
-                    setActive(e.target.value as CivId);
-                    setSelected(undefined);
-                  }}
-                >
-                  {CIV_IDS.map((id) => (
-                    <option key={id} value={id}>
-                      {CIVS[id].name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <b>{meta.name}</b>
-              )}
-              <small>{meta.title}</small>
+              <b>{meta.name}</b>
+              <small>
+                {townOf(civId).name} · {score(state, civId)} points
+              </small>
             </div>
           </div>
-          <div className="ap">
-            <span>
-              {Array.from({ length: 3 }, (_, i) => (
-                <i key={i} className={i < civ.ap ? "available" : ""} />
-              ))}
-            </span>
-            <b>{civ.ap} actions left</b>
-          </div>
-          <div className="wellbeing">
-            <span>Wellbeing</span>
-            <b>
-              {Math.round(civ.wellbeing)}
-              <small>/100</small>
-            </b>
-          </div>
+          <ClimateMeter state={state} />
         </div>
         <div className="resource-strip">
           {RESOURCES.map((r) => (
             <div key={r} className="resource">
-              <span
-                className="resource-icon"
-                style={{ color: RESOURCE_META[r].color }}
-              >
-                {RESOURCE_META[r].icon}
-              </span>
+              <span className="resource-icon">{RESOURCE_META[r].icon}</span>
               <div>
                 <small>{RESOURCE_META[r].name}</small>
-                <b>{fmt(civ.resources[r])}</b>
+                <b>{civ.stock[r]}</b>
               </div>
-              <span
-                className={income[r] >= 0 ? "positive" : "negative"}
-                title="Projected net income next decade"
-              >
-                {income[r] >= 0 ? "+" : ""}
-                {fmt(income[r])}
+              <span className="positive" title="Gained every decade">
+                +{gain[r]}
                 <small>/decade</small>
               </span>
             </div>
           ))}
         </div>
-        <div className="mobile-commons">
-          <span>
-            Warming <b>+{state.climate.toFixed(2)}°C</b>
-          </span>
-          <span>
-            Ocean <b>{Math.round(state.ocean)}%</b>
-          </span>
-          <span>
-            Trust <b>{Math.round(state.trust)}%</b>
-          </span>
-          <button aria-label="How to play" onClick={() => setHelp(true)}>
-            <BookOpen size={15} />
-          </button>
-          <button aria-label="Export save" onClick={exportSave}>
-            <Download size={15} />
-          </button>
-          <button
-            aria-label="Back to setup"
-            onClick={() => {
-              setResume(state);
-              world.disconnect();
-              setState(null);
-            }}
-          >
-            <RotateCcw size={15} />
-          </button>
-        </div>
-        <div className="content-area">
-          {state.phase === "ended" ? (
-            <Endgame
-              state={state}
-              onRestart={() => {
-                setResume(state);
-                world.disconnect();
-                setState(null);
-              }}
-            />
-          ) : (
-            <>
-              {state.phase === "planning" &&
-                briefed !== `${state.seed}:${state.round}` && (
-                  <Narrator
-                    civ={narrator}
-                    className="narrator-docked"
-                    eyebrow={`DECADE ${String(state.round).padStart(2, "0")} / ${state.round === 1 ? "YOUR ADVISOR" : "BRIEFING"}`}
-                    lines={
-                      state.round === 1
-                        ? introLines(narrator)
-                        : [decadeLine(state.round, state.climate, state.ocean)]
-                    }
-                    onDone={() => setBriefed(`${state.seed}:${state.round}`)}
-                  />
-                )}
-              {state.phase === "flows" && (
-                <Narrator
-                  civ={narrator}
-                  className="narrator-docked"
-                  eyebrow={`THE RIPPLE EFFECT · ${
-                    state.flows.length
-                      ? `${Math.min(flowIndex + 1, state.flows.length)} / ${state.flows.length} FLOWS`
-                      : "NO CROSS-BORDER FLOWS"
-                  }`}
-                  lines={[
-                    state.flows[flowIndex]
-                      ? `Look! ${state.flows[flowIndex].caption}`
-                      : "The decade passed without anything crossing a border. Local impacts are recorded, and the world exchange has repriced.",
-                  ]}
-                  actions={
-                    <button
-                      className="primary"
-                      disabled={online && !world.isHost}
-                      onClick={() =>
-                        online
-                          ? void world.advance()
-                          : setState(advanceFlows(state))
-                      }
-                    >
-                      Emergency response <ArrowRight size={16} />
-                    </button>
-                  }
-                />
-              )}
-              {state.phase === "debrief" && (
-                <Debrief
-                  state={state}
-                  civ={narrator}
-                  onNext={() =>
-                    online ? void world.advance() : setState(nextRound(state))
-                  }
-                />
-              )}
-              {tab === "world" && (
-                <div className="world-layout">
-                  <section>
-                    <div className="section-heading">
-                      <div>
-                        <span className="eyebrow">
-                          GEOGRAPHY IS DESTINY. UNTIL YOU CHANGE IT.
-                        </span>
-                        <h2>A living, connected planet</h2>
-                      </div>
-                      <span className="pill light">
-                        {state.tiles.filter((t) => t.disruption > 0).length}{" "}
-                        disrupted regions
-                      </span>
-                    </div>
-                    <WorldMap
-                      state={state}
-                      selected={selected}
-                      onSelect={(t) => setSelected(t.id)}
-                      flowIndex={flowIndex}
-                    />
-                    <div className="map-legend">
-                      {[
-                        "forest",
-                        "farmland",
-                        "wetland",
-                        "mountain",
-                        "urban",
-                        "sea",
-                      ].map((t) => (
-                        <span key={t}>
-                          <i
-                            style={{
-                              background: TERRAIN[t as Tile["terrain"]].color,
-                            }}
-                          />
-                          {TERRAIN[t as Tile["terrain"]].name}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="world-insight">
-                      <Leaf size={24} />
-                      <div>
-                        <b>Nature is infrastructure.</b>
-                        <p>
-                          Forests, wetlands and mangroves protect you for free.
-                          Converting them earns more today and exposes your
-                          world tomorrow.
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setTab("almanac")}
-                        aria-label="Explore nature in the field guide"
-                      >
-                        <ArrowUpRight size={20} />
-                      </button>
-                    </div>
-                  </section>
-                  <aside className="right-column">
-                    {tile ? (
-                      <RegionPanel
-                        state={state}
-                        tile={tile}
-                        civId={civId}
-                        act={act}
-                        onClose={() => setSelected(undefined)}
-                      />
-                    ) : (
-                      <div className="region-placeholder">
-                        <span className="eyebrow">YOUR NEXT MOVE</span>
-                        <Compass size={38} />
-                        <h3>Great futures start small.</h3>
-                        <p>
-                          Select a castle, then a district to inspect its
-                          yields, build infrastructure, or restore a disrupted
-                          region.
-                        </p>
-                        <div className="tip">
-                          <b>First-decade idea</b>
-                          <p>
-                            {civId === "heartland"
-                              ? "Research drip irrigation, then protect a wetland with a nature sanctuary."
-                              : civId === "petrostate"
-                                ? "Sell surplus energy and research solar before oil reserves deplete."
-                                : civId === "enclave"
-                                  ? "Import food and research circular water to reduce your dependence."
-                                  : "Research seismic engineering and turn geothermal heat into clean power."}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <Forecast state={state} civId={civId} act={act} />
-                    <NewsFeed items={roundNews} />
-                  </aside>
-                </div>
-              )}
-              {tab === "market" && (
-                <Market state={state} civId={civId} act={act} />
-              )}
-              {tab === "technology" && (
-                <Technology state={state} civId={civId} act={act} />
-              )}
-              {tab === "diplomacy" && (
-                <Diplomacy state={state} civId={civId} act={act} />
-              )}
-              {tab === "almanac" && <Almanac />}
-              {tab === "timeline" && <Timeline state={state} />}
-            </>
-          )}
-        </div>
-        <footer className="game-footer">
-          <span>
-            <i className="live-dot" />{" "}
-            {online
-              ? `Room ${world.roomId} · revision ${world.revision} · ${world.status}`
-              : "Practice saved on this device"}
-          </span>
-          <span>The world does not end at your borders.</span>
-          <span>
-            Warming +{state.climate.toFixed(2)}°C · Ocean{" "}
-            {Math.round(state.ocean)}% · Trust {Math.round(state.trust)}%
-          </span>
-        </footer>
       </div>
-      {state.phase === "quiz" && (!online || onlineQuiz) && (
-        <Quiz
-          state={state}
-          ownCiv={online ? world.civilization : undefined}
-          onAnswer={(id, index, ms, lifeline) => {
-            if (online && onlineQuestion) {
-              const question = QUESTIONS.find((q) => q.id === onlineQuestion)!;
-              return world
-                .answer(onlineQuestion, index, lifeline)
-                .then((ok) => {
-                  if (ok)
-                    setToast(
-                      `${index === question.correct ? "Correct" : "Recovery lesson"}: ${question.explanation}`,
-                    );
-                  return ok;
-                });
-            } else
-              setState((s) => (s ? answerQuiz(s, id, index, ms, lifeline) : s));
-          }}
-        />
-      )}
-      {online && state.phase === "quiz" && !onlineQuiz && (
-        <div className="waiting-banner" role="status">
-          Waiting for other civilizations to finish emergency responses.
-        </div>
-      )}
-      {help && <Help onClose={() => setHelp(false)} />}{" "}
       {toast && (
         <div className="toast" role="status">
           {toast}
         </div>
       )}
+      {help && <Help onClose={() => setHelp(false)} />}
     </main>
   );
 }
 
-function RegionPanel({
-  state,
-  tile,
-  civId,
-  act,
-  onClose,
-}: {
-  state: GameState;
-  tile: Tile;
-  civId: CivId;
-  act: (a: Action) => void;
-  onClose: () => void;
-}) {
-  const terrain = TERRAIN[tile.terrain],
-    own = tile.owner === civId,
-    y = yields(state, tile);
-  const options = Object.entries(BUILDINGS).filter(
-    ([, b]) => b.terrains.includes(tile.terrain) && (!b.civ || b.civ === civId),
-  );
+function ClimateMeter({ state }: { state: GameState }) {
+  const pct = Math.min(100, (state.climate / CLIMATE_LOSS) * 100);
+  const next = cycleClimate(state);
   return (
-    <section className="region-panel">
-      <div className="section-heading">
-        <span className="eyebrow">
-          REGION {tile.id.replace("t", "").toUpperCase()}
-        </span>
-        <button
-          className="icon-button"
-          onClick={onClose}
-          aria-label="Close region"
-        >
-          <X size={17} />
-        </button>
-      </div>
-      <div className="terrain-preview" style={{ background: terrain.color }}>
-        {terrain.glyph}
-        <span>
-          {tile.fault
-            ? "FAULT ZONE"
-            : tile.coastal
-              ? "COASTAL REGION"
-              : "INLAND REGION"}
-        </span>
-      </div>
-      <h3>{terrain.name}</h3>
-      <span className="owner-tag">
-        {tile.owner ? CIVS[tile.owner].name : "International waters"}
-      </span>
-      <p>{terrain.note}</p>
-      <Costs
-        cost={Object.fromEntries(
-          RESOURCES.filter((r) => y[r] !== 0).map((r) => [r, y[r]]),
-        )}
-      />
-      {tile.disruption > 0 && (
-        <div className="warning">
-          Disrupted for {tile.disruption} decade{tile.disruption > 1 ? "s" : ""}
-          . Production is paused.
-        </div>
-      )}
-      {tile.building && (
-        <div className="built-card">
-          <b>
-            {BUILDINGS[tile.building].icon} {BUILDINGS[tile.building].name}
-          </b>
-          <p>
-            Integrity {Math.round(tile.hp)}% ·{" "}
-            {BUILDINGS[tile.building].description}
-          </p>
-        </div>
-      )}
-      {own && state.phase === "planning" && (
-        <>
-          <h4>
-            {tile.building ? "Manage region" : "Develop this region"}{" "}
-            <span>1 AP / ACTION</span>
-          </h4>
-          {!tile.building &&
-            options.map(([id, b]) => {
-              const a: Action = {
-                type: "build",
-                civ: civId,
-                tile: tile.id,
-                building: id,
-              };
-              const error = actionError(state, a);
-              return (
-                <button
-                  className="build-option"
-                  key={id}
-                  disabled={!!error}
-                  title={error ?? b.description}
-                  onClick={() => act(a)}
-                >
-                  <span className="build-icon">{b.icon}</span>
-                  <span>
-                    <b>{b.name}</b>
-                    <Costs cost={b.cost} />
-                    {error && <small className="locked-reason">{error}</small>}
-                  </span>
-                  <ChevronRight size={15} />
-                </button>
-              );
-            })}
-          {!tile.building &&
-            ["forest", "wetland", "mangrove", "oil"].includes(tile.terrain) && (
-              <button
-                className="secondary full"
-                disabled={
-                  !!actionError(state, {
-                    type: "convert",
-                    civ: civId,
-                    tile: tile.id,
-                  })
-                }
-                onClick={() =>
-                  act({ type: "convert", civ: civId, tile: tile.id })
-                }
-              >
-                {tile.terrain === "oil"
-                  ? "Decommission oil field"
-                  : "Convert for higher yields"}{" "}
-                · 6 credits
-              </button>
-            )}
-          {(tile.disruption > 0 || tile.hp < 100) && (
-            <button
-              className="primary full"
-              disabled={
-                !!actionError(state, {
-                  type: "repair",
-                  civ: civId,
-                  tile: tile.id,
-                })
-              }
-              onClick={() => act({ type: "repair", civ: civId, tile: tile.id })}
-            >
-              Restore · {civId === "archipelago" ? 3 : 6} credits + 2 materials
-            </button>
-          )}
-        </>
-      )}
-      {!own && (
-        <small className="muted">
-          You can inspect this region. Its owner controls development.
+    <div
+      className="climate-meter"
+      aria-label={`Warming +${state.climate.toFixed(2)}°C of ${CLIMATE_LOSS}`}
+    >
+      <span>
+        Warming <b>+{state.climate.toFixed(2)}°C</b>
+        <small>
+          {" "}
+          {next >= 0 ? "+" : ""}
+          {next.toFixed(2)}/decade
         </small>
-      )}
-    </section>
-  );
-}
-function Forecast({
-  state,
-  civId,
-  act,
-}: {
-  state: GameState;
-  civId: CivId;
-  act: (a: Action) => void;
-}) {
-  const visible =
-    civId === "enclave" ||
-    state.forecast === "shared" ||
-    state.forecast === "sold";
-  const threats = Object.entries(DISASTERS)
-    .flatMap(([id, d]) =>
-      d.regions.map((civ) => ({
-        id: id as DisasterId,
-        civ,
-        p: hazardProbability(state, id as DisasterId, civ),
-      })),
-    )
-    .sort((a, b) => b.p - a.p)
-    .slice(0, 3);
-  return (
-    <section className="forecast-card">
-      <span className="eyebrow">
-        <Radio size={13} /> CLIMATE INTELLIGENCE
       </span>
-      <h3>{visible ? "The coming decade" : "The outlook is private"}</h3>
-      {visible ? (
-        threats.map((t) => (
-          <div className="forecast-row" key={`${t.id}${t.civ}`}>
-            <span>
-              {DISASTERS[t.id].icon} {DISASTERS[t.id].name}
-              <small>{CIVS[t.civ].name}</small>
-            </span>
-            <b>{Math.round(t.p * 100)}%</b>
-          </div>
-        ))
-      ) : (
-        <p>
-          Verdant Reach controls the forecast. A shared outlook helps everyone
-          plan.
-        </p>
-      )}
-      {civId === "enclave" &&
-        state.phase === "planning" &&
-        state.forecast === "private" && (
-          <div className="button-row">
-            {(["shared", "sold", "hidden"] as const).map((policy) => (
-              <button
-                key={policy}
-                onClick={() => act({ type: "forecast", civ: civId, policy })}
-              >
-                {policy === "shared"
-                  ? "Share +trust"
-                  : policy === "sold"
-                    ? "Sell +8 credits"
-                    : "Hide"}
-              </button>
-            ))}
-          </div>
-        )}
-      <small className="muted">
-        Probabilities are estimates, never promises.
-      </small>
-    </section>
-  );
-}
-function NewsFeed({ items }: { items: GameState["news"] }) {
-  return (
-    <section className="news-feed">
-      <span className="eyebrow">WORLD DISPATCHES</span>
-      {items.map((n) => (
-        <article key={n.id}>
-          <i className={`news-dot ${n.tone}`} />
-          <div>
-            <b>{n.title}</b>
-            <p>{n.detail}</p>
-          </div>
-        </article>
-      ))}
-    </section>
+      <i>
+        <b
+          style={{
+            width: `${pct}%`,
+            background: state.climate > 2 ? "#e8642c" : "#f5c542",
+          }}
+        />
+      </i>
+      <small>+{CLIMATE_LOSS}°C: every town loses</small>
+    </div>
   );
 }
 
-function Market({
-  state,
-  civId,
-  act,
-}: {
-  state: GameState;
-  civId: CivId;
-  act: (a: Action) => void;
-}) {
-  const [amount, setAmount] = useState(5);
-  return (
-    <section className="tab-page">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">THE ECONOMY IS A SHARED ECOSYSTEM</span>
-          <h2>The world exchange</h2>
-          <p>
-            Disasters, stockpiles, embargoes and your own orders move prices.
-            Buy what you need; export what your neighbors cannot make.
-          </p>
-        </div>
-        <label className="quantity">
-          Order size{" "}
-          <input
-            aria-label="Market order size"
-            type="number"
-            min="1"
-            max="30"
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-          />
-        </label>
-      </div>
-      <div className="market-grid">
-        {RESOURCES.filter((r) => r !== "money").map((r) => (
-          <article className="market-card" key={r}>
-            <div className="section-heading">
-              <span
-                className="resource-icon"
-                style={{ color: RESOURCE_META[r].color }}
-              >
-                {RESOURCE_META[r].icon}
-              </span>
-              <span className="pill light">
-                {Math.floor(state.marketStock[r])} available
-              </span>
-            </div>
-            <h3>{RESOURCE_META[r].name}</h3>
-            <div className="market-price">
-              {state.prices[r].toFixed(2)}
-              <small>credits / unit</small>
-            </div>
-            <Trend
-              values={[state.prices[r], ...state.priceHistory.map((p) => p[r])]}
-              color={RESOURCE_META[r].color}
-            />
-            <p>
-              Your stock: <b>{fmt(state.civs[civId].resources[r])}</b>
-            </p>
-            <div className="trade-buttons">
-              {[true, false].map((buy) => {
-                const a: Action = {
-                  type: "market",
-                  civ: civId,
-                  resource: r,
-                  amount,
-                  buy,
-                };
-                const error = actionError(state, a);
-                return (
-                  <button
-                    key={String(buy)}
-                    className={buy ? "primary" : "secondary"}
-                    disabled={!!error}
-                    title={error ?? "One action point"}
-                    onClick={() => act(a)}
-                  >
-                    {buy ? "Buy" : "Sell"} {amount}
-                    <small>
-                      {marketQuote(state, civId, r, amount, buy).toFixed(1)}{" "}
-                      credits
-                    </small>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              className="text-button"
-              disabled={
-                !!actionError(state, {
-                  type: "embargo",
-                  civ: civId,
-                  resource: r,
-                })
-              }
-              onClick={() => act({ type: "embargo", civ: civId, resource: r })}
-            >
-              {state.civs[civId].embargo === r
-                ? "Lift export embargo"
-                : "Withhold from market"}{" "}
-              <ArrowUpRight size={14} />
-            </button>
-          </article>
-        ))}
-      </div>
-      <div className="world-insight">
-        <TrendingUp size={25} />
-        <div>
-          <b>A shortage somewhere is a price signal everywhere.</b>
-          <p>
-            Market spreads grow when trust falls. Verdant Reach enjoys lower
-            trade friction; Forge Dominion receives a premium on energy exports,
-            unless tariffs or the strait intervene.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-function Technology({
-  state,
-  civId,
-  act,
-}: {
-  state: GameState;
-  civId: CivId;
-  act: (a: Action) => void;
-}) {
-  return (
-    <section className="tab-page">
-      <span className="eyebrow">INVENT A DIFFERENT FUTURE</span>
-      <h2>Progress with a purpose</h2>
-      <p>
-        Technology changes the decisions you can make. Specialize with your
-        civilization’s 30% research discount, or share discoveries to accelerate
-        everyone’s transition.
-      </p>
-      <div className="tech-branches">
-        {["Energy", "Land", "Cities", "Resilience"].map((branch) => (
-          <section key={branch} className="tech-branch">
-            <div className="branch-heading">
-              <Sparkles size={18} />
-              <h3>{branch}</h3>
-            </div>
-            {Object.entries(TECHS)
-              .filter(([, t]) => t.branch === branch)
-              .map(([id, t], i) => {
-                const owned = state.civs[civId].techs.includes(id),
-                  a: Action = { type: "research", civ: civId, tech: id },
-                  error = actionError(state, a);
-                return (
-                  <article
-                    key={id}
-                    className={`tech-card ${owned ? "researched" : ""}`}
-                  >
-                    <span className="eyebrow">
-                      TIER {i + 1}{" "}
-                      {t.affinity === civId ? "· CLASS AFFINITY" : ""}
-                    </span>
-                    <h4>{t.name}</h4>
-                    <p>{t.description}</p>
-                    {t.requires && (
-                      <small>Requires {TECHS[t.requires].name}</small>
-                    )}
-                    <button
-                      className={owned ? "secondary" : "primary"}
-                      disabled={owned || !!error}
-                      title={error ?? "Research for 1 AP"}
-                      onClick={() => act(a)}
-                    >
-                      {owned ? (
-                        <>
-                          <ShieldCheck size={15} /> Researched
-                        </>
-                      ) : (
-                        <>
-                          ✧ {techCost(state, civId, id)} insight{" "}
-                          <ChevronRight size={15} />
-                        </>
-                      )}
-                    </button>
-                    {owned && (
-                      <button
-                        className="text-button"
-                        disabled={
-                          state.phase !== "planning" ||
-                          state.civs[civId].ap === 0 ||
-                          CIV_IDS.every((c) => state.civs[c].techs.includes(id))
-                        }
-                        onClick={() =>
-                          act({ type: "opensource", civ: civId, tech: id })
-                        }
-                      >
-                        Open-source to everyone ↗
-                      </button>
-                    )}
-                  </article>
-                );
-              })}
-          </section>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function Diplomacy({
-  state,
-  civId,
-  act,
-}: {
-  state: GameState;
-  civId: CivId;
-  act: (a: Action) => void;
-}) {
-  const [target, setTarget] = useState<CivId>(
-      CIV_IDS.find((id) => id !== civId)!,
-    ),
-    [give, setGive] = useState<Resource>("food"),
-    [receive, setReceive] = useState<Resource>("energy"),
-    [amount, setAmount] = useState(5),
-    [recurring, setRecurring] = useState(false);
-  useEffect(() => {
-    if (target === civId) setTarget(CIV_IDS.find((id) => id !== civId)!);
-  }, [civId, target]);
-  const c = state.civs[civId],
-    trade: Action = {
-      type: "trade",
-      civ: civId,
-      target,
-      give,
-      receive,
-      amount,
-      recurring,
-    },
-    aid: Action = { type: "aid", civ: civId, target, resource: give, amount };
-  return (
-    <section className="tab-page">
-      <span className="eyebrow">YOUR NEIGHBORS ARE YOUR FUTURE</span>
-      <h2>Competition. Cooperation. Consequences.</h2>
-      <p>
-        AI neighbors trade on value and trust. Helping hands build durable
-        relationships; coercion buys leverage at a cost.
-      </p>
-      <div className="diplomacy-grid">
-        {CIV_IDS.filter((id) => id !== civId).map((id) => (
-          <button
-            className={`neighbor-card ${target === id ? "chosen" : ""}`}
-            key={id}
-            onClick={() => setTarget(id)}
-          >
-            <span className="crest" style={{ color: CIVS[id].color }}>
-              {CIVS[id].crest}
-            </span>
-            <h3>{CIVS[id].name}</h3>
-            <span className="relationship">
-              {state.civs[id].relations[civId] >= 65
-                ? "Trusted partner"
-                : state.civs[id].relations[civId] < 35
-                  ? "Hostile rival"
-                  : "Pragmatic neighbor"}
-            </span>
-            <p>{CIVS[id].weakness}</p>
-            <div>
-              <span>
-                Wellbeing <b>{Math.round(state.civs[id].wellbeing)}</b>
-              </span>
-              <span>
-                Emissions <b>{state.civs[id].emissions.toFixed(2)}</b>
-              </span>
-            </div>
-          </button>
-        ))}
-      </div>
-      <div className="diplomacy-workspace">
-        <section className="deal-builder">
-          <h3>A deal with {CIVS[target].name}</h3>
-          <div className="deal-fields">
-            <label>
-              You offer
-              <select
-                value={give}
-                onChange={(e) => setGive(e.target.value as Resource)}
-              >
-                {RESOURCES.map((r) => (
-                  <option value={r} key={r}>
-                    {RESOURCE_META[r].name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <ArrowRight size={20} />
-            <label>
-              You receive
-              <select
-                value={receive}
-                onChange={(e) => setReceive(e.target.value as Resource)}
-              >
-                {RESOURCES.map((r) => (
-                  <option value={r} key={r}>
-                    {RESOURCE_META[r].name} (
-                    {Math.floor(state.civs[target].resources[r])} available)
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Quantity
-              <input
-                type="number"
-                min="1"
-                max="30"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-              />
-            </label>
-          </div>
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              checked={recurring}
-              onChange={(e) => setRecurring(e.target.checked)}
-            />{" "}
-            Repeat for three decades; missed shipments cost trust.
-          </label>
-          {actionError(state, trade) && (
-            <p className="muted">{actionError(state, trade)}</p>
-          )}
-          <div className="button-row">
-            <button
-              className="primary"
-              disabled={!!actionError(state, trade)}
-              onClick={() => act(trade)}
-            >
-              Commit resource swap
-            </button>
-            <button
-              className="secondary"
-              disabled={!!actionError(state, aid)}
-              onClick={() => act(aid)}
-            >
-              Send as aid instead
-            </button>
-          </div>
-          <p className="small-text">
-            Aid sends your offered resource without asking for payment. It
-            restores wellbeing and grants one response lifeline.
-          </p>
-          <h4>License a discovery</h4>
-          <div className="button-row">
-            {c.techs
-              .filter((t) => !state.civs[target].techs.includes(t))
-              .map((tech) => (
-                <button
-                  key={tech}
-                  disabled={
-                    !!actionError(state, {
-                      type: "license",
-                      civ: civId,
-                      target,
-                      tech,
-                    })
-                  }
-                  onClick={() =>
-                    act({ type: "license", civ: civId, target, tech })
-                  }
-                >
-                  {TECHS[tech].name} · 10 credits
-                </button>
-              ))}
-            {!c.techs.length && (
-              <span className="muted">
-                Research a technology to license it.
-              </span>
-            )}
-          </div>
-        </section>
-        <section className="policy-panel">
-          <h3>Statecraft</h3>
-          <p>
-            Policies persist until you change them. Every policy costs one
-            action.
-          </p>
-          <button
-            className="secondary full"
-            disabled={
-              !!actionError(state, { type: "tariff", civ: civId, target })
-            }
-            onClick={() => act({ type: "tariff", civ: civId, target })}
-          >
-            {c.tariff === target ? "Remove" : "Apply"} carbon tariff on{" "}
-            {CIVS[target].name}
-          </button>
-          {civId === "archipelago" && (
-            <>
-              <h4>The shipping strait</h4>
-              <div className="button-row">
-                {(["open", "tax", "block"] as const).map((policy) => (
-                  <button
-                    key={policy}
-                    className={c.shipping === policy ? "selected-policy" : ""}
-                    disabled={state.phase !== "planning" || c.ap === 0}
-                    onClick={() =>
-                      act({ type: "shipping", civ: civId, policy })
-                    }
-                  >
-                    {policy}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          {civId === "heartland" && (
-            <button
-              className="secondary full"
-              disabled={state.phase !== "planning" || c.ap === 0}
-              onClick={() => act({ type: "divert", civ: civId })}
-            >
-              {c.diversion
-                ? "Restore downstream flow"
-                : "Divert water from the delta"}
-            </button>
-          )}
-          <div className="concordat">
-            <Handshake size={24} />
-            <h4>The Earthshare Concordat</h4>
-            <p>
-              All four must sign, keep emissions below 0.10 per decade, and end
-              embargoes, tariffs, diversion and shipping restrictions for three
-              consecutive decades.
-            </p>
-            <div className="signature-row">
-              {CIV_IDS.map((id) => (
-                <span
-                  key={id}
-                  title={CIVS[id].name}
-                  className={state.civs[id].accord ? "signed" : ""}
-                >
-                  {CIVS[id].crest}
-                </span>
-              ))}
-            </div>
-            <small>{state.accordStreak} / 3 compliant decades</small>
-            <button
-              className="primary full"
-              disabled={!!actionError(state, { type: "accord", civ: civId })}
-              onClick={() => act({ type: "accord", civ: civId })}
-            >
-              {c.accord ? "Your signature is recorded" : "Sign the Concordat"}
-            </button>
-          </div>
-        </section>
-      </div>
-      {state.deals.length > 0 && (
-        <section className="active-deals">
-          <h3>Active agreements</h3>
-          {state.deals.map((d) => (
-            <p key={d.id}>
-              {CIVS[d.from].name} ↔ {CIVS[d.to].name}: {d.amount} {d.give} /{" "}
-              {d.receive} · {d.remaining} shipments remaining
-            </p>
-          ))}
-        </section>
-      )}
-    </section>
-  );
-}
-
-function Almanac() {
-  const [filter, setFilter] = useState("all");
-  return (
-    <section className="tab-page">
-      <span className="eyebrow">KNOWLEDGE IS A RESILIENCE STRATEGY</span>
-      <h2>The field guide</h2>
-      <p>
-        Sixteen distinct hazard systems. Understand their carriers, prepare
-        before they arrive, and learn from the consequences. Game numbers are
-        teaching abstractions, not real-world forecasts.
-      </p>
-      <div className="filter-pills">
-        {["all", "river", "wind", "coast", "fault", "current", "local"].map(
-          (c) => (
-            <button
-              key={c}
-              className={filter === c ? "active" : ""}
-              onClick={() => setFilter(c)}
-            >
-              {c === "all" ? "All hazards" : c}
-            </button>
-          ),
-        )}
-      </div>
-      <div className="almanac-grid">
-        {Object.entries(DISASTERS)
-          .filter(([, d]) => filter === "all" || d.carrier === filter)
-          .map(([id, d]) => (
-            <article key={id} className="hazard-card">
-              <div className="section-heading">
-                <span className="hazard-icon" style={{ color: d.color }}>
-                  {d.icon}
-                </span>
-                <span className="pill light">
-                  {d.climateDriven ? "WARMING AMPLIFIED" : "INDEPENDENT RISK"}
-                </span>
-              </div>
-              <h3>{d.name}</h3>
-              <p>{d.lesson}</p>
-              <div className="mitigation">
-                <ShieldCheck size={16} />
-                <span>{d.mitigation}</span>
-              </div>
-              <a href={d.source} target="_blank" rel="noreferrer">
-                Explore the science <ArrowUpRight size={14} />
-              </a>
-            </article>
-          ))}
-      </div>
-      <div className="world-insight">
-        <BookOpen size={26} />
-        <div>
-          <b>{QUESTIONS.length} questions. Learning that pays forward.</b>
-          <p>
-            A strong response recovers up to 25% of resource losses and two
-            decades of disruption. It cannot change downstream flows or erase
-            the consequences for your neighbors.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-function Timeline({ state }: { state: GameState }) {
-  return (
-    <section className="tab-page">
-      <span className="eyebrow">EVERY DECISION LEAVES A TRACE</span>
-      <h2>Our footprint</h2>
-      <div className="history-charts">
-        {(
-          [
-            ["Warming", state.history.map((h) => h.climate), "#c09363"],
-            ["Ocean health", state.history.map((h) => h.ocean), "#5faaa2"],
-            ["Global trust", state.history.map((h) => h.trust), "#9c97c5"],
-          ] as const
-        ).map(([label, values, color]) => (
-          <article key={label}>
-            <h3>{label}</h3>
-            <Trend values={[...values]} color={color} />
-            <span>Decade 1 → {state.round}</span>
-          </article>
-        ))}
-      </div>
-      <div className="timeline">
-        {state.news
-          .slice()
-          .reverse()
-          .map((n) => (
-            <article key={n.id}>
-              <span className="timeline-decade">
-                {String(n.round).padStart(2, "0")}
-              </span>
-              <div>
-                <span className="eyebrow">
-                  {n.causeId ? `CAUSE ${n.causeId}` : "WORLD DISPATCH"}
-                </span>
-                <h4>{n.title}</h4>
-                <p>{n.detail}</p>
-              </div>
-              <i className={`news-dot ${n.tone}`} />
-            </article>
-          ))}
-      </div>
-    </section>
-  );
-}
-function Debrief({
+function QuizBox({
   state,
   civ,
-  onNext,
+  onAnswer,
 }: {
   state: GameState;
   civ: CivId;
-  onNext: () => void;
+  onAnswer: (option: number, ms: number) => void;
 }) {
-  const biggest = [...state.damages].sort((a, b) => b.severity - a.severity)[0],
-    d = biggest ? DISASTERS[biggest.type] : null;
+  const q = questionFor(state, civ)!;
+  const [started] = useState(() => performance.now());
+  const [left, setLeft] = useState(QUIZ_MS);
+  const [done, setDone] = useState(false);
+  const answer = (option: number) => {
+    if (done) return;
+    setDone(true);
+    onAnswer(option, Math.round(performance.now() - started));
+  };
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const remaining = QUIZ_MS - (performance.now() - started);
+      setLeft(Math.max(0, remaining));
+      if (remaining <= 0) answer(-1);
+    }, 250);
+    return () => window.clearInterval(t);
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const n = Number(e.key);
+      if (n >= 1 && n <= q.options.length) answer(n - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+  const segments = Math.ceil((left / QUIZ_MS) * 10);
   return (
     <Narrator
       civ={civ}
       className="narrator-docked"
-      eyebrow={`DECADE ${state.round} / LESSONS FROM THE COMMONS`}
-      lines={[
-        d
-          ? `${d.name}: the consequence is connected. ${d.lesson}`
-          : "A quiet decade. Prevention rarely makes headlines, so use this breathing room to invest in clean power, resilient systems and trusted relationships.",
-      ]}
+      eyebrow={`QUICK QUESTION · ${EVENTS[state.events[civ].type].name.toUpperCase()}`}
+      lines={[q.prompt]}
       actions={
-        <button className="primary" onClick={onNext}>
-          {state.round >= 10 || state.climate >= 3
-            ? "See your legacy"
-            : "Begin next decade"}{" "}
-          <ArrowRight size={17} />
-        </button>
+        <div className="quiz-dialogue">
+          <div className="quiz-options">
+            {q.options.map((o, i) => (
+              <button key={o} disabled={done} onClick={() => answer(i)}>
+                <span>{i + 1}</span>
+                {o}
+              </button>
+            ))}
+          </div>
+          <div
+            className="hourglass"
+            aria-label={`${Math.ceil(left / 1000)} seconds left`}
+          >
+            ⧗
+            {Array.from({ length: 10 }, (_, i) => (
+              <i key={i} className={i < segments ? "on" : ""} />
+            ))}
+            <b>0:{String(Math.ceil(left / 1000)).padStart(2, "0")}</b>
+          </div>
+        </div>
       }
-    >
-      <div className="debrief-stats">
-        <span>
-          <b>{state.damages.length}</b> regional impacts
-        </span>
-        <span>
-          <b>{state.flows.length}</b> cross-border flows
-        </span>
-        <span>
-          <b>{state.quizzes.filter((q) => q.tier === "rapid").length}</b> rapid
-          responses
-        </span>
-        {d && (
-          <a href={d.source} target="_blank" rel="noreferrer">
-            Read the real-world science ↗
-          </a>
-        )}
-      </div>
-    </Narrator>
+    />
   );
 }
+
+function ChoiceBox({
+  state,
+  civ,
+  onChoose,
+}: {
+  state: GameState;
+  civ: CivId;
+  onChoose: (option: 0 | 1 | 2) => void;
+}) {
+  const ev = state.events[civ];
+  const e = EVENTS[ev.type];
+  const quiz = state.civs[civ].quiz;
+  const q = QUESTIONS.find((x) => x.id === quiz?.questionId);
+  const target = e.cheap.spillTo
+    ? CIVS[spillTarget(civ, e.cheap.spillTo)].name
+    : "";
+  const feedback = !q
+    ? []
+    : quiz?.correct
+      ? [`That's right! ${q.explanation}`]
+      : [
+          `${quiz?.option === -1 ? "Out of time." : "Not quite."} The answer was "${q.options[q.correct]}". ${q.explanation}`,
+        ];
+  const card = (option: 0 | 1, kind: "cheap" | "green") => {
+    const c = e[kind];
+    const cost = choiceCost(state, civ, option);
+    const ok = canAfford(state.civs[civ].stock, cost);
+    return (
+      <button
+        className={`choice-card ${kind}`}
+        disabled={!ok}
+        onClick={() => onChoose(option)}
+      >
+        <small>{kind === "cheap" ? "CHEAP NOW" : "SUSTAINABLE"}</small>
+        <b>{c.label}</b>
+        <Costs cost={cost} />
+        <span>{c.effect.replace("{target}", target)}</span>
+        {!ok && <em>Not enough resources</em>}
+      </button>
+    );
+  };
+  return (
+    <Narrator
+      civ={civ}
+      className="narrator-docked"
+      eyebrow={`YOUR CHOICE · ${e.name.toUpperCase()}`}
+      lines={[
+        ...feedback,
+        `So how do we face this ${e.name.toLowerCase()}? ${e.lesson}`,
+      ]}
+      actions={
+        <div className="choice-cards">
+          {card(0, "cheap")}
+          {card(1, "green")}
+          <button className="choice-brace" onClick={() => onChoose(2)}>
+            Brace and take the full hit
+          </button>
+        </div>
+      }
+    />
+  );
+}
+
+function BuildPanel({
+  state,
+  civ,
+  act,
+  onEnd,
+}: {
+  state: GameState;
+  civ: CivId;
+  act: (a: Action) => void;
+  onEnd: () => void;
+}) {
+  const town = state.civs[civ];
+  const [give, setGive] = useState<Resource>("brick");
+  const [get, setGet] = useState<Resource>("wood");
+  const buildable = Object.entries(BUILDINGS).filter(([, b]) => !b.earned);
+  return (
+    <section className="build-panel" aria-label="Build">
+      <header>
+        <span className="eyebrow">
+          BUILD · {townOf(civ).name.toUpperCase()}
+        </span>
+        <button className="primary" onClick={onEnd}>
+          End turn <ArrowRight size={16} />
+        </button>
+      </header>
+      <div className="build-list">
+        {buildable.map(([id, b]) => {
+          const err = actionError(state, { type: "build", civ, building: id });
+          return (
+            <button
+              key={id}
+              className={`build-row ${b.green ? "green" : ""} ${b.dirty ? "dirty" : ""}`}
+              disabled={!!err}
+              title={err ?? b.description}
+              onClick={() => act({ type: "build", civ, building: id })}
+            >
+              <span className="build-icon">{b.icon}</span>
+              <span className="build-name">
+                <b>{b.name}</b>
+                <small>{b.description}</small>
+              </span>
+              <Costs cost={b.cost} />
+              <span className="build-count">
+                {builtCount(town, id)}/{b.max}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="exchange">
+        <span>Bank trade {EXCHANGE_RATE}:1</span>
+        <select
+          aria-label="Give"
+          value={give}
+          onChange={(e) => setGive(e.target.value as Resource)}
+        >
+          {RESOURCES.map((r) => (
+            <option key={r} value={r}>
+              {EXCHANGE_RATE} {RESOURCE_META[r].icon} {RESOURCE_META[r].name}
+            </option>
+          ))}
+        </select>
+        <span>→</span>
+        <select
+          aria-label="Get"
+          value={get}
+          onChange={(e) => setGet(e.target.value as Resource)}
+        >
+          {RESOURCES.map((r) => (
+            <option key={r} value={r}>
+              1 {RESOURCE_META[r].icon} {RESOURCE_META[r].name}
+            </option>
+          ))}
+        </select>
+        <button
+          disabled={!!actionError(state, { type: "exchange", civ, give, get })}
+          onClick={() => act({ type: "exchange", civ, give, get })}
+        >
+          Trade
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function TownWindow({
+  state,
+  civ,
+  onClose,
+}: {
+  state: GameState;
+  civ: CivId;
+  onClose: () => void;
+}) {
+  const counts: Record<string, number> = {};
+  for (const b of state.civs[civ].buildings) counts[b] = (counts[b] ?? 0) + 1;
+  const ev = state.events[civ];
+  return (
+    <section
+      className="town-window"
+      style={{ borderColor: CIVS[civ].color }}
+      aria-label={`${townOf(civ).name} details`}
+    >
+      <header style={{ background: CIVS[civ].color }}>
+        <b>
+          {townOf(civ).name} · {CIVS[civ].name}
+        </b>
+        <button aria-label="Close" onClick={onClose}>
+          <X size={14} />
+        </button>
+      </header>
+      <p>{CIVS[civ].description}</p>
+      {ev && (
+        <p>
+          <b>This decade:</b> {EVENTS[ev.type].name}
+        </p>
+      )}
+      <p>
+        <b>Makes each decade:</b> {describe(income(state, civ))}
+      </p>
+      <ul>
+        {Object.entries(counts).map(([id, n]) => (
+          <li key={id}>
+            {BUILDINGS[id]?.icon} {BUILDINGS[id]?.name} ×{n}
+          </li>
+        ))}
+      </ul>
+      <p>
+        <b>{score(state, civ)} points</b> · {greenCount(state, civ)} green
+        buildings
+      </p>
+    </section>
+  );
+}
+
 function Endgame({
   state,
   onRestart,
@@ -1701,240 +809,70 @@ function Endgame({
   const ranking = CIV_IDS.map((id) => ({ id, score: score(state, id) })).sort(
     (a, b) => b.score - a.score,
   );
+  const max = Math.max(CLIMATE_LOSS, ...state.history.map((h) => h.climate));
+  const y = (c: number) => 80 - (c / max) * 72;
   return (
     <section className="endgame">
       <div className="end-emblem">
-        {state.outcome === "collapse"
-          ? "⌁"
-          : state.outcome === "concordat"
-            ? "❧"
-            : "✧"}
+        {state.outcome === "collapse" ? "⌁" : "✧"}
       </div>
       <span className="eyebrow">YOUR LEGACY / DECADE {state.round}</span>
       <h2>
         {state.outcome === "collapse"
           ? "No one wins on a broken planet."
-          : state.outcome === "concordat"
-            ? "Four futures. One shared victory."
-            : "A world shaped by your choices."}
+          : "The valley made it through."}
       </h2>
       <p>
         {state.outcome === "collapse"
-          ? "Warming crossed +3°C. Follow the timeline below to see which decisions moved the world toward collapse."
-          : state.outcome === "concordat"
-            ? "The Concordat held for three decades. Cooperation became a winning strategy."
-            : "Prosperity matters. So does the world that makes it possible. Scores reward wellbeing, technology, infrastructure and lower emissions."}
+          ? `Warming crossed +${CLIMATE_LOSS}°C, so every town lost. Cheap fixes and polluting buildings added up.`
+          : `Warming ended at +${state.climate.toFixed(2)}°C. Points come from everything your town built; sustainable choices earn protective buildings that count too.`}
       </p>
-      <div className="ranking">
-        {ranking.map((r, i) => (
-          <article key={r.id}>
-            <span>{i + 1}</span>
-            <b style={{ color: CIVS[r.id].color }}>
-              {CIVS[r.id].crest} {CIVS[r.id].name}
-            </b>
-            <strong>{r.score}</strong>
-          </article>
-        ))}
-      </div>
+      {state.outcome !== "collapse" && (
+        <div className="ranking">
+          {ranking.map((r, i) => (
+            <article key={r.id}>
+              <span>{i + 1}</span>
+              <b style={{ color: CIVS[r.id].color }}>
+                {CIVS[r.id].crest} {CIVS[r.id].name}
+              </b>
+              <small>{greenCount(state, r.id)} green</small>
+              <strong>{r.score}</strong>
+            </article>
+          ))}
+        </div>
+      )}
+      <svg
+        className="climate-chart"
+        viewBox="0 0 300 80"
+        aria-label="Warming by decade"
+      >
+        <line
+          x1="0"
+          x2="300"
+          y1={y(CLIMATE_LOSS)}
+          y2={y(CLIMATE_LOSS)}
+          stroke="#8c2929"
+          strokeDasharray="4 4"
+        />
+        <polyline
+          fill="none"
+          stroke="#e8642c"
+          strokeWidth="3"
+          points={state.history
+            .map(
+              (h, i) =>
+                `${(i * 300) / Math.max(1, state.history.length - 1)},${y(h.climate)}`,
+            )
+            .join(" ")}
+        />
+      </svg>
       <button className="primary" onClick={onRestart}>
         Start another future <ArrowRight size={17} />
       </button>
-      <Timeline state={state} />
     </section>
   );
 }
 
-function Quiz({
-  state,
-  ownCiv,
-  onAnswer,
-}: {
-  state: GameState;
-  ownCiv?: CivId;
-  onAnswer: (
-    civ: CivId,
-    index: number,
-    ms: number,
-    lifeline: boolean,
-  ) => void | Promise<boolean>;
-}) {
-  const session = state.quizzes.find(
-    (q) => !q.tier && (!ownCiv || q.civ === ownCiv),
-  )!;
-  const question = QUESTIONS.find(
-    (q) => q.id === session.questions[session.answers.length],
-  )!;
-  const [remaining, setRemaining] = useState(15),
-    [feedback, setFeedback] = useState<number | null>(null),
-    [hidden, setHidden] = useState<number[]>([]),
-    [used, setUsed] = useState(false);
-  const usedRef = useRef(false);
-  const started = useRef(0),
-    locked = useRef(false),
-    timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const commit = useCallback(
-    (option: number) => {
-      if (locked.current) return;
-      locked.current = true;
-      const elapsed = Math.max(0, Date.now() - started.current);
-      setFeedback(option);
-      if (ownCiv) {
-        Promise.resolve(
-          onAnswer(session.civ, option, elapsed, usedRef.current),
-        ).then((ok) => {
-          if (ok === false) {
-            locked.current = false;
-            setFeedback(null);
-          }
-        });
-        return;
-      }
-      timer.current = setTimeout(() => {
-        onAnswer(
-          session.civ,
-          option,
-          option === -1 ? 15001 : elapsed,
-          usedRef.current,
-        );
-        setFeedback(null);
-      }, 2100);
-    },
-    [onAnswer, session.civ, used],
-  );
-  useEffect(() => {
-    started.current = Date.now();
-    locked.current = false;
-    setRemaining(15);
-    setFeedback(null);
-    setHidden([]);
-    setUsed(session.lifelineUsed);
-    usedRef.current = session.lifelineUsed;
-    const interval = setInterval(() => {
-      const left = Math.max(0, 15 - (Date.now() - started.current) / 1000);
-      setRemaining(left);
-      if (left === 0) commit(-1);
-    }, 100);
-    return () => {
-      clearInterval(interval);
-      if (timer.current) clearTimeout(timer.current);
-    }; // Reset only for a new question, not each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.id]);
-  function lifeline() {
-    if (used || locked.current) return;
-    setHidden(
-      question.options
-        .map((_, i) => i)
-        .filter((i) => i !== question.correct)
-        .slice(0, 2),
-    );
-    setUsed(true);
-    usedRef.current = true;
-  }
-  return (
-    <div className="modal-backdrop">
-      <section
-        className="quiz-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="quiz-title"
-      >
-        <div className="section-heading">
-          <span className="eyebrow">
-            {CIVS[session.civ].name.toUpperCase()} / EMERGENCY RESPONSE
-          </span>
-          <div className="quiz-timer">
-            <b>{Math.ceil(remaining)}</b>
-          </div>
-        </div>
-        <span className="pill">
-          {DISASTERS[session.type].icon} {DISASTERS[session.type].name} ·
-          Question {session.answers.length + 1}/{session.questions.length}
-        </span>
-        <h2 id="quiz-title">{question.prompt}</h2>
-        <p className="quiz-subtitle">
-          Your knowledge accelerates recovery. Prevention still matters most.
-        </p>
-        <div className="quiz-options">
-          {question.options.map((option, i) => (
-            <button
-              autoFocus={i === 0}
-              key={option}
-              disabled={feedback !== null || hidden.includes(i)}
-              className={
-                feedback !== null
-                  ? i === question.correct
-                    ? "correct"
-                    : i === feedback
-                      ? "incorrect"
-                      : ""
-                  : ""
-              }
-              onClick={() => commit(i)}
-            >
-              <span>{String.fromCharCode(65 + i)}</span>
-              {hidden.includes(i) ? "Removed by mutual aid" : option}
-              {feedback !== null && i === question.correct && (
-                <ShieldCheck size={18} />
-              )}
-            </button>
-          ))}
-        </div>
-        {feedback !== null && (
-          <div className="answer-feedback" role="status">
-            <b>
-              {feedback === question.correct
-                ? "That’s right."
-                : feedback === -1
-                  ? "Time’s up."
-                  : "A lesson for next time."}
-            </b>
-            <p>{question.explanation}</p>
-            <a href={question.source} target="_blank" rel="noreferrer">
-              Source: {question.sourceLabel} ↗
-            </a>
-          </div>
-        )}
-        <div className="quiz-footer">
-          <button
-            className="secondary"
-            disabled={
-              !state.civs[session.civ].aided || used || feedback !== null
-            }
-            onClick={lifeline}
-          >
-            <Handshake size={15} />{" "}
-            {used ? "Lifeline used" : "Mutual-aid 50/50"}
-          </button>
-          <span>
-            {session.answers.filter((a) => a.correct).length} correct · up to
-            25% recovery
-          </span>
-        </div>
-        <div className="quiz-progress">
-          {session.questions.map((id, i) => (
-            <i
-              key={id}
-              className={
-                i < session.answers.length
-                  ? "complete"
-                  : i === session.answers.length
-                    ? "current"
-                    : ""
-              }
-            />
-          ))}
-        </div>
-        {state.mode === "hotseat" && (
-          <p className="small-text">
-            Pass the screen to {CIVS[session.civ].name}. Other players can look
-            away.
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
 function Help({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-backdrop">
@@ -1952,39 +890,32 @@ function Help({ onClose }: { onClose: () => void }) {
           <X />
         </button>
         <Leaf size={32} />
-        <span className="eyebrow">WELCOME TO THE COMMONS</span>
+        <span className="eyebrow">WELCOME TO THE VALLEY</span>
         <h2 id="help-title">Build well. Think downstream.</h2>
         <ol>
           <li>
-            <b>Plan with three actions.</b> Select hexes to build or restore.
-            Research unlocks new options. Buy essentials and sell surplus.
+            <b>Hear the event.</b> Every decade your advisor tells you what is
+            about to hit your town: a flood, a drought, smog drifting in.
           </li>
           <li>
-            <b>Work with your neighbors.</b> Trade, send aid, license or share
-            technology. AI partners may refuse unfair deals. Aggressive policies
-            affect trust and supply.
+            <b>Answer the question.</b> One timed question about that event. A
+            right answer softens the losses.
           </li>
           <li>
-            <b>Resolve the decade.</b> AI neighbors act; hazards roll using the
-            seed. Rivers, winds, currents, coasts and faults carry consequences
-            across borders.
+            <b>Choose.</b> The cheap fix stops the damage now but pushes it onto
+            a neighbor or warms the planet. The sustainable fix costs more,
+            halves the damage and builds lasting protection.
           </li>
           <li>
-            <b>Respond and learn.</b> Affected civilizations answer 2–3 timed
-            questions. Good answers accelerate recovery; aid unlocks a 50/50
-            lifeline.
+            <b>Build.</b> Spend sheep, wheat, wood, brick and ore to grow your
+            town. Some buildings pollute; trees and windmills pull warming back.
+            Trade 3:1 with the bank for what you lack.
           </li>
           <li>
-            <b>Leave a legacy.</b> After ten decades, sustainable prosperity
-            wins. Everyone loses at +3°C. All four can win together through a
-            compliant Concordat.
+            <b>Leave a legacy.</b> After ten decades the biggest town wins, but
+            if warming reaches +3°C, every town loses.
           </li>
         </ol>
-        <p>
-          Levees and seawalls redirect risk. Nature can buffer it. Geological
-          hazards are independent of warming. Your browser autosaves; export
-          your world to keep a portable copy.
-        </p>
         <button className="primary full" onClick={onClose}>
           Let’s build a better future <ArrowRight size={17} />
         </button>
@@ -1997,53 +928,23 @@ function validSave(value: unknown): value is GameState {
   if (!value || typeof value !== "object") return false;
   const s = value as GameState;
   return (
-    s.version === 1 &&
+    s.version === 2 &&
     Number.isInteger(s.round) &&
     s.round >= 1 &&
-    s.round <= 10 &&
+    s.round <= ROUNDS &&
     Number.isFinite(s.seed) &&
+    Number.isFinite(s.climate) &&
     CIV_IDS.includes(s.player) &&
     ["solo", "hotseat"].includes(s.mode) &&
-    ["planning", "flows", "quiz", "debrief", "ended"].includes(s.phase) &&
-    ["climate", "ocean", "trust", "aquifer"].every((key) =>
-      Number.isFinite(s[key as keyof GameState]),
-    ) &&
+    ["event", "quiz", "choice", "build", "ended"].includes(s.phase) &&
+    Array.isArray(s.humans) &&
     CIV_IDS.every(
       (id) =>
         s.civs?.[id] &&
-        RESOURCES.every((r) => Number.isFinite(s.civs[id].resources?.[r])) &&
-        Array.isArray(s.civs[id].techs) &&
-        s.civs[id].techs.every((t) => TECHS[t]),
-    ) &&
-    Array.isArray(s.tiles) &&
-    s.tiles.length === 56 &&
-    s.tiles.every(
-      (t) =>
-        TERRAIN[t.terrain] &&
-        (!t.building || BUILDINGS[t.building]) &&
-        (!t.owner || CIV_IDS.includes(t.owner)) &&
-        Number.isFinite(t.disruption),
-    ) &&
-    [
-      "news",
-      "flows",
-      "history",
-      "deals",
-      "quizzes",
-      "usedQuestions",
-      "priceHistory",
-      "damages",
-      "ledgers",
-    ].every((k) => Array.isArray(s[k as keyof GameState])) &&
-    RESOURCES.every(
-      (r) =>
-        Number.isFinite(s.prices?.[r]) && Number.isFinite(s.marketStock?.[r]),
-    ) &&
-    s.quizzes.every(
-      (q) =>
-        CIV_IDS.includes(q.civ) &&
-        q.questions.every((id) => QUESTIONS.some((item) => item.id === id)) &&
-        Array.isArray(q.answers),
+        RESOURCES.every((r) => Number.isFinite(s.civs[id].stock?.[r])) &&
+        Array.isArray(s.civs[id].buildings) &&
+        s.civs[id].buildings.every((b) => BUILDINGS[b]) &&
+        EVENTS[s.events?.[id]?.type],
     )
   );
 }

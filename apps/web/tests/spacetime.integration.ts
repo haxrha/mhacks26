@@ -47,113 +47,72 @@ async function main() {
     );
     const row = () => host.db.room.id.find(id)!;
     const state = () => JSON.parse(row().stateJson) as GameState;
+    const act = (
+      conn: DbConnection,
+      action: object,
+      revision = row().revision,
+    ) =>
+      conn.reducers.act({
+        roomId: id,
+        revision,
+        actionJson: JSON.stringify(action),
+      });
     assert.equal(state().round, 1);
-    await assert.rejects(
-      guest.reducers.act({
-        roomId: id,
-        revision: row().revision,
-        actionJson: JSON.stringify({
-          type: "market",
-          civ: "heartland",
-          resource: "food",
-          amount: 1,
-          buy: true,
-        }),
-      }),
-    );
-    await host.reducers.act({
-      roomId: id,
-      revision: row().revision,
-      actionJson: JSON.stringify({
-        type: "market",
-        civ: "heartland",
-        resource: "food",
-        amount: 1,
-        buy: true,
-      }),
-    });
-    await until(
-      () => row().revision === 2 && guest.db.room.id.find(id)?.revision === 2,
-    );
-    assert.equal(state().civs.heartland.ap, 2);
-    await assert.rejects(
-      host.reducers.act({
-        roomId: id,
-        revision: 1,
-        actionJson: JSON.stringify({
-          type: "market",
-          civ: "heartland",
-          resource: "food",
-          amount: 1,
-          buy: true,
-        }),
-      }),
-    );
-    await assert.rejects(
-      host.reducers.act({
-        roomId: id,
-        revision: row().revision,
-        actionJson: JSON.stringify({
-          type: "market",
-          civ: "heartland",
-          amount: 1,
-          buy: true,
-        }),
-      }),
-    );
-    await host.reducers.ready({ roomId: id });
-    assert.equal(state().phase, "planning");
-    await guest.reducers.ready({ roomId: id });
-    await until(() => state().phase === "flows");
+    assert.equal(state().phase, "event");
+    assert.deepEqual(state().humans.sort(), ["archipelago", "heartland"]);
+
+    // Only the host moves from the event to the quiz.
     await assert.rejects(guest.reducers.advance({ roomId: id }));
     await host.reducers.advance({ roomId: id });
-    await until(() => state().phase !== "flows");
-    await until(() => guest.db.room.id.find(id)?.revision === row().revision);
-    assert.equal(guest.db.room.id.find(id)?.stateJson, row().stateJson);
+    await until(() => state().phase === "quiz");
+
+    // Each player answers their own question on the server clock; no replays.
     for (const [conn, civ] of [
       [host, "heartland"],
       [guest, "archipelago"],
     ] as const) {
-      let session = state().quizzes.find((q) => q.civ === civ && !q.tier);
-      while (session && state().phase === "quiz") {
-        const questionId = session.questions[session.answers.length];
-        const question = QUESTIONS.find((q) => q.id === questionId)!;
-        await assert.rejects(
-          conn.reducers.answer({
-            roomId: id,
-            questionId,
-            option: question.correct,
-            lifeline: false,
-          }),
-        );
-        await conn.reducers.beginQuestion({ roomId: id, questionId });
-        const previous = row().revision;
-        await conn.reducers.answer({
+      const questionId = state().civs[civ].quiz!.questionId;
+      const question = QUESTIONS.find((q) => q.id === questionId)!;
+      const answer = () =>
+        conn.reducers.answer({
           roomId: id,
           questionId,
           option: question.correct,
           lifeline: false,
         });
-        await until(() => row().revision > previous);
-        await assert.rejects(
-          conn.reducers.answer({
-            roomId: id,
-            questionId,
-            option: question.correct,
-            lifeline: false,
-          }),
-        );
-        session = state().quizzes.find((q) => q.civ === civ && !q.tier);
-      }
+      await assert.rejects(answer(), "must start the clock first");
+      await conn.reducers.beginQuestion({ roomId: id, questionId });
+      const previous = row().revision;
+      await answer();
+      await until(() => row().revision > previous);
+      await assert.rejects(answer(), "no second answer");
     }
-    assert.equal(state().phase, "debrief");
-    await host.reducers.advance({ roomId: id });
+    await until(() => state().phase === "choice");
+
+    // No impersonation, no stale revisions.
+    await assert.rejects(
+      act(guest, { type: "choose", civ: "heartland", option: 2 }),
+    );
+    await assert.rejects(
+      act(host, { type: "choose", civ: "heartland", option: 2 }, 1),
+    );
+    await act(host, { type: "choose", civ: "heartland", option: 2 });
+    await until(() => state().civs.heartland.choice === 2);
+    assert.equal(state().phase, "choice", "waits for the guest");
+    await act(guest, { type: "choose", civ: "archipelago", option: 2 });
+    await until(() => state().phase === "build");
+
+    // Build, then both end the turn.
+    await host.reducers.ready({ roomId: id });
+    assert.equal(state().phase, "build");
+    await guest.reducers.ready({ roomId: id });
     await until(() => state().round === 2);
-    assert.equal(state().phase, "planning");
-    assert.equal(state().civs.heartland.ap, 3);
+    assert.equal(state().phase, "event");
+    await until(() => guest.db.room.id.find(id)?.revision === row().revision);
+    assert.equal(guest.db.room.id.find(id)?.stateJson, row().stateJson);
     await until(() => [...host.db.seat.iter()].every((seat) => !seat.ready));
     console.log(
-      "PASS: native module creates rooms, syncs two identities, rejects impersonation/stale revisions, waits for readiness, restricts advancement to host, validates quiz clocks/replays, and completes a turn.",
+      "PASS: two identities share a room; host-only advance; server-timed quizzes reject replays; impersonation and stale revisions are rejected; the cycle waits for both players and completes.",
     );
   } finally {
     host.disconnect();

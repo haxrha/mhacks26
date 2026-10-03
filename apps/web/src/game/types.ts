@@ -1,34 +1,15 @@
 export const CIV_IDS = [
-  "petrostate",
   "heartland",
   "enclave",
+  "petrostate",
   "archipelago",
 ] as const;
 export type CivId = (typeof CIV_IDS)[number];
-export const RESOURCES = [
-  "food",
-  "water",
-  "energy",
-  "materials",
-  "money",
-  "innovation",
-] as const;
+export const RESOURCES = ["sheep", "wheat", "wood", "brick", "ore"] as const;
 export type Resource = (typeof RESOURCES)[number];
 export type Stock = Record<Resource, number>;
-export type Terrain =
-  | "farmland"
-  | "forest"
-  | "wetland"
-  | "mangrove"
-  | "mountain"
-  | "desert"
-  | "oil"
-  | "volcanic"
-  | "delta"
-  | "urban"
-  | "sea";
-export type Carrier =
-  "river" | "wind" | "current" | "coast" | "fault" | "local";
+
+/** Hazard types that quiz questions are tagged with (src/data/quiz.json). */
 export type DisasterId =
   | "flood"
   | "dam_failure"
@@ -46,183 +27,79 @@ export type DisasterId =
   | "grid_failure"
   | "pandemic"
   | "supply_shock";
-export interface Tile {
-  id: string;
-  q: number;
-  r: number;
-  owner: CivId | null;
-  terrain: Terrain;
-  coastal: boolean;
-  fault: boolean;
-  building?: string;
-  hp: number;
-  disruption: number;
-  effect?: DisasterId;
-  buildingCause?: string;
+
+/** The events that can strike a town each cycle (src/data/events.json). */
+export type EventId =
+  | "flood"
+  | "drought"
+  | "wildfire"
+  | "landslide"
+  | "smog"
+  | "spill"
+  | "sea_rise"
+  | "heatwave";
+
+/**
+ * Each cycle: the event is told → everyone answers a quiz → everyone makes a choice
+ * (cheap vs sustainable) → everyone builds → the cycle ends.
+ */
+export type Phase = "event" | "quiz" | "choice" | "build" | "ended";
+
+export interface CycleEvent {
+  type: EventId;
+  /** A neighbor whose buildings made this event more likely (shown in the narration). */
+  cause?: CivId;
+  /** Losses before the quiz and the choice soften them. */
+  loss: Partial<Stock>;
+}
+export interface QuizRecord {
+  questionId: string;
+  option?: number;
+  correct?: boolean;
+  ms?: number;
 }
 export interface Civ {
   id: CivId;
-  resources: Stock;
-  wellbeing: number;
-  population: number;
-  techs: string[];
-  ap: number;
-  reserves: number;
-  emissions: number;
-  accord: boolean;
-  aided: boolean;
-  embargo?: Resource;
-  tariff?: CivId;
-  shipping: "open" | "tax" | "block";
-  diversion: boolean;
-  relations: Record<CivId, number>;
-}
-export interface Edge {
-  id: string;
-  from: CivId;
-  to: CivId;
-  carrier: Carrier;
-  weight: number;
-  decay: number;
-}
-export interface Hazard {
-  id: string;
-  type: DisasterId;
-  source: CivId;
-  amount: number;
-  causeId: string;
-}
-export interface Flow {
-  id: string;
-  from: CivId;
-  to: CivId;
-  carrier: Carrier;
-  type: DisasterId;
-  amount: number;
-  causeId: string;
-  caption: string;
-}
-export interface Ledger {
-  hazardId: string;
-  incoming: number;
-  impact: number;
-  buffered: number;
-  transmitted: number;
-  dissipated: number;
-  region: CivId;
-}
-export interface Damage {
-  civ: CivId;
-  type: DisasterId;
-  severity: number;
-  losses: Partial<Stock>;
-  tileIds: string[];
-  causeId: string;
+  stock: Stock;
+  buildings: string[];
+  quiz?: QuizRecord;
+  /** 0 = cheap now, 1 = sustainable, 2 = brace and take the full loss. */
+  choice?: 0 | 1 | 2;
+  ready: boolean;
+  /** Questions already asked, so they don't repeat. */
+  asked: string[];
+  /** What happened to this town this cycle, for the narrator. */
+  report: string[];
 }
 export interface News {
-  id: string;
   round: number;
-  title: string;
-  detail: string;
-  tone: "good" | "bad" | "info";
-  causeId?: string;
+  civ?: CivId;
+  text: string;
 }
-export interface Deal {
-  id: string;
-  from: CivId;
-  to: CivId;
-  give: Resource;
-  receive: Resource;
-  amount: number;
-  remaining: number;
-}
-export interface Snapshot {
-  round: number;
-  climate: number;
-  ocean: number;
-  trust: number;
-  prices: Stock;
-}
-export interface QuizAnswer {
-  questionId: string;
-  correct: boolean;
-  ms: number;
-}
-export interface QuizSession {
-  civ: CivId;
-  type: DisasterId;
-  questions: string[];
-  answers: QuizAnswer[];
-  lifelineUsed: boolean;
-  tier?: "rapid" | "solid" | "slow";
-}
-export type Phase = "planning" | "flows" | "quiz" | "debrief" | "ended";
 export interface GameState {
-  version: 1;
+  version: 2;
   seed: number;
+  rng: number;
   round: number;
   phase: Phase;
   mode: "solo" | "hotseat";
   player: CivId;
+  /** Civilizations controlled by people; everyone else is an AI neighbor. */
+  humans: CivId[];
   civs: Record<CivId, Civ>;
-  tiles: Tile[];
+  events: Record<CivId, CycleEvent>;
   climate: number;
-  ocean: number;
-  trust: number;
-  aquifer: number;
-  prices: Stock;
-  marketStock: Stock;
-  priceHistory: Stock[];
-  wind: "WE" | "EW";
-  flows: Flow[];
-  ledgers: Ledger[];
-  damages: Damage[];
+  history: { round: number; climate: number }[];
   news: News[];
-  deals: Deal[];
-  history: Snapshot[];
-  quizzes: QuizSession[];
-  usedQuestions: string[];
-  forecast: "private" | "shared" | "sold" | "hidden";
-  accordStreak: number;
-  outcome?: "collapse" | "concordat" | "prosperity";
-  nextCause: number;
+  outcome?: "collapse" | "survived";
 }
+
 export type Action =
-  | { type: "build"; civ: CivId; tile: string; building: string }
-  | { type: "convert"; civ: CivId; tile: string }
-  | { type: "repair"; civ: CivId; tile: string }
-  | { type: "research"; civ: CivId; tech: string }
-  | {
-      type: "market";
-      civ: CivId;
-      resource: Resource;
-      amount: number;
-      buy: boolean;
-    }
-  | {
-      type: "trade";
-      civ: CivId;
-      target: CivId;
-      give: Resource;
-      receive: Resource;
-      amount: number;
-      recurring: boolean;
-    }
-  | {
-      type: "aid";
-      civ: CivId;
-      target: CivId;
-      resource: Resource;
-      amount: number;
-    }
-  | { type: "embargo"; civ: CivId; resource: Resource }
-  | { type: "tariff"; civ: CivId; target: CivId }
-  | { type: "shipping"; civ: CivId; policy: "open" | "tax" | "block" }
-  | { type: "divert"; civ: CivId }
-  | { type: "opensource"; civ: CivId; tech: string }
-  | { type: "license"; civ: CivId; target: CivId; tech: string }
-  | { type: "accord"; civ: CivId }
-  | { type: "forecast"; civ: CivId; policy: "shared" | "sold" | "hidden" };
+  | { type: "choose"; civ: CivId; option: 0 | 1 | 2 }
+  | { type: "build"; civ: CivId; building: string }
+  | { type: "exchange"; civ: CivId; give: Resource; get: Resource }
+  | { type: "ready"; civ: CivId };
+
 export interface Question {
   id: string;
   types: DisasterId[];

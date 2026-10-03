@@ -26,7 +26,10 @@ export const LEADERS: Leader[] = [
     name: "OSTRA",
     title: "WARDEN OSTRA",
     color: "#a07ad6",
-    ability: ["Headwaters", "the river, the dam and the farms all start here."],
+    ability: [
+      "Headwaters",
+      "ore and sheep from the high pastures, and the river starts here.",
+    ],
     exposure:
       "smog drifts in, and the dam sits on the fault. If she lets the water go, everyone downstream feels it.",
     pollution: 2,
@@ -40,11 +43,8 @@ export const LEADERS: Leader[] = [
     name: "MOSS",
     title: "ELDER MOSS",
     color: "#7fd65a",
-    ability: [
-      "Forecasts",
-      "sees disasters coming and turns insight into trade.",
-    ],
-    exposure: "floods from upstream, and a people who rely on imported food.",
+    ability: ["Old growth", "wood and wheat from the forests and fields."],
+    exposure: "floods from upstream, wildfires, and no ore of her own.",
     pollution: 1,
     resilience: 4,
   },
@@ -56,9 +56,8 @@ export const LEADERS: Leader[] = [
     name: "BRASK",
     title: "FOREMAN BRASK",
     color: "#f08a3c",
-    ability: ["Industry", "the most energy and credits on the map, for now."],
-    exposure:
-      "water shortages, and oil that runs out. His smoke lands on his neighbors.",
+    ability: ["Industry", "brick and ore, and a kiln already burning."],
+    exposure: "droughts and smog. His smoke lands on his neighbors.",
     pollution: 5,
     resilience: 2,
   },
@@ -70,10 +69,7 @@ export const LEADERS: Leader[] = [
     name: "PELL",
     title: "HARBORMASTER PELL",
     color: "#46d6d0",
-    ability: [
-      "Harbor",
-      "guards the strait with geothermal power and fisheries.",
-    ],
+    ability: ["Harbor", "wheat and sheep from the rich delta."],
     exposure:
       "quakes, storms and every spill that rides the current to his shore.",
     pollution: 2,
@@ -81,10 +77,8 @@ export const LEADERS: Leader[] = [
   },
 ];
 
-const MAX = (key: "food" | "energy" | "money" | "innovation") =>
-  Math.max(...LEADERS.map((l) => CIVS[l.civ].start[key]));
-const bars = (value: number, max: number) =>
-  Math.max(1, Math.round((value / max) * 5));
+/** Home yield per cycle (0–2) shown as 1–5 bars. */
+const bars = (perCycle: number) => Math.min(5, 1 + perCycle * 2);
 
 function Bar({
   label,
@@ -274,15 +268,12 @@ export default function LeaderSelect({
           </p>
         </div>
         <div className="ls-stats">
-          <Bar label="FOOD" value={bars(civ.start.food, MAX("food"))} />
-          <Bar label="ENERGY" value={bars(civ.start.energy, MAX("energy"))} />
-          <Bar label="WEALTH" value={bars(civ.start.money, MAX("money"))} />
-          <Bar
-            label="TECH"
-            value={bars(civ.start.innovation, MAX("innovation"))}
-          />
+          <Bar label="SHEEP" value={bars(civ.base.sheep)} />
+          <Bar label="WHEAT" value={bars(civ.base.wheat)} />
+          <Bar label="WOOD" value={bars(civ.base.wood)} />
+          <Bar label="BRICK" value={bars(civ.base.brick)} />
+          <Bar label="ORE" value={bars(civ.base.ore)} />
           <Bar label="POLLUTION" value={leader.pollution} tone="#b8a43e" />
-          <Bar label="RESILIENCE" value={leader.resilience} />
         </div>
         <div className="ls-confirm">
           <button className="primary" onClick={confirm}>

@@ -1,306 +1,336 @@
 {
   "flood": {
     "name": "River flood",
-    "icon": "≋",
-    "carrier": "river",
-    "base": 0.09,
-    "climateDriven": true,
-    "regions": [
-      "heartland"
-    ],
-    "losses": {
-      "food": 1,
-      "materials": 0.4
-    },
+    "icon": "≈",
     "color": "#7bc5e5",
-    "lesson": "Wetlands hold floodwater; levees can transfer risk downstream.",
-    "mitigation": "Preserve wetlands, restore forests, coordinate river defenses.",
-    "source": "https://www.epa.gov/wetlands"
-  },
-  "dam_failure": {
-    "name": "Dam-break flood",
-    "icon": "▰",
     "carrier": "river",
-    "base": 0,
-    "climateDriven": false,
-    "regions": [
-      "heartland"
+    "quizTypes": [
+      "flood",
+      "dam_failure"
     ],
-    "losses": {
-      "food": 1,
-      "water": 0.8,
-      "materials": 0.8
+    "regions": {
+      "enclave": 3,
+      "archipelago": 3,
+      "petrostate": 2,
+      "heartland": 1
     },
-    "color": "#66b4e4",
-    "lesson": "A dam is part of a larger hazard system: shaking can become a downstream flood.",
-    "mitigation": "Seismic engineering and downstream buffers.",
-    "source": "https://www.usgs.gov/programs/earthquake-hazards"
-  },
-  "hurricane": {
-    "name": "Hurricane & surge",
-    "icon": "🌀",
-    "carrier": "coast",
-    "base": 0.12,
-    "climateDriven": true,
-    "regions": [
-      "archipelago",
-      "enclave"
-    ],
-    "losses": {
-      "food": 0.7,
-      "energy": 0.6,
-      "money": 0.8
+    "loss": {
+      "wheat": 2,
+      "sheep": 1
     },
-    "color": "#9aceda",
-    "lesson": "Storm surge is pushed ashore by storm winds. Coastal ecosystems reduce wave energy.",
-    "mitigation": "Mangroves, shelters, resilient grids and coordinated barriers.",
-    "source": "https://www.nhc.noaa.gov/surge/"
-  },
-  "earthquake": {
-    "name": "Earthquake",
-    "icon": "⌁",
-    "carrier": "fault",
-    "base": 0.1,
-    "climateDriven": false,
-    "regions": [
-      "archipelago"
-    ],
-    "losses": {
-      "materials": 1.2,
-      "energy": 0.5
+    "cause": "lumber",
+    "tell": "Snowmelt and rain have swollen the river. A flood is rolling toward our fields.",
+    "caused": "Clear-cut hills upstream in {cause} sent the water down faster.",
+    "cheap": {
+      "label": "Throw up a quick levee",
+      "cost": {
+        "brick": 1
+      },
+      "spillTo": "downstream",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "We stay dry, but the levee pushes the water downstream onto {target}."
     },
-    "color": "#e6a08b",
-    "lesson": "Earthquakes are tectonic, not caused by warming. Fault exposure and building design matter.",
-    "mitigation": "Seismic engineering, repair and avoid fragile dams on faults.",
-    "source": "https://www.usgs.gov/programs/earthquake-hazards"
-  },
-  "tsunami": {
-    "name": "Tsunami",
-    "icon": "∿",
-    "carrier": "coast",
-    "base": 0.02,
-    "climateDriven": false,
-    "regions": [
-      "archipelago"
-    ],
-    "losses": {
-      "food": 0.8,
-      "water": 1,
-      "materials": 1.2
+    "green": {
+      "label": "Restore the wetlands",
+      "cost": {
+        "wheat": 1,
+        "sheep": 1
+      },
+      "build": "wetland",
+      "effect": "Half the damage now, and the marsh soaks up every future flood. Nobody else gets our water."
     },
-    "color": "#73bcd8",
-    "lesson": "Sudden displacement of seawater can produce waves across an ocean. It is distinct from storm surge.",
-    "mitigation": "Early warning, elevated shelters and evacuation routes.",
-    "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis"
-  },
-  "volcano": {
-    "name": "Volcanic eruption",
-    "icon": "△",
-    "carrier": "wind",
-    "base": 0.07,
-    "climateDriven": false,
-    "regions": [
-      "archipelago"
-    ],
-    "losses": {
-      "food": 0.6,
-      "energy": 0.7,
-      "water": 0.4
-    },
-    "color": "#dfac87",
-    "lesson": "Ash travels downwind, damaging machinery, air quality and water supplies far from the vent.",
-    "mitigation": "Forecasting, shelters, water reserves and diversified power.",
-    "source": "https://volcanoes.usgs.gov/volcanic_ash/"
+    "lesson": "Levees don't remove floodwater; they move it. Wetlands store it.",
+    "source": "https://www.epa.gov/wetlands"
   },
   "drought": {
     "name": "Drought",
     "icon": "☀",
-    "carrier": "local",
-    "base": 0.12,
-    "climateDriven": true,
-    "regions": [
-      "heartland",
-      "petrostate"
-    ],
-    "losses": {
-      "water": 1.6,
-      "food": 1
-    },
     "color": "#e5c383",
-    "lesson": "Water scarcity links agriculture, energy and trade. Shared aquifers make over-pumping everyone’s problem.",
-    "mitigation": "Drip irrigation, reserves and climate-ready crops.",
-    "source": "https://www.drought.gov/what-is-drought"
-  },
-  "heatwave": {
-    "name": "Heat dome",
-    "icon": "☼",
     "carrier": "local",
-    "base": 0.1,
-    "climateDriven": true,
-    "regions": [
-      "enclave",
-      "petrostate"
+    "quizTypes": [
+      "drought"
     ],
-    "losses": {
-      "energy": 1.1,
-      "water": 0.8,
-      "money": 0.4
+    "regions": {
+      "petrostate": 3,
+      "heartland": 2,
+      "enclave": 1,
+      "archipelago": 1
     },
-    "color": "#e8ad74",
-    "lesson": "Urban surfaces retain heat. Cooling demand can overwhelm electricity grids.",
-    "mitigation": "Trees, reflective surfaces, water access and microgrids.",
-    "source": "https://www.epa.gov/heatislands"
+    "loss": {
+      "wheat": 2,
+      "sheep": 1
+    },
+    "climateDriven": true,
+    "tell": "No rain for months. The wells are dropping and the wheat is wilting.",
+    "cheap": {
+      "label": "Pump the shared aquifer hard",
+      "cost": {},
+      "spillTo": "shared",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "Our crops are saved, but {target} shares that aquifer and their wells run dry."
+    },
+    "green": {
+      "label": "Store rainwater, plant hardy crops",
+      "cost": {
+        "wood": 1,
+        "brick": 1
+      },
+      "build": "cistern",
+      "effect": "Half the damage now, and a cistern carries us through the next dry spell."
+    },
+    "lesson": "Over-pumping a shared aquifer shifts a drought onto your neighbors.",
+    "source": "https://www.usgs.gov/special-topics/water-science-school/science/groundwater-depletion"
   },
   "wildfire": {
-    "name": "Wildfire & smoke",
+    "name": "Wildfire",
     "icon": "♨",
-    "carrier": "wind",
-    "base": 0.07,
-    "climateDriven": true,
-    "regions": [
-      "heartland",
-      "petrostate"
-    ],
-    "losses": {
-      "food": 0.7,
-      "materials": 1,
-      "money": 0.4
-    },
     "color": "#e49a74",
-    "lesson": "Fire damages landscapes while smoke affects communities downwind.",
-    "mitigation": "Land stewardship, resilient shelters and warning networks.",
-    "source": "https://www.epa.gov/wildfire-smoke-course"
-  },
-  "spill": {
-    "name": "Oil spill",
-    "icon": "◉",
-    "carrier": "current",
-    "base": 0.07,
-    "climateDriven": false,
-    "regions": [
-      "petrostate"
-    ],
-    "losses": {
-      "food": 1.1,
-      "money": 0.8
-    },
-    "color": "#b3a0c9",
-    "lesson": "Ocean currents transport oil beyond the producer’s coast; fisheries and tourism bear the cost.",
-    "mitigation": "Transition away from rigs, blue restoration and mutual aid.",
-    "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills"
-  },
-  "smog": {
-    "name": "Smog & acid deposition",
-    "icon": "≍",
     "carrier": "wind",
-    "base": 0.06,
-    "climateDriven": false,
-    "regions": [
-      "petrostate"
+    "quizTypes": [
+      "wildfire"
     ],
-    "losses": {
-      "food": 0.8,
-      "water": 0.4
+    "regions": {
+      "enclave": 3,
+      "heartland": 2,
+      "petrostate": 1
     },
-    "color": "#b9b694",
-    "lesson": "Air pollution crosses borders. Sulfur and nitrogen emissions contribute to acid deposition.",
-    "mitigation": "Clean energy, forests and emissions controls.",
-    "source": "https://www.epa.gov/acidrain/what-acid-rain"
-  },
-  "sea_rise": {
-    "name": "Coastal inundation",
-    "icon": "≈",
-    "carrier": "coast",
-    "base": 0.05,
+    "loss": {
+      "wood": 3,
+      "sheep": 1
+    },
     "climateDriven": true,
-    "regions": [
-      "archipelago",
-      "enclave"
-    ],
-    "losses": {
-      "water": 1,
-      "food": 0.6,
-      "money": 0.8
+    "tell": "Heat and dry wind have lit the forest. Fire is racing toward the town.",
+    "cheap": {
+      "label": "Clear-cut a wide firebreak",
+      "cost": {},
+      "climate": 0.12,
+      "effect": "The fire stops at the gap, but we felled a whole forest: +0.12°C for everyone."
     },
-    "color": "#84b7c9",
-    "lesson": "Warming seas expand and land ice melts. Saltwater intrusion threatens freshwater supplies.",
-    "mitigation": "Cut emissions, preserve coastal buffers and adapt infrastructure.",
-    "source": "https://oceanservice.noaa.gov/facts/sealevel.html"
+    "green": {
+      "label": "Thin the woods with controlled burns",
+      "cost": {
+        "sheep": 1,
+        "wheat": 1
+      },
+      "build": "firewatch",
+      "effect": "Half the damage now, and a healthier forest burns less next time."
+    },
+    "lesson": "Controlled burns remove dry fuel so wildfires burn cooler and slower.",
+    "source": "https://www.nps.gov/subjects/fire/prescribed-fire.htm"
   },
   "landslide": {
     "name": "Landslide",
-    "icon": "◭",
-    "carrier": "river",
-    "base": 0.04,
-    "climateDriven": true,
-    "regions": [
-      "heartland"
-    ],
-    "losses": {
-      "materials": 1,
-      "water": 0.6
-    },
+    "icon": "◣",
     "color": "#bfa48c",
-    "lesson": "Slope failure can block transport and add sediment to downstream rivers.",
-    "mitigation": "Forest protection, slope planning and warning networks.",
-    "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html"
+    "carrier": "river",
+    "quizTypes": [
+      "landslide"
+    ],
+    "regions": {
+      "heartland": 3,
+      "enclave": 2
+    },
+    "loss": {
+      "brick": 1,
+      "ore": 1,
+      "wood": 1
+    },
+    "cause": "lumber",
+    "tell": "Days of rain loosened the hillside. Mud is sliding toward the town.",
+    "caused": "The bare slopes from {cause}'s lumber camps gave way first.",
+    "cheap": {
+      "label": "Pile up stone walls",
+      "cost": {
+        "ore": 1
+      },
+      "spillTo": "downstream",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "The walls hold, but the mud washes into the river and silts {target}'s fields."
+    },
+    "green": {
+      "label": "Replant the slopes in terraces",
+      "cost": {
+        "wood": 1,
+        "wheat": 1
+      },
+      "build": "terraces",
+      "effect": "Half the damage now, and roots hold the soil for good."
+    },
+    "lesson": "Tree roots bind soil; clear-cut slopes slide.",
+    "source": "https://www.usgs.gov/programs/landslide-hazards"
   },
-  "grid_failure": {
-    "name": "Grid cascade",
-    "icon": "ϟ",
-    "carrier": "local",
-    "base": 0.06,
+  "smog": {
+    "name": "Smog",
+    "icon": "☁",
+    "color": "#b9b694",
+    "carrier": "wind",
+    "quizTypes": [
+      "smog"
+    ],
+    "regions": {
+      "petrostate": 3,
+      "heartland": 2,
+      "enclave": 1
+    },
+    "loss": {
+      "sheep": 1,
+      "wheat": 1
+    },
+    "cause": "kiln",
+    "tell": "A brown haze has settled over the town. People and flocks are falling sick.",
+    "caused": "It blew in on the wind from {cause}'s kilns.",
+    "cheap": {
+      "label": "Build taller smokestacks",
+      "cost": {
+        "brick": 1
+      },
+      "spillTo": "downwind",
+      "spill": {
+        "sheep": 1
+      },
+      "effect": "Our air clears, but the smoke just blows farther, onto {target}."
+    },
+    "green": {
+      "label": "Fit filters to the chimneys",
+      "cost": {
+        "ore": 2
+      },
+      "build": "filters",
+      "effect": "Half the damage now, and cleaner air from here on."
+    },
+    "lesson": "Tall smokestacks move pollution downwind; filters remove it.",
+    "source": "https://www.epa.gov/criteria-air-pollutants"
+  },
+  "spill": {
+    "name": "River pollution",
+    "icon": "☣",
+    "color": "#b3a0c9",
+    "carrier": "river",
+    "quizTypes": [
+      "spill"
+    ],
+    "regions": {
+      "archipelago": 3,
+      "enclave": 2,
+      "petrostate": 1
+    },
+    "loss": {
+      "sheep": 2,
+      "wheat": 1
+    },
+    "cause": "mine",
+    "tell": "The river has turned grey with mine tailings. Our flocks won't drink it.",
+    "caused": "The runoff came down from {cause}'s mines.",
+    "cheap": {
+      "label": "Flush it on downstream",
+      "cost": {},
+      "spillTo": "downstream",
+      "spill": {
+        "sheep": 1
+      },
+      "effect": "Our stretch runs clear again, and {target} gets the sludge instead."
+    },
+    "green": {
+      "label": "Dig settling ponds",
+      "cost": {
+        "brick": 1,
+        "wood": 1
+      },
+      "build": "settling",
+      "effect": "Half the damage now, and the ponds catch the runoff from now on."
+    },
+    "lesson": "Pollution in a river is never gone; it moves to whoever lives downstream.",
+    "source": "https://www.epa.gov/nps"
+  },
+  "sea_rise": {
+    "name": "Storm surge",
+    "icon": "⌇",
+    "color": "#84b7c9",
+    "carrier": "coast",
+    "quizTypes": [
+      "sea_rise",
+      "hurricane",
+      "tsunami"
+    ],
     "climateDriven": true,
-    "regions": [
-      "enclave"
-    ],
-    "losses": {
-      "energy": 1.5,
-      "food": 0.5,
-      "money": 0.8
+    "regions": {
+      "archipelago": 4,
+      "enclave": 1,
+      "petrostate": 1
     },
-    "color": "#e5d092",
-    "lesson": "Interdependent infrastructure spreads outages into food, water and economic systems.",
-    "mitigation": "Storage, distributed generation and energy reserves.",
-    "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics"
+    "loss": {
+      "wheat": 1,
+      "brick": 1,
+      "wood": 1
+    },
+    "tell": "A storm is driving the sea over the beach. Higher seas make every surge worse.",
+    "cheap": {
+      "label": "Pour a concrete seawall",
+      "cost": {
+        "brick": 2
+      },
+      "spillTo": "shared",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "The wall holds, but it bounces the surge along the coast onto {target}."
+    },
+    "green": {
+      "label": "Plant mangroves along the shore",
+      "cost": {
+        "wood": 1,
+        "sheep": 1
+      },
+      "build": "mangroves",
+      "effect": "Half the damage now, and the mangroves break every future wave."
+    },
+    "lesson": "Hard seawalls deflect waves sideways; mangroves absorb them.",
+    "source": "https://oceanservice.noaa.gov/facts/mangroves.html"
   },
-  "pandemic": {
-    "name": "Public-health shock",
-    "icon": "✚",
+  "heatwave": {
+    "name": "Heatwave",
+    "icon": "♁",
+    "color": "#e8ad74",
     "carrier": "local",
-    "base": 0.025,
-    "climateDriven": false,
-    "regions": [
-      "enclave",
-      "heartland"
+    "quizTypes": [
+      "heatwave"
     ],
-    "losses": {
-      "money": 1,
-      "food": 0.3
+    "climateDriven": true,
+    "regions": {
+      "petrostate": 2,
+      "enclave": 2,
+      "archipelago": 1,
+      "heartland": 1
     },
-    "color": "#b7a6db",
-    "lesson": "Prepared health systems and cooperation limit disruption to communities and livelihoods.",
-    "mitigation": "Resilience hubs, reserves, mutual aid and research.",
-    "source": "https://www.who.int/health-topics/emergencies"
-  },
-  "supply_shock": {
-    "name": "Supply-chain shock",
-    "icon": "⚑",
-    "carrier": "local",
-    "base": 0.04,
-    "climateDriven": false,
-    "regions": [
-      "petrostate",
-      "enclave"
-    ],
-    "losses": {
-      "materials": 1,
-      "energy": 0.8,
-      "money": 0.5
+    "loss": {
+      "sheep": 1,
+      "wheat": 1
     },
-    "color": "#d4be91",
-    "lesson": "Dependence on a narrow set of suppliers turns distant disruption into local shortages.",
-    "mitigation": "Diversify trade, keep reserves and maintain open shipping.",
-    "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf"
+    "tell": "The hottest summer anyone remembers. Streets bake and the herds are struggling.",
+    "cheap": {
+      "label": "Burn ore to run coolers",
+      "cost": {
+        "ore": 1
+      },
+      "climate": 0.1,
+      "effect": "We cool off today, and heat the whole planet: +0.1°C."
+    },
+    "green": {
+      "label": "Plant shade trees, paint roofs white",
+      "cost": {
+        "wood": 1,
+        "wheat": 1
+      },
+      "build": "shade",
+      "effect": "Half the damage now, and a cooler town every summer after."
+    },
+    "lesson": "Trees and light roofs cool cities without burning more fuel.",
+    "source": "https://www.epa.gov/heatislands"
   }
 }

@@ -10,6 +10,19 @@ The game's map image is `assets/world-map.png` (1280 × 800, no labels). `assets
 
 ---
 
+## 0. Current game design (overrides §5.1a, §6, §7 and §9 where they differ)
+
+- **Map:** one town per civilization (Frostpeak, Mossholm, Brasshold, Harborkeep). Each is a keep in a clearing, and the town grows as the player builds: every building fills the next plot nearest the keep (`src/data/worldmap.json` → `castles[].slots`).
+- **Resources:** sheep, wheat, wood, brick and ore (`src/data/resources.json`). Each civ has a home yield per cycle (`src/data/civs.json` → `base`).
+- **Each cycle (one decade, 10 in all):**
+  1. **Event:** every town draws an event (`src/data/events.json`), weighted by geography, warming and the neighbors' polluting buildings. Its advisor narrates it.
+  2. **Quiz:** one timed question (20 s) about that event. A right answer cuts each loss by 1.
+  3. **Choice:** *cheap now* (no loss for you, but the damage is pushed onto a neighbor or warming rises) vs *sustainable* (costs more, halves the damage, and earns a protective building that halves that event from then on). A third option is to brace and take the full hit.
+  4. **Build:** spend resources on houses (2 points) and production buildings (1 point each, max 3 of a kind, 6 houses). Kilns, mines and lumber camps warm the planet; groves pull it back; a windmill halves your own pollution. The bank trades 3:1.
+- **End:** after 10 decades the town with the most points wins. If warming reaches +3°C, every town loses.
+- **Removed:** the tech tree, market, trading, diplomacy and the 56-district simulation.
+- Rules live in `apps/web/src/game/engine.ts` and are shared with the SpacetimeDB module. `npm --prefix apps/web run simulate` plays all-AI games to check balance.
+
 ## 1. Ground rules for agents
 
 - **Hackathon scope.** Build the MVP in §10 first and keep it playable at every commit. Add stretch goals only after it runs end-to-end.

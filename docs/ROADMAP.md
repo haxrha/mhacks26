@@ -14,3 +14,6 @@ Remaining work before a public competitive release:
 8. Validate cloud configuration and Docker/AWS deployment on the chosen account. Local native publishing and SDK integration are verified; no paid infrastructure or cloud database has been created.
 
 The chosen game loop remains the attached specification's ten decades and +3°C shared collapse, with a three-decade climate accord and prosperity scoring. The repository's alternate 41-turn 2018–2100 campaign can be added as a scenario later.
+
+**Update (cycle redesign):** the game now runs as event → quiz → choice → build with five resources and one growing town per civ (see `AGENTS.md` §0). Items above about trades, forecasts, provinces and districts refer to the previous design. Balance target from `npm run simulate`: roughly 15% of all-AI games collapse, and the civs that pick sustainable options most often win.
+

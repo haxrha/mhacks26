@@ -1,32 +1,27 @@
 {
-  "food": {
-    "name": "Food",
-    "icon": "◒",
-    "color": "#aec887"
+  "sheep": {
+    "name": "Sheep",
+    "icon": "🐑",
+    "color": "#f4f4ec"
   },
-  "water": {
-    "name": "Water",
-    "icon": "◈",
-    "color": "#88c7dc"
+  "wheat": {
+    "name": "Wheat",
+    "icon": "🌾",
+    "color": "#d9bb4a"
   },
-  "energy": {
-    "name": "Energy",
-    "icon": "ϟ",
-    "color": "#e8c779"
+  "wood": {
+    "name": "Wood",
+    "icon": "🪵",
+    "color": "#b07a45"
   },
-  "materials": {
-    "name": "Materials",
-    "icon": "⬡",
-    "color": "#c8af93"
+  "brick": {
+    "name": "Brick",
+    "icon": "🧱",
+    "color": "#d0613f"
   },
-  "money": {
-    "name": "Credits",
-    "icon": "◎",
-    "color": "#f1d59c"
-  },
-  "innovation": {
-    "name": "Insight",
-    "icon": "✧",
-    "color": "#b6a6e6"
+  "ore": {
+    "name": "Ore",
+    "icon": "⛏",
+    "color": "#a8b0bd"
   }
 }

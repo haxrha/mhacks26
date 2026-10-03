@@ -1,5 +1,6 @@
-import { CIVS } from "./content";
-import type { CivId } from "./types";
+import { CIVS, EVENTS } from "./content";
+import { describe } from "./engine";
+import type { CivId, GameState } from "./types";
 
 /** Each civilization's advisor, who narrates the game to that player (AGENTS.md §8 cast). */
 export interface Leader {
@@ -53,19 +54,32 @@ export function introLines(civ: CivId): string[] {
   const l = LEADERS[civ];
   return [
     `Chief! ${l.name} of ${CIVS[civ].name} here. ${l.greeting}`,
-    "Each decade you get a few actions: build, research, trade, or send aid. Pick them, then lock your plan.",
-    "Remember: nothing stays on our side of the border. Floods, smoke and spills flow downstream to our neighbors, and theirs flow to us.",
-    "Keep an eye on warming. If the planet reaches +3°C, every civilization loses, us included.",
+    "Every decade something hits our town. I'll tell you what's coming, then test what you know: a quick answer softens the blow.",
+    "Then you choose: the cheap fix, which often dumps the problem on a neighbor or heats the planet, or the sustainable one, which costs more now and protects us after.",
+    "Last, we build with sheep, wheat, wood, brick and ore. Grow the town, but watch the warming. At +3°C every town loses, us included.",
   ];
 }
 
-/** A one-line briefing at the start of each new decade. */
-export function decadeLine(round: number, climate: number, ocean: number) {
+/** The advisor tells this cycle's event. */
+export function eventLines(state: GameState, civ: CivId): string[] {
+  const ev = state.events[civ];
+  const e = EVENTS[ev.type];
+  const lines = [`${e.name}! ${e.tell}`];
+  if (ev.cause && e.caused)
+    lines.push(e.caused.replace("{cause}", CIVS[ev.cause].name));
+  lines.push(
+    `If we do nothing we lose ${describe(ev.loss)}. First, a question. Answer quickly and well, and we lose less.`,
+  );
+  return lines;
+}
+
+/** A briefing line at the start of each later decade. */
+export function decadeLine(round: number, climate: number) {
   const mood =
     climate >= 2.2
-      ? "We are close to the edge. Cut emissions now, or there won't be a next decade."
+      ? "We are close to the edge. One more cheap fix could tip the whole valley over."
       : climate >= 1.4
-        ? "The heat is building. Clean power and shared projects will matter more than ever."
-        : "We still have room to choose. Invest before the next disaster forces our hand.";
-  return `Decade ${round} begins. Warming is +${climate.toFixed(1)}°C and the ocean is at ${Math.round(ocean)}%. ${mood}`;
+        ? "The heat is building, and every event hits harder now."
+        : "We still have room to choose well.";
+  return `Decade ${round}. Warming is +${climate.toFixed(1)}°C. ${mood}`;
 }
