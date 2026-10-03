@@ -20,6 +20,8 @@ import {
 function buildPhase() {
   let s = advance(createGame("heartland", "solo"));
   s = answerQuiz(s, "heartland", 0, 1000);
+  // An affected neighbor responds before the choice; acknowledge it.
+  s = applyAction(s, { type: "acknowledge", civ: "heartland" }).state;
   s = applyAction(s, { type: "choose", civ: "heartland", option: 1 }).state;
   assert.equal(s.phase, "build");
   return s;
@@ -31,7 +33,11 @@ test("facts carry the decade's dispatches, the player's leader and the lesson", 
   assert.equal(facts.leader, "ostra");
   assert(facts.news.length > 0);
   assert(facts.lesson.length > 0);
-  assert.deepEqual(cleanFacts(facts), facts);
+  // The writer caps news at 6 lines; nothing else changes.
+  assert.deepEqual(cleanFacts(facts), {
+    ...facts,
+    news: facts.news.slice(0, 6),
+  });
 });
 test("untrusted facts are validated and size-capped", () => {
   assert.equal(cleanFacts(null), null);

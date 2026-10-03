@@ -5,6 +5,7 @@
  * Each cycle (one decade):
  *   event  — every town is struck by an event; the narrator tells it
  *   quiz   — everyone answers one question about their event (right answer = smaller losses)
+ *   response — an affected neighbor explains how the player's decision reaches them
  *   choice — cheap now (pollutes, or pushes the damage onto a neighbor) vs sustainable
  *            (costs more, protects you from then on)
  *   build  — spend sheep, wheat, wood, brick and ore; then end the turn
@@ -108,6 +109,16 @@ export function spillTarget(
   return SHARED[civ];
 }
 
+/** The neighbor who responds to this town's event, even when the cheap option heats the planet. */
+export function responseTarget(s: GameState, civ: CivId): CivId {
+  const e = EVENTS[s.events[civ].type];
+  if (e.cheap.spillTo) return spillTarget(civ, e.cheap.spillTo);
+  if (e.carrier === "wind") return DOWNWIND[civ];
+  if (e.carrier === "river" && DOWNSTREAM[civ].length)
+    return DOWNSTREAM[civ][0];
+  return SHARED[civ];
+}
+
 // ---------- setup ----------
 export function createGame(
   player: CivId = "heartland",
@@ -148,10 +159,11 @@ export function createGame(
 }
 
 /** Each town draws this cycle's event, weighted by its geography, the climate and its neighbors. */
-function rollEvents(s: GameState) {
+export function rollEvents(s: GameState) {
   for (const c of CIV_IDS) {
     const options = (Object.keys(EVENTS) as EventId[]).flatMap((id) => {
       const e = EVENTS[id];
+      if (e.chainFrom?.length) return [];
       let w = e.regions[c] ?? 0;
       if (!w) return [];
       if (e.climateDriven) w *= 1 + s.climate / 1.5;
@@ -164,9 +176,19 @@ function rollEvents(s: GameState) {
     const total = options.reduce((n, o) => n + o.w, 0);
     let roll = random(s) * total;
     const pick = options.find((o) => (roll -= o.w) < 0) ?? options[0];
-    const e = EVENTS[pick.id];
+    let pickedId = pick.id;
+    const chained = (Object.keys(EVENTS) as EventId[]).filter((id) => {
+      const chain = EVENTS[id];
+      return (
+        (chain.regions[c] ?? 0) > 0 &&
+        chain.chainFrom?.includes(pick.id) &&
+        random(s) < (chain.chainChance ?? 0)
+      );
+    });
+    if (chained.length) pickedId = chained[0];
+    const e = EVENTS[pickedId];
     const loss = { ...e.loss };
-    if (s.climate >= 1.5) {
+    if (e.climateDriven && s.climate >= 1.5) {
       // A hotter world hits harder: +1 to the biggest loss.
       const top = RESOURCES.reduce((a, r) =>
         (loss[r] ?? 0) > (loss[a] ?? 0) ? r : a,
@@ -183,7 +205,7 @@ function rollEvents(s: GameState) {
               s.civs[a].buildings.filter((x) => x === e.cause).length,
           )[0]
       : undefined;
-    s.events[c] = { type: pick.id, cause, loss };
+    s.events[c] = { type: pickedId, cause, loss };
   }
 }
 
@@ -239,6 +261,11 @@ export function choiceCost(s: GameState, civ: CivId, option: 0 | 1 | 2) {
 export function actionError(s: GameState, a: Action): string | null {
   const civ = s.civs[a.civ];
   if (!civ) return "Unknown civilization.";
+  if (a.type === "acknowledge") {
+    if (s.phase !== "response") return "There is no response to acknowledge.";
+    if (civ.responded) return "You already heard this response.";
+    return null;
+  }
   if (a.type === "choose") {
     if (s.phase !== "choice") return "It isn't time to choose.";
     if (civ.choice !== undefined) return "You already chose.";
@@ -273,7 +300,9 @@ export function applyAction(
   if (error) return { state, error };
   const s = clone(state);
   const civ = s.civs[a.civ];
-  if (a.type === "choose") {
+  if (a.type === "acknowledge") {
+    civ.responded = true;
+  } else if (a.type === "choose") {
     pay(civ.stock, choiceCost(s, a.civ, a.option));
     civ.choice = a.option;
   } else if (a.type === "build") {
@@ -298,7 +327,11 @@ export function progress(state: GameState): GameState {
     for (const c of bots(s))
       if (s.civs[c].quiz?.option === undefined) botQuiz(s, c);
     if (CIV_IDS.every((c) => s.civs[c].quiz?.option !== undefined))
-      s.phase = "choice";
+      s.phase = "response";
+  }
+  if (s.phase === "response") {
+    for (const c of bots(s)) s.civs[c].responded = true;
+    if (CIV_IDS.every((c) => s.civs[c].responded)) s.phase = "choice";
   }
   if (s.phase === "choice") {
     for (const c of bots(s))
@@ -364,7 +397,7 @@ function resolveEvents(s: GameState) {
     s.news.push({
       round: s.round,
       civ: c,
-      text: `${CIVS[c].name}: ${e.name.toLowerCase()}, lost ${describe(taken)}.`,
+      text: `${CIVS[c].name}: ${e.name.toLowerCase()} arrived by ${e.carrier}${ev.cause ? ` from ${CIVS[ev.cause].name}` : ""}; lost ${describe(taken)}.`,
     });
   }
   for (const sp of spills) {
@@ -413,6 +446,7 @@ function endCycle(state: GameState): GameState {
   for (const c of CIV_IDS) {
     const civ = s.civs[c];
     civ.quiz = undefined;
+    civ.responded = undefined;
     civ.choice = undefined;
     civ.ready = false;
   }

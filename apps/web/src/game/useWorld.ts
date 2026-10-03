@@ -34,7 +34,8 @@ export function useWorld(onState: (state: GameState) => void) {
     setError("");
     setStatus("Connecting…");
     const uri = process.env.NEXT_PUBLIC_SPACETIME_URI || "ws://127.0.0.1:3001";
-    const db = process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "earthshare-game";
+    const db =
+      process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "earthshare-game-local";
     const tokenKey = `earthshare-identity:${uri}:${db}`;
     try {
       await new Promise<void>((resolve, reject) => {

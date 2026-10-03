@@ -17,7 +17,11 @@ export function broadcastFacts(state: GameState, civ: CivId): BroadcastFacts {
   return {
     round: state.round,
     leader: LEADER[civ],
-    news: state.news.filter((n) => n.round === state.round).map((n) => n.text),
+    // The player's own town first, so the writer's size cap drops the least relevant lines.
+    news: state.news
+      .filter((n) => n.round === state.round)
+      .sort((a, b) => Number(b.civ === civ) - Number(a.civ === civ))
+      .map((n) => n.text),
     lesson: EVENTS[state.events[civ].type].lesson,
   };
 }

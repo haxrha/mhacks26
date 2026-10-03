@@ -281,6 +281,10 @@ function terrainPixel(
       else if (e === "landslide" && L.distWater[i] <= 2 && h < 100) c = C.soil;
     } else if (e === "grid_failure" && land) {
       c = mix(c, C.ink, 0.35);
+    } else if (e === "pandemic" && land && (x + y * 2) % 7 === 0) {
+      c = mix(c, rgb(EVENTS.pandemic.color), 0.55);
+    } else if (e === "supply_shock" && land && h < 70) {
+      c = mix(c, rgb(EVENTS.supply_shock.color), 0.35);
     }
   }
   return c;
@@ -435,7 +439,7 @@ export function renderWorld(
       );
       if (on) blit(out, ["y...y"], { y: "#f5c542" }, sp.x - 1, sp.y);
     } else if (sp.kind === "dam") {
-      const broken = fx.has("flood");
+      const broken = fx.has("dam_failure");
       blit(
         out,
         sp.rows,

@@ -79,7 +79,9 @@ function validateAction(value: unknown, civ: CivId): Action {
   const a = value as Record<string, unknown>;
   if (a.civ !== civ)
     throw new SenderError("You can only act for your civilization.");
-  if (a.type === "choose") {
+  if (a.type === "acknowledge") {
+    // No payload beyond the authenticated civilization.
+  } else if (a.type === "choose") {
     if (![0, 1, 2].includes(a.option as number))
       throw new SenderError("Unknown option.");
   } else if (a.type === "build") {
@@ -247,7 +249,12 @@ export const answer = database.reducer(
     const ms = Number(
       (ctx.timestamp.microsSinceUnixEpoch - clock.startedMicros) / 1000n,
     );
-    const result = answerQuiz(state, seat.civ as CivId, args.option, Math.max(0, ms));
+    const result = answerQuiz(
+      state,
+      seat.civ as CivId,
+      args.option,
+      Math.max(0, ms),
+    );
     ctx.db.quizClock.id.delete(clock.id);
     save(ctx, row, result);
   },

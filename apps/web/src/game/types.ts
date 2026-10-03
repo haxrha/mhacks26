@@ -28,22 +28,15 @@ export type DisasterId =
   | "pandemic"
   | "supply_shock";
 
-/** The events that can strike a town each cycle (src/data/events.json). */
-export type EventId =
-  | "flood"
-  | "drought"
-  | "wildfire"
-  | "landslide"
-  | "smog"
-  | "spill"
-  | "sea_rise"
-  | "heatwave";
+/** Every hazard in the event matrix is a playable cycle event. */
+export type EventId = DisasterId;
 
 /**
- * Each cycle: the event is told → everyone answers a quiz → everyone makes a choice
- * (cheap vs sustainable) → everyone builds → the cycle ends.
+ * Each cycle: the event is told → everyone answers a quiz → an affected neighbor responds
+ * → everyone makes a choice (cheap vs sustainable) → everyone builds → the cycle ends.
  */
-export type Phase = "event" | "quiz" | "choice" | "build" | "ended";
+export type Phase =
+  "event" | "quiz" | "response" | "choice" | "build" | "ended";
 
 export interface CycleEvent {
   type: EventId;
@@ -63,6 +56,8 @@ export interface Civ {
   stock: Stock;
   buildings: string[];
   quiz?: QuizRecord;
+  /** The player has heard the affected neighbor's response this cycle. */
+  responded?: boolean;
   /** 0 = cheap now, 1 = sustainable, 2 = brace and take the full loss. */
   choice?: 0 | 1 | 2;
   ready: boolean;
@@ -95,6 +90,7 @@ export interface GameState {
 }
 
 export type Action =
+  | { type: "acknowledge"; civ: CivId }
   | { type: "choose"; civ: CivId; option: 0 | 1 | 2 }
   | { type: "build"; civ: CivId; building: string }
   | { type: "exchange"; civ: CivId; give: Resource; get: Resource }
