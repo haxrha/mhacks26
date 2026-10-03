@@ -45,12 +45,16 @@ export default function Narrator({
   }, []);
   // A new script (e.g. the next flow caption) starts from the top.
   const script = lines.join("\n");
+  const skipped = useRef(false);
+  useEffect(() => {
+    skipped.current = false;
+  }, [script]);
   useEffect(() => {
     setIndex(0);
     setShown(0);
   }, [script]);
   useEffect(() => {
-    setShown(still.current ? line.length : 0);
+    setShown(still.current || skipped.current ? line.length : 0);
   }, [index, line]);
   useEffect(() => {
     if (!typing) {
@@ -78,8 +82,20 @@ export default function Narrator({
 
   // Lets the optional voice layer read each line aloud as it appears (a no-op unless it is on).
   useEffect(() => {
-    announceLine({ civ, lines, index: Math.min(index, lines.length - 1) });
+    announceLine({
+      civ,
+      lines,
+      index: Math.min(index, lines.length - 1),
+      silent: skipped.current,
+    });
   }, [civ, index, script]);
+
+  /** Jump to the final line, fully shown, so its actions are available. */
+  const skipAll = () => {
+    skipped.current = true;
+    setIndex(lines.length - 1);
+    setShown(lines[lines.length - 1]?.length ?? 0);
+  };
 
   const advance = () => {
     if (typing) setShown(line.length);
@@ -131,6 +147,16 @@ export default function Narrator({
                 ▶ Got it
               </button>
             )))
+          )}
+          {!last && (
+            <button
+              className="narrator-next"
+              style={{ animation: "none", background: "#e8cf95" }}
+              onKeyDown={(e) => e.stopPropagation()}
+              onClick={skipAll}
+            >
+              ⏭ Skip all
+            </button>
           )}
         </div>
       </div>

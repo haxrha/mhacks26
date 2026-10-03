@@ -39,13 +39,18 @@ export default function RadioControl({
     if (!enabled) return;
     let timer: number | undefined;
     let seq = 0;
-    setLineHandler(({ civ: speakerCiv, lines, index }) => {
+    setLineHandler(({ civ: speakerCiv, lines, index, silent }) => {
       stopAudio();
       window.clearTimeout(timer);
       const mine = ++seq;
       const last = index >= lines.length - 1;
       if (keyRef.current) announced.current = true;
       const done = () => last && finishAdvisor.current();
+      if (silent) {
+        window.clearTimeout(timer);
+        done();
+        return;
+      }
       // The Narrator re-announces while a new script resets, so wait a beat before spending a request.
       timer = window.setTimeout(async () => {
         try {

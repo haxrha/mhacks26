@@ -10,6 +10,8 @@ export interface LinePayload {
   lines: string[];
   /** Index of the line now on screen. */
   index: number;
+  /** The player skipped ahead to this line: show it, but stay quiet. */
+  silent?: boolean;
 }
 let handler: ((line: LinePayload) => void) | null = null;
 /** The voice layer registers here; null switches it off. */
