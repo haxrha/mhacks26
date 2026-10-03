@@ -2806,7 +2806,15 @@ svg image {
   box-shadow: 4px 4px #2a2017;
 }
 .sidebar .brand {
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1;
+  color: #f4e6c0;
+  flex-shrink: 0;
+}
+.sidebar .brand svg {
+  width: 26px;
+  height: 26px;
+  color: #f4e6c0;
 }
 .sidebar nav {
   flex-direction: row;
@@ -2834,14 +2842,30 @@ svg image {
 }
 .sidebar-bottom {
   margin: 0;
+  padding: 0;
   display: flex;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  align-self: center;
+  gap: 8px;
 }
 .sidebar-bottom button {
-  font-size: 18px;
-  padding: 3px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  min-height: 0;
+  padding: 0 14px;
+  font-size: 22px;
+  line-height: 1;
   color: #fff1c8;
-  border: 2px solid #9e7544;
+  background: transparent;
+  border: 2px solid #c4a06a;
+}
+.sidebar-bottom button svg {
+  display: block;
+  flex: none;
 }
 .sidebar-bottom > span {
   display: none;
