@@ -2,7 +2,10 @@
 
 320x200 tile map (1 px = 1 tile), upscaled 4x nearest-neighbour to 1280x800.
 Four civ regions per AGENTS.md §5.1, each split into smaller areas marked by castles.
-Outputs: world-map.png (game asset, no labels), world-map-labeled.png (reference), provinces.json
+Outputs: world-map.png (static preview, no labels), world-map-labeled.png (reference), provinces.json,
+and worldmap.json: the layer data the game renders live (base colors, terrain kind, areas, dynamic sprites).
+
+Usage: python tools/worldmap.py <out_dir> <font_dir>   (font_dir holds PressStart2P.ttf)
 """
 import json, math, sys
 import numpy as np
@@ -152,7 +155,16 @@ put(lake & land & (((xx - lake_c[0]) / 9.0) ** 2 + ((yy - lake_c[1]) / 4.0) ** 2
 
 occupied = water.copy() | ~land       # sprite placement blocker
 
-def blit(rows, pal, x0, y0, mark=True):
+DYN = []   # sprites the game draws itself (animated or state-dependent), not baked into the base layer
+
+def blit(rows, pal, x0, y0, mark=True, dyn=None):
+    if dyn:
+        DYN.append(dict(kind=dyn, x=x0, y=y0, rows=rows, pal={k: "#%02x%02x%02x" % tuple(P[v]) for k, v in pal.items()}))
+        if mark:
+            for j, row in enumerate(rows):
+                for i, ch in enumerate(row):
+                    if ch not in ". " and 0 <= x0 + i < W and 0 <= y0 + j < H: occupied[y0 + j, x0 + i] = True
+        return
     for j, row in enumerate(rows):
         for i, ch in enumerate(row):
             if ch == "." or ch == " ": continue
@@ -288,17 +300,17 @@ scatter(TREE_L, 0, 250, cond=(yy > 44))
 scatter(TREE_L, 2, 220)
 scatter(TREE_L, 3, 120, cond=~marsh_t)
 
-def place(rows, pal, region, near, tries=400):
+def place(rows, pal, region, near, tries=400, dyn=None):
     w, h = len(rows[0]), len(rows)
     for r in range(tries):
         x = int(near[0] + rng.integers(-r // 4 - 2, r // 4 + 3)); y = int(near[1] + rng.integers(-r // 6 - 2, r // 6 + 3))
-        if free(x, y, w, h, region): blit(rows, pal, x, y); return (x, y)
+        if free(x, y, w, h, region): blit(rows, pal, x, y, dyn=dyn); return (x, y)
     return None
 
 # dam across the lake outlet
 dxc = int(round(river_x(DAM_Y)))
 blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMfMfMfMfMO", "OOOOOOOOOOO"],
-     {"O": "ink", "L": "stone_l", "M": "stone_m", "f": "foam"}, dxc - 5, DAM_Y - 2)
+     {"O": "ink", "L": "stone_l", "M": "stone_m", "f": "foam"}, dxc - 5, DAM_Y - 2, dyn="dam")
 # mines (Highland)
 MINE = ["OOOO", "OddO", "OddO", "pOOp"]
 for near in [(40, 46), (74, 42), (262, 44)]:
@@ -330,13 +342,13 @@ place(["x.x", ".x.", "x.x", ".B.", ".B.", "BBB"], {"x": "white", "B": "plank"}, 
 FACT = ["..s.s", "...c.", "s..c.", ".c.c.", "MMMMM", "MddMM", "MMMMM"]
 fpal = {"s": "smoke", "c": "metal_d", "M": "metal", "d": "ink"}
 for near in [(222, 84), (252, 92), (230, 122)]:
-    place(FACT, fpal, 2, near)
+    place(FACT, fpal, 2, near, dyn="factory")
 # sludge pond
 place([".ssss.", "sSSSSs", "sSSSSs", ".ssss."], {"s": "sludge_d", "S": "sludge"}, 2, (244, 112))
 # wind farm + solar (Forge)
 TURB = ["x.x", ".x.", "x|x", ".|.", ".|.", ".|."]
 for near in [(274, 96), (282, 100), (276, 106)]:
-    place(TURB, {"x": "white", "|": "white"}, 2, near)
+    place(TURB, {"x": "white", "|": "white"}, 2, near, dyn="turbine")
 place(["NnNnNnNn", "nNnNnNnN", "NnNnNnNn"], {"N": "navy", "n": "navy_l"}, 2, (262, 138))
 
 # Tidehaven: lighthouse + docks + boats
@@ -347,7 +359,7 @@ def coast_point(xc, ycmin):
 lx = 246; ly = coast_point(lx, 150)
 if ly:
     blit([".y.", "RRR", "WWW", "RRR", "WWW", "OOO"], {"y": "gold", "R": "red", "W": "white", "O": "ink"},
-         lx - 1, ly - 6)
+         lx - 1, ly - 6, dyn="lighthouse")
 hx_ = 196; hy = coast_point(hx_, 150)
 if hy:
     for i in range(3):
@@ -356,7 +368,31 @@ if hy:
     img[hy + 1, hx_ - 4:hx_ + 5] = P["plank"]
 for (bx, by) in [(186, 192), (224, 190), (120, 193), (300, 150)]:
     if not land[by, bx]:
-        blit([".w.", "ww.", "PPP"], {"w": "white", "P": "plank"}, bx, by - 2, mark=False)
+        blit([".w.", "ww.", "PPP"], {"w": "white", "P": "plank"}, bx, by - 2, mark=False, dyn="boat")
+
+# ---------- terrain kind layer (what each tile is, so the game can flood/burn/melt it) ----------
+KINDS = ["deep", "sea", "shallow", "water", "marsh", "forest", "grass", "pasture", "rock", "snow", "beach",
+         "field", "structure", "sludge"]
+COLOR_KIND = {}
+for name, kname in [("forest", "forest"), ("forest_d", "forest"), ("tree", "forest"), ("tree_d", "forest"),
+                    ("trunk", "forest"), ("grass", "grass"), ("grass_l", "grass"), ("grass_d", "grass"),
+                    ("meadow", "grass"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
+                    ("rock_l", "rock"), ("rock_d", "rock"), ("snow", "snow"), ("snow_d", "snow"), ("sand", "beach"),
+                    ("sand_d", "beach"), ("marsh", "marsh"), ("shallow", "marsh"), ("wheat", "field"),
+                    ("wheat_d", "field"), ("soil", "field"), ("soil_d", "field"), ("sludge", "sludge"),
+                    ("sludge_d", "sludge")]:
+    COLOR_KIND[tuple(int(v) for v in P[name])] = KINDS.index(kname)
+kind = np.full((H, W), KINDS.index("structure"), np.uint8)
+for y in range(H):
+    for x in range(W):
+        if not land[y, x]:
+            kind[y, x] = KINDS.index("shallow" if d_land[y, x] <= 2 else "sea" if d_land[y, x] <= 9 else "deep")
+        elif water[y, x]:
+            kind[y, x] = KINDS.index("water")
+        else:
+            kind[y, x] = COLOR_KIND.get(tuple(int(v) for v in img[y, x]), KINDS.index("structure"))
+# sheep sit on pasture
+kind[(kind == KINDS.index("structure")) & (civ == 0) & (yy > 44)] = KINDS.index("pasture")
 
 # ---------- borders ----------
 OUT_COLOR = {0: "highland", 1: "verdant", 2: "forge", 3: "tidehaven"}
@@ -374,6 +410,16 @@ for y in range(H):
             if x2 < W and y2 < H and civ[y2, x2] == c and prov[y2, x2] != prov[y, x] and not water[y2, x2]:
                 if (x + y) % 2 == 0:
                     img[y, x] = (img[y, x].astype(int) * 0.45).astype(np.uint8)
+
+base = img.copy()   # everything static; the game draws DYN sprites + castles on top
+
+# ---------- dynamic sprites (baked into the preview PNGs only) ----------
+for d_ in DYN:
+    for j, row in enumerate(d_["rows"]):
+        for i, ch in enumerate(row):
+            if ch in ". ": continue
+            x, y = d_["x"] + i, d_["y"] + j
+            if 0 <= x < W and 0 <= y < H: img[y, x] = hx(d_["pal"][ch])
 
 # ---------- castles ----------
 for k in castles:
@@ -414,4 +460,40 @@ json.dump({"tileSize": S, "tiles": [W, H], "cellTiles": 8, "provinces": [
     {"id": k["id"], "name": k["name"], "civ": k["civ"], "capital": k["capital"],
      "castleTile": [k["cx"], k["cy"]], "castleCell": [k["cx"] // 8, k["cy"] // 8]} for k in castles]},
     open(f"{OUT}/provinces.json", "w"), indent=2)
+# ---------- live-render layers ----------
+import base64
+def rle(a):
+    flat = a.flatten().tolist(); out = []; cur = flat[0]; n = 0
+    for v in flat:
+        if v == cur: n += 1
+        else: out += [cur, n]; cur = v; n = 1
+    return out + [cur, n]
+# areas for sea tiles: nearest area within 10 tiles (used for spills and coastal surges)
+near = prov.copy()
+frontier = [(y, x) for y in range(H) for x in range(W) if prov[y, x] >= 0]
+for _ in range(10):
+    nxt = []
+    for (y, x) in frontier:
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            y2, x2 = y + dy, x + dx
+            if 0 <= y2 < H and 0 <= x2 < W and near[y2, x2] < 0 and not land[y2, x2]:
+                near[y2, x2] = near[y, x]; nxt.append((y2, x2))
+    frontier = nxt
+pal_list = sorted({tuple(int(v) for v in c) for c in base.reshape(-1, 3)})
+pal_index = {c: i for i, c in enumerate(pal_list)}
+base_idx = np.array([[pal_index[tuple(int(v) for v in base[y, x])] for x in range(W)] for y in range(H)], np.uint8)
+CASTLE_PAL = {"O": "ink", "L": "stone_l", "M": "stone_m", "D": "stone_d", "d": "door", "p": "ink"}
+layers = {
+    "w": W, "h": H,
+    "kinds": KINDS,
+    "palette": ["#%02x%02x%02x" % c for c in pal_list],
+    "base": base64.b64encode(base_idx.tobytes()).decode(),
+    "kind": rle(kind),
+    "area": rle(np.where(prov >= 0, prov, 255)),
+    "near": rle(np.where(near >= 0, near, 255)),
+    "sprites": [{k: v for k, v in d_.items()} for d_ in DYN],
+    "castles": [{"id": k["id"], "x": k["x0"], "y": k["y0"], "rows": k["rows"],
+                 "pal": {c: "#%02x%02x%02x" % tuple(P[n]) for c, n in CASTLE_PAL.items()}} for k in castles],
+}
+json.dump(layers, open(f"{OUT}/worldmap.json", "w"), separators=(",", ":"))
 print("ok", [(k["name"], k["cx"], k["cy"]) for k in castles])

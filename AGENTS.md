@@ -154,6 +154,15 @@ The map is a whole world: a continent surrounded by sea, with small southern isl
 
 - An area is the unit hazards report on. For example, "the flood hit Fenmarsh and Saltmarsh" means those areas, and an area's castle shows a damage state (smoke, flood, ash).
 - Clicking a castle opens that area's inspector window (§4.1).
+- **The map is rendered live, not shown as an image.** `tools/worldmap.py` exports `src/data/worldmap.json`, which holds the base colour layer, the terrain kind layer, the area layer, and the sprites. `apps/web/src/game/worldRender.ts` redraws it at about 6 fps from game state:
+  - floods, surges, wildfire ash and embers, oil-spill sludge, smog and heat haze, drought, quake cracks and blackouts, each painted in the area it hits
+  - melting snow as climate rises, and rising seas on the coasts
+  - a murkier ocean as ocean health falls
+  - animated factories, turbines, boats, the lighthouse and the dam (it breaks on `dam_failure`)
+  - player buildings beside each castle
+  - smoke over damaged castles
+
+  `assets/world-map.png` is only a static preview.
 
 ### 5.2 Logic cell
 

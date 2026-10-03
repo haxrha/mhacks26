@@ -2852,8 +2852,7 @@ svg image {
   width: 100%;
   height: 100%;
   position: relative;
-  background: url("/assets/world-map.png") center/cover;
-  image-rendering: pixelated;
+  background: #16233f;
 }
 .game-header {
   position: absolute;
@@ -2988,6 +2987,12 @@ svg image {
 .map-viewport {
   height: 100%;
   overflow: auto;
+}
+.world-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
 }
 .pixel-map .world-map {
   display: block;

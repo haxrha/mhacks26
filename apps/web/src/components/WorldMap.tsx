@@ -1,22 +1,45 @@
 "use client";
-import { useState } from "react";
-import areas from "../../../../src/data/provinces.json";
+import { useEffect, useRef, useState } from "react";
 import { BUILDINGS, CIVS, DISASTERS, TERRAIN } from "@/game/content";
+import { OWNERS as owners, PROVINCES, districts } from "@/game/provinces";
 import type { CivId, GameState, Tile } from "@/game/types";
+import { MAP_H, MAP_W, renderWorld } from "@/game/worldRender";
 
-// The original specification's simulation IDs map to the repository's visual regions.
-const owners: Record<string, CivId> = {
-  highland: "heartland",
-  verdant: "enclave",
-  forge: "petrostate",
-  tidehaven: "archipelago",
-};
-function districts(state: GameState, area: (typeof areas.provinces)[number]) {
-  const provinces = areas.provinces.filter((p) => p.civ === area.civ);
-  const index = provinces.findIndex((p) => p.id === area.id);
-  return state.tiles
-    .filter((t) => t.owner === owners[area.civ])
-    .filter((_, i) => i % provinces.length === index);
+const areas = { provinces: PROVINCES };
+const FPS = 6;
+
+/** The terrain is drawn live from map data, so hazards, buildings and climate show on the land itself. */
+function LiveTerrain({ state }: { state: GameState }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const latest = useRef(state);
+  latest.current = state;
+  useEffect(() => {
+    const ctx = canvas.current?.getContext("2d");
+    if (!ctx) return;
+    const image = ctx.createImageData(MAP_W, MAP_H);
+    let frame = 0;
+    const draw = () => {
+      renderWorld(latest.current, frame++, image.data);
+      ctx.putImageData(image, 0, 0);
+    };
+    draw();
+    const still = window.matchMedia?.(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const timer = window.setInterval(draw, still ? 1000 : 1000 / FPS);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <foreignObject x="0" y="0" width="1280" height="800">
+      <canvas
+        ref={canvas}
+        className="world-canvas"
+        width={MAP_W}
+        height={MAP_H}
+        aria-hidden="true"
+      />
+    </foreignObject>
+  );
 }
 export default function WorldMap({
   state,
@@ -47,12 +70,7 @@ export default function WorldMap({
           role="group"
           aria-label="Shared world: select a castle to inspect its districts"
         >
-          <image
-            href="/assets/world-map.png"
-            width="1280"
-            height="800"
-            style={{ imageRendering: "pixelated" }}
-          />
+          <LiveTerrain state={state} />
           <defs>
             <marker
               id="flow-tip"
