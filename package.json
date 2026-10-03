@@ -6,9 +6,12 @@
     "build": "npm --prefix apps/web run build",
     "test": "npm --prefix apps/web test",
     "typecheck": "npm --prefix apps/web run typecheck && npm --prefix spacetime run typecheck",
-    "db:start": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 start",
-    "db:publish": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 publish",
-    "db:generate": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 generate",
+    "db:start": "node scripts/spacetime.mjs start",
+    "db:publish": "node scripts/spacetime.mjs publish",
+    "db:generate": "node scripts/spacetime.mjs generate",
     "test:integration": "npm --prefix apps/web run test:integration"
+  },
+  "dependencies": {
+    "node": "^22.23.3"
   }
 }

@@ -684,6 +684,29 @@ input[type="checkbox"] {
   align-items: center;
   gap: 18px;
 }
+.seat-strip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #563824;
+}
+.seat-strip i {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  background: #efe2bc;
+  border: 2px solid #6b4528;
+  box-shadow: 2px 2px #2e1b12;
+  font-style: normal;
+}
+.seat-strip small {
+  margin-left: 5px;
+  font:
+    15px "VT323",
+    monospace;
+  white-space: nowrap;
+}
 .mode-pill {
   font-size: 8px;
   letter-spacing: 1px;

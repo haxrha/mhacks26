@@ -13,6 +13,7 @@ import {
   income,
   progress,
   questionFor,
+  rollEvents,
   spillTarget,
 } from "../src/game/engine";
 import { QUESTIONS } from "../src/game/questions";
@@ -37,6 +38,8 @@ const answer = (s: GameState, right: boolean) => {
   const q = questionFor(s, P)!;
   return answerQuiz(s, P, right ? q.correct : (q.correct + 1) % 4, 3000);
 };
+const hearNeighbor = (s: GameState) =>
+  applyAction(s, { type: "acknowledge", civ: P }).state;
 const rich = (s: GameState, c: CivId = P) => {
   for (const r of RESOURCES) s.civs[c].stock[r] = 20;
   return s;
@@ -53,14 +56,62 @@ test("games are deterministic for a seed", () => {
   );
 });
 
-test("one cycle runs event → quiz → choice → build → next decade", () => {
+test("seeded primary and cascade rolls can produce all 16 hazards", () => {
+  const seen = new Set<EventId>();
+  for (let seed = 1; seed <= 4000 && seen.size < 16; seed++)
+    for (const event of Object.values(createGame(P, "solo", seed).events))
+      seen.add(event.type);
+  assert.deepEqual([...seen].sort(), (Object.keys(EVENTS) as EventId[]).sort());
+});
+
+test("warming increases only climate-driven event severity and frequency", () => {
+  let coolClimateEvents = 0;
+  let hotClimateEvents = 0;
+  let checkedComparable = 0;
+  for (let seed = 1; seed <= 500; seed++) {
+    const cool = createGame(P, "solo", seed);
+    cool.climate = 0;
+    cool.rng = seed;
+    rollEvents(cool);
+    const hot = createGame(P, "solo", seed);
+    hot.climate = 2;
+    hot.rng = seed;
+    rollEvents(hot);
+    for (const civ of CIV_IDS) {
+      const coolEvent = cool.events[civ];
+      const hotEvent = hot.events[civ];
+      if (EVENTS[coolEvent.type].climateDriven) coolClimateEvents++;
+      if (EVENTS[hotEvent.type].climateDriven) hotClimateEvents++;
+      if (coolEvent.type !== hotEvent.type) continue;
+      const coolLoss = Object.values(coolEvent.loss).reduce(
+        (sum, n) => sum + (n ?? 0),
+        0,
+      );
+      const hotLoss = Object.values(hotEvent.loss).reduce(
+        (sum, n) => sum + (n ?? 0),
+        0,
+      );
+      assert.equal(
+        hotLoss - coolLoss,
+        EVENTS[hotEvent.type].climateDriven ? 1 : 0,
+      );
+      checkedComparable++;
+    }
+  }
+  assert(hotClimateEvents > coolClimateEvents);
+  assert(checkedComparable > 500);
+});
+
+test("one cycle runs event → quiz → response → choice → build → next decade", () => {
   let s = createGame(P, "solo", 3);
   assert.equal(s.phase, "event");
   s = advance(s);
   assert.equal(s.phase, "quiz");
   assert(questionFor(s, P));
   s = answer(s, true);
-  assert.equal(s.phase, "choice", "AI neighbors answer on their own");
+  assert.equal(s.phase, "response", "the affected neighbor speaks next");
+  s = hearNeighbor(s);
+  assert.equal(s.phase, "choice", "AI neighbors acknowledge on their own");
   s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
   assert.equal(s.phase, "build");
   assert(s.civs[P].report.length > 0, "the narrator has a report to read");
@@ -75,7 +126,7 @@ test("one cycle runs event → quiz → choice → build → next decade", () =>
 
 test("a right answer means smaller losses than a wrong one", () => {
   const take = (right: boolean) => {
-    let s = answer(rich(atQuiz("flood")), right);
+    let s = hearNeighbor(answer(rich(atQuiz("flood")), right));
     s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
     return total(s, P);
   };
@@ -84,7 +135,7 @@ test("a right answer means smaller losses than a wrong one", () => {
 
 test("the cheap choice pushes the damage onto a neighbor", () => {
   let s = rich(atQuiz("flood"));
-  s = answer(s, false);
+  s = hearNeighbor(answer(s, false));
   const target = spillTarget(P, "downstream");
   rich(s, target);
   const before = total(s, target);
@@ -97,14 +148,14 @@ test("the cheap choice pushes the damage onto a neighbor", () => {
 });
 
 test("the sustainable choice halves damage and builds lasting protection", () => {
-  let s = answer(rich(atQuiz("flood")), false);
+  let s = hearNeighbor(answer(rich(atQuiz("flood")), false));
   s = applyAction(s, { type: "choose", civ: P, option: 1 }).state;
   assert(s.civs[P].buildings.includes("wetland"));
   assert(s.civs[P].report.some((l) => l.includes("Wetland")));
 });
 
 test("building checks cost and caps; the bank trades 3:1", () => {
-  let s = answer(rich(atQuiz("flood")), true);
+  let s = hearNeighbor(answer(rich(atQuiz("flood")), true));
   s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
   for (let i = 0; i < BUILDINGS.kiln.max!; i++)
     s = applyAction(s, { type: "build", civ: P, building: "kiln" }).state;
@@ -132,7 +183,7 @@ test("you can't act out of turn", () => {
 });
 
 test("warming past +3°C ends the game for everyone", () => {
-  let s = answer(atQuiz("flood"), true);
+  let s = hearNeighbor(answer(atQuiz("flood"), true));
   s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
   s.climate = CLIMATE_LOSS + 0.5;
   s = applyAction(s, { type: "ready", civ: P }).state;
@@ -156,6 +207,37 @@ test("hot-seat waits for every person before moving on", () => {
   s = answerQuiz(s, P, q.correct, 1000);
   assert.equal(s.phase, "quiz", "three more people still have to answer");
   assert.equal(progress(s).phase, "quiz");
+});
+
+test("every playable event has a quiz, neighbor line and lasting mitigation", () => {
+  assert.equal(Object.keys(EVENTS).length, 16);
+  for (const [id, event] of Object.entries(EVENTS)) {
+    assert(event.neighbor.length > 20, `${id} needs a neighbor response`);
+    let s = rich(atQuiz(id as EventId));
+    s = hearNeighbor(answer(s, true));
+    s = applyAction(s, { type: "choose", civ: P, option: 1 }).state;
+    assert(
+      s.civs[P].buildings.includes(event.green.build!),
+      `${id} should grant ${event.green.build}`,
+    );
+  }
+});
+
+test("the response phase waits for every hot-seat player", () => {
+  let s = advance(createGame(P, "hotseat", 15));
+  for (const civ of CIV_IDS) {
+    const q = questionFor(s, civ)!;
+    s = answerQuiz(s, civ, q.correct, 1000);
+  }
+  assert.equal(s.phase, "response");
+  for (const civ of CIV_IDS.slice(0, -1))
+    s = applyAction(s, { type: "acknowledge", civ }).state;
+  assert.equal(s.phase, "response");
+  s = applyAction(s, {
+    type: "acknowledge",
+    civ: CIV_IDS[CIV_IDS.length - 1],
+  }).state;
+  assert.equal(s.phase, "choice");
 });
 
 test("content is consistent", () => {

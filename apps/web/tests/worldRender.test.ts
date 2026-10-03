@@ -9,6 +9,7 @@ import {
 } from "../src/game/engine";
 import { TOWNS, townIndex } from "../src/game/towns";
 import {
+  areaStatus,
   MAP_H,
   MAP_W,
   renderWorld,
@@ -37,6 +38,7 @@ function withEvent(civ: CivId, type: EventId) {
   s = advance(s);
   const q = questionFor(s, "heartland")!;
   s = answerQuiz(s, "heartland", q.correct, 1000);
+  s = applyAction(s, { type: "acknowledge", civ: "heartland" }).state;
   return applyAction(s, { type: "choose", civ: "heartland", option: 2 }).state;
 }
 
@@ -65,6 +67,54 @@ test("a flood only recolours the region it hits", () => {
       L.area[i] === area || L.near[i] === area,
       `pixel ${i} outside the region changed`,
     );
+});
+
+test("all 16 event ids reach the live map status", () => {
+  const ids: EventId[] = [
+    "flood",
+    "dam_failure",
+    "hurricane",
+    "earthquake",
+    "tsunami",
+    "volcano",
+    "drought",
+    "heatwave",
+    "wildfire",
+    "spill",
+    "smog",
+    "sea_rise",
+    "landslide",
+    "grid_failure",
+    "pandemic",
+    "supply_shock",
+  ];
+  for (const id of ids) {
+    const state = withEvent("heartland", id);
+    assert(areaStatus(state)[townIndex("heartland")].effects.has(id), id);
+  }
+});
+
+test("each visual effect family changes map pixels", () => {
+  const cases: [CivId, EventId][] = [
+    ["heartland", "dam_failure"],
+    ["archipelago", "hurricane"],
+    ["archipelago", "earthquake"],
+    ["archipelago", "volcano"],
+    ["archipelago", "spill"],
+    ["petrostate", "smog"],
+    ["petrostate", "drought"],
+    ["enclave", "grid_failure"],
+    ["enclave", "pandemic"],
+    ["petrostate", "supply_shock"],
+  ];
+  for (const [civ, event] of cases) {
+    const baseline = render(withEvent(civ, "heatwave"));
+    const affected = render(withEvent(civ, event));
+    assert(
+      changed(baseline, affected).length > 0,
+      `${event} should be visible`,
+    );
+  }
 });
 
 test("warming melts mountain snow", () => {
