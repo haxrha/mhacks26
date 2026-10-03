@@ -10,6 +10,19 @@ The game's map image is `assets/world-map.png` (1280 × 800, no labels). `assets
 
 ---
 
+## 0. Current game design (overrides §5.1a, §6, §7 and §9 where they differ)
+
+- **Map:** one town per civilization (Frostpeak, Mossholm, Brasshold, Harborkeep). Each is a keep in a clearing, and the town grows as the player builds: every building fills the next plot nearest the keep (`src/data/worldmap.json` → `castles[].slots`).
+- **Resources:** sheep, wheat, wood, brick and ore (`src/data/resources.json`). Each civ has a home yield per cycle (`src/data/civs.json` → `base`).
+- **Each cycle (one decade, 10 in all):**
+  1. **Event:** every town draws an event (`src/data/events.json`), weighted by geography, warming and the neighbors' polluting buildings. Its advisor narrates it.
+  2. **Quiz:** one timed question (20 s) about that event. A right answer cuts each loss by 1.
+  3. **Choice:** *cheap now* (no loss for you, but the damage is pushed onto a neighbor or warming rises) vs *sustainable* (costs more, halves the damage, and earns a protective building that halves that event from then on). A third option is to brace and take the full hit.
+  4. **Build:** spend resources on houses (2 points) and production buildings (1 point each, max 3 of a kind, 6 houses). Kilns, mines and lumber camps warm the planet; groves pull it back; a windmill halves your own pollution. The bank trades 3:1.
+- **End:** after 10 decades the town with the most points wins. If warming reaches +3°C, every town loses.
+- **Removed:** the tech tree, market, trading, diplomacy and the 56-district simulation.
+- Rules live in `apps/web/src/game/engine.ts` and are shared with the SpacetimeDB module. `npm --prefix apps/web run simulate` plays all-AI games to check balance.
+
 ## 1. Ground rules for agents
 
 - **Hackathon scope.** Build the MVP in §10 first and keep it playable at every commit. Add stretch goals only after it runs end-to-end.
@@ -154,6 +167,15 @@ The map is a whole world: a continent surrounded by sea, with small southern isl
 
 - An area is the unit hazards report on. For example, "the flood hit Fenmarsh and Saltmarsh" means those areas, and an area's castle shows a damage state (smoke, flood, ash).
 - Clicking a castle opens that area's inspector window (§4.1).
+- **The map is rendered live, not shown as an image.** `tools/worldmap.py` exports `src/data/worldmap.json`, which holds the base colour layer, the terrain kind layer, the area layer, and the sprites. `apps/web/src/game/worldRender.ts` redraws it at about 6 fps from game state:
+  - floods, surges, wildfire ash and embers, oil-spill sludge, smog and heat haze, drought, quake cracks and blackouts, each painted in the area it hits
+  - melting snow as climate rises, and rising seas on the coasts
+  - a murkier ocean as ocean health falls
+  - animated factories, turbines, boats, the lighthouse and the dam (it breaks on `dam_failure`)
+  - player buildings beside each castle
+  - smoke over damaged castles
+
+  `assets/world-map.png` is only a static preview.
 
 ### 5.2 Logic cell
 

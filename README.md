@@ -2,9 +2,9 @@
 
 A playable environmental strategy tycoon built entirely in TypeScript: Next.js/React in the browser, and a native SpacetimeDB 2.10.2 module as the backend. There is no Flask or Python game server.
 
-Four civilizations share a living economy and the consequences of their decisions. Build infrastructure, research clean technologies, negotiate recurring trades, give aid, impose embargoes, and manage disasters. The game includes 16 distinct hazards, 16 buildings, 12 technologies, and 70 original educational questions with source links. Its ten-decade loop supports offline practice, four-player hot-seat practice, persistent online solo worlds, and live multiplayer room codes with AI filling unclaimed seats.
+Four towns share one river valley. Every decade each town is hit by an event (a flood, drought, smog, a spill), and its advisor tells the player what is coming. The player answers a timed question about it, then chooses between a cheap fix that pushes the damage onto a neighbor or warms the planet, and a sustainable fix that costs more but protects the town for good. Then they build with sheep, wheat, wood, brick and ore, and watch the town grow on the map. After ten decades the biggest town wins, unless warming reaches +3°C first, in which case everyone loses.
 
-The world uses `assets/world-map.png`, the repository's 16 castle provinces, wood HUD controls, parchment inspectors, and pixel fonts. Castle provinces currently group the expanded specification's 56 simulation districts. These are illustrative regions rather than a terrain-derived water simulation.
+Modes: offline solo with AI neighbors, four-player hot-seat, and live SpacetimeDB rooms with AI filling unclaimed towns. The map is drawn live from `src/data/worldmap.json`; see `AGENTS.md` §0 for the full design.
 
 ## Run locally on Windows
 

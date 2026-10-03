@@ -1,74 +1,100 @@
 {
-  "petrostate": {
-    "name": "Forge Dominion",
-    "title": "Industry today. A cleaner tomorrow.",
-    "color": "#dc9554",
-    "crest": "ϟ",
-    "description": "Your industrial heartland exports energy and materials. Emissions travel beyond your borders; invest in clean power before extraction runs out.",
-    "strength": "Energy & credits",
-    "weakness": "Water & stranded assets",
-    "rate": 0.8,
-    "start": {
-      "food": 12,
-      "water": 10,
-      "energy": 24,
-      "materials": 16,
-      "money": 40,
-      "innovation": 8
-    }
-  },
   "heartland": {
     "name": "Highland Hold",
     "title": "The highlands hold the headwaters.",
-    "color": "#9d83c5",
+    "color": "#a07ad6",
     "crest": "❧",
-    "description": "Control the headwaters and nurture forests, farms and wetlands. Protect natural buffers or divert water, knowing every decision reaches your downstream neighbors.",
-    "strength": "Food & materials",
-    "weakness": "Smog & slow research",
-    "rate": 0.6,
+    "description": "Mountain pastures and mines at the head of the river. What you do with the water reaches everyone downstream.",
+    "strength": "Ore & sheep",
+    "weakness": "Little farmland",
     "start": {
-      "food": 30,
-      "water": 24,
-      "energy": 12,
-      "materials": 24,
-      "money": 32,
-      "innovation": 8
-    }
+      "sheep": 3,
+      "wheat": 1,
+      "wood": 2,
+      "brick": 2,
+      "ore": 3
+    },
+    "base": {
+      "sheep": 2,
+      "wheat": 0,
+      "wood": 1,
+      "brick": 0,
+      "ore": 2
+    },
+    "buildings": []
   },
   "enclave": {
     "name": "Verdant Reach",
     "title": "Knowledge takes root. Cooperation grows.",
-    "color": "#79a64f",
-    "crest": "✧",
-    "description": "Use scientific insight, forecasts and efficient trade to prosper with limited land. Share discoveries and build resilient infrastructure before disasters arrive.",
-    "strength": "Insight & trade",
-    "weakness": "Floods & import dependency",
-    "rate": 1.5,
+    "color": "#7fd65a",
+    "crest": "✣",
+    "description": "Old forests and fields on the west bank. Your trees store carbon and soak up floods, if you keep them.",
+    "strength": "Wood & wheat",
+    "weakness": "No ore",
     "start": {
-      "food": 10,
-      "water": 10,
-      "energy": 16,
-      "materials": 14,
-      "money": 50,
-      "innovation": 24
-    }
+      "sheep": 2,
+      "wheat": 3,
+      "wood": 3,
+      "brick": 1,
+      "ore": 0
+    },
+    "base": {
+      "sheep": 1,
+      "wheat": 2,
+      "wood": 2,
+      "brick": 0,
+      "ore": 0
+    },
+    "buildings": []
+  },
+  "petrostate": {
+    "name": "Forge Dominion",
+    "title": "Industry today. A cleaner tomorrow.",
+    "color": "#f08a3c",
+    "crest": "⚒",
+    "description": "Kilns and mines on the east bank. You make the bricks everyone needs, and the smoke drifts to your neighbors.",
+    "strength": "Brick & ore",
+    "weakness": "Few sheep",
+    "start": {
+      "sheep": 0,
+      "wheat": 2,
+      "wood": 2,
+      "brick": 3,
+      "ore": 3
+    },
+    "base": {
+      "sheep": 0,
+      "wheat": 1,
+      "wood": 0,
+      "brick": 2,
+      "ore": 2
+    },
+    "buildings": [
+      "kiln"
+    ]
   },
   "archipelago": {
     "name": "Tidehaven",
     "title": "Every river ends at your shore.",
-    "color": "#62b8ca",
+    "color": "#46d6d0",
     "crest": "≈",
-    "description": "Island fisheries and geothermal power support your people. Guard the strait, preserve mangroves and prepare for storms, tsunamis and upstream pollution.",
-    "strength": "Clean energy & fisheries",
-    "weakness": "Quakes & imported materials",
-    "rate": 1,
+    "description": "The delta and the coast. Every flood and spill from upstream ends up at your harbor.",
+    "strength": "Wheat & sheep",
+    "weakness": "Little wood",
     "start": {
-      "food": 22,
-      "water": 16,
-      "energy": 20,
-      "materials": 12,
-      "money": 36,
-      "innovation": 12
-    }
+      "sheep": 3,
+      "wheat": 3,
+      "wood": 1,
+      "brick": 2,
+      "ore": 1
+    },
+    "base": {
+      "sheep": 2,
+      "wheat": 2,
+      "wood": 0,
+      "brick": 1,
+      "ore": 0
+    },
+    "buildings": []
   }
 }

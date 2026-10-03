@@ -6,13 +6,10 @@ import {
   type ReducerCtx,
 } from "spacetimedb/server";
 import {
+  advance as advanceEvent,
+  answerQuiz,
   applyAction,
   createGame,
-  resolveRound,
-  advanceFlows,
-  answerQuiz,
-  nextRound,
-  runBots,
 } from "../../apps/web/src/game/engine";
 import {
   type Action,
@@ -80,70 +77,21 @@ function validateAction(value: unknown, civ: CivId): Action {
   if (!value || typeof value !== "object")
     throw new SenderError("Invalid action.");
   const a = value as Record<string, unknown>;
-  const allowed = [
-    "build",
-    "convert",
-    "repair",
-    "research",
-    "market",
-    "trade",
-    "aid",
-    "embargo",
-    "tariff",
-    "shipping",
-    "divert",
-    "opensource",
-    "license",
-    "accord",
-    "forecast",
-  ];
-  if (!allowed.includes(String(a.type)) || a.civ !== civ)
+  if (a.civ !== civ)
     throw new SenderError("You can only act for your civilization.");
-  const required: Record<string, string[]> = {
-    build: ["tile", "building"],
-    convert: ["tile"],
-    repair: ["tile"],
-    research: ["tech"],
-    opensource: ["tech"],
-    license: ["target", "tech"],
-    market: ["resource", "amount", "buy"],
-    trade: ["target", "give", "receive", "amount", "recurring"],
-    aid: ["target", "resource", "amount"],
-    embargo: ["resource"],
-    tariff: ["target"],
-    shipping: ["policy"],
-    forecast: ["policy"],
-  };
-  for (const key of required[String(a.type)] ?? [])
-    if (!(key in a)) throw new SenderError(`Missing ${key}.`);
-  for (const key of ["tile", "building", "tech"])
-    if (key in a && (typeof a[key] !== "string" || String(a[key]).length > 80))
-      throw new SenderError(`Invalid ${key}.`);
-  for (const key of ["buy", "recurring"])
-    if (key in a && typeof a[key] !== "boolean")
-      throw new SenderError(`Invalid ${key}.`);
-  if (
-    "amount" in a &&
-    (!Number.isInteger(a.amount) ||
-      Number(a.amount) < 1 ||
-      Number(a.amount) > 30)
-  )
-    throw new SenderError("Invalid quantity.");
-  for (const key of ["give", "receive", "resource"])
-    if (key in a && !RESOURCES.includes(a[key] as never))
+  if (a.type === "choose") {
+    if (![0, 1, 2].includes(a.option as number))
+      throw new SenderError("Unknown option.");
+  } else if (a.type === "build") {
+    if (typeof a.building !== "string" || a.building.length > 40)
+      throw new SenderError("Invalid building.");
+  } else if (a.type === "exchange") {
+    if (
+      !RESOURCES.includes(a.give as never) ||
+      !RESOURCES.includes(a.get as never)
+    )
       throw new SenderError("Unknown resource.");
-  if ("target" in a && !CIV_IDS.includes(a.target as CivId))
-    throw new SenderError("Unknown partner.");
-  if (
-    a.type === "shipping" &&
-    !["open", "tax", "block"].includes(String(a.policy))
-  )
-    throw new SenderError("Unknown shipping policy.");
-  if (
-    a.type === "forecast" &&
-    !["shared", "sold", "hidden"].includes(String(a.policy))
-  )
-    throw new SenderError("Unknown forecast policy.");
+  } else if (a.type !== "ready") throw new SenderError("Unknown action.");
   return a as unknown as Action;
 }
 export const createWorld = database.reducer(
@@ -163,6 +111,7 @@ export const createWorld = database.reducer(
       args.civ as CivId,
       args.solo ? "solo" : "hotseat",
       args.seed,
+      [args.civ as CivId],
     );
     ctx.db.room.insert({
       id,
@@ -184,11 +133,7 @@ export const joinWorld = database.reducer(
   (ctx, args) => {
     const row = getRoom(ctx, args.roomId),
       state = JSON.parse(row.stateJson) as GameState;
-    if (
-      state.mode === "solo" ||
-      state.round !== 1 ||
-      state.phase !== "planning"
-    )
+    if (state.mode === "solo" || state.round !== 1 || state.phase !== "event")
       throw new SenderError("This world is not accepting new players.");
     if (!CIV_IDS.includes(args.civ as CivId))
       throw new SenderError("Unknown civilization.");
@@ -207,6 +152,8 @@ export const joinWorld = database.reducer(
       civ: args.civ,
       ready: false,
     });
+    state.humans = [...new Set([...state.humans, args.civ as CivId])];
+    save(ctx, row, state);
   },
 );
 export const act = database.reducer(
@@ -216,7 +163,6 @@ export const act = database.reducer(
       seat = getSeat(ctx, row.id);
     if (row.revision !== args.revision)
       throw new SenderError("The world changed. Refresh and retry.");
-    if (seat.ready) throw new SenderError("Your plan is already locked.");
     if (args.actionJson.length > 3000)
       throw new SenderError("Action is too large.");
     const action = validateAction(
@@ -231,43 +177,26 @@ export const act = database.reducer(
 export const ready = database.reducer({ roomId: t.string() }, (ctx, args) => {
   const row = getRoom(ctx, args.roomId),
     seat = getSeat(ctx, row.id);
-  let state = JSON.parse(row.stateJson) as GameState;
-  if (state.phase !== "planning")
-    throw new SenderError("Planning is already complete.");
+  const result = applyAction(JSON.parse(row.stateJson), {
+    type: "ready",
+    civ: seat.civ as CivId,
+  });
+  if (result.error) throw new SenderError(result.error);
   ctx.db.seat.id.update({ ...seat, ready: true });
-  const seats = [...ctx.db.seat.iter()].filter((s) => s.roomId === row.id);
-  if (seats.every((s) => s.ready)) {
-    // Claimed civilizations cannot be controlled by bots; unused actions are forfeited.
-    for (const claimed of seats) state.civs[claimed.civ as CivId].ap = 0;
-    if (state.mode === "hotseat") state = runBots(state);
-    state = resolveRound(state);
-    save(ctx, row, state);
-  }
+  if (result.state.phase !== "build")
+    for (const s of [...ctx.db.seat.iter()].filter((s) => s.roomId === row.id))
+      ctx.db.seat.id.update({ ...s, ready: false });
+  save(ctx, row, result.state);
 });
 export const advance = database.reducer({ roomId: t.string() }, (ctx, args) => {
   const row = getRoom(ctx, args.roomId);
   getSeat(ctx, row.id);
   if (!row.host.isEqual(ctx.sender))
-    throw new SenderError("Only the host advances the shared world.");
-  let state = JSON.parse(row.stateJson) as GameState;
-  if (state.phase === "flows") {
-    state = advanceFlows(state);
-    // Unclaimed seats resolve quizzes as bots; each real player answers on their device.
-    const claimed = [...ctx.db.seat.iter()]
-      .filter((s) => s.roomId === row.id)
-      .map((s) => s.civ);
-    for (const quiz of state.quizzes.filter(
-      (q) => !claimed.includes(q.civ) && !q.tier,
-    )) {
-      while (!state.quizzes.find((q) => q.civ === quiz.civ)!.tier)
-        state = answerQuiz(state, quiz.civ, -1, 15001);
-    }
-  } else if (state.phase === "debrief") {
-    state = nextRound(state);
-    for (const s of [...ctx.db.seat.iter()].filter((s) => s.roomId === row.id))
-      ctx.db.seat.id.update({ ...s, ready: false });
-  } else throw new SenderError("Finish the current phase first.");
-  save(ctx, row, state);
+    throw new SenderError("Only the host moves the world on.");
+  const state = JSON.parse(row.stateJson) as GameState;
+  if (state.phase !== "event")
+    throw new SenderError("Finish the current phase first.");
+  save(ctx, row, advanceEvent(state));
 });
 export const beginQuestion = database.reducer(
   { roomId: t.string(), questionId: t.string() },
@@ -275,11 +204,11 @@ export const beginQuestion = database.reducer(
     const row = getRoom(ctx, args.roomId),
       seat = getSeat(ctx, row.id),
       state = JSON.parse(row.stateJson) as GameState;
-    const quiz = state.quizzes.find((q) => q.civ === seat.civ && !q.tier);
+    const quiz = state.civs[seat.civ as CivId].quiz;
     if (
       state.phase !== "quiz" ||
-      !quiz ||
-      quiz.questions[quiz.answers.length] !== args.questionId
+      quiz?.questionId !== args.questionId ||
+      quiz.option !== undefined
     )
       throw new SenderError("This question is not active.");
     const id = row.id + ":" + seat.civ + ":" + args.questionId;
@@ -302,11 +231,11 @@ export const answer = database.reducer(
     const row = getRoom(ctx, args.roomId),
       seat = getSeat(ctx, row.id),
       state = JSON.parse(row.stateJson) as GameState;
-    const quiz = state.quizzes.find((q) => q.civ === seat.civ && !q.tier);
+    const quiz = state.civs[seat.civ as CivId].quiz;
     if (
       state.phase !== "quiz" ||
-      !quiz ||
-      quiz.questions[quiz.answers.length] !== args.questionId
+      quiz?.questionId !== args.questionId ||
+      quiz.option !== undefined
     )
       throw new SenderError("This question is no longer active.");
     if (args.option < -1 || args.option > 3)
@@ -318,13 +247,7 @@ export const answer = database.reducer(
     const ms = Number(
       (ctx.timestamp.microsSinceUnixEpoch - clock.startedMicros) / 1000n,
     );
-    const result = answerQuiz(
-      state,
-      seat.civ as CivId,
-      args.option,
-      Math.max(0, ms),
-      args.lifeline && state.civs[seat.civ as CivId].aided,
-    );
+    const result = answerQuiz(state, seat.civ as CivId, args.option, Math.max(0, ms));
     ctx.db.quizClock.id.delete(clock.id);
     save(ctx, row, result);
   },

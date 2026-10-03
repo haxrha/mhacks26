@@ -1,59 +1,23 @@
-import { clone } from "./clone";
 import civData from "../../../../src/data/civs.json";
 import buildingData from "../../../../src/data/buildings.json";
-import techData from "../../../../src/data/techs.json";
-import terrainData from "../../../../src/data/terrain.json";
 import eventData from "../../../../src/data/events.json";
-import edgeData from "../../../../src/data/edges.json";
 import resourceData from "../../../../src/data/resources.json";
-import mapData from "../../../../src/data/map.json";
-import {
-  type Carrier,
-  type CivId,
-  type DisasterId,
-  type Edge,
-  type Resource,
-  type Stock,
-  type Terrain,
-  type Tile,
-} from "./types";
+import type { CivId, EventId, Resource, Stock } from "./types";
+
 export const stock = (values: Partial<Stock> = {}): Stock => ({
-  food: 0,
-  water: 0,
-  energy: 0,
-  materials: 0,
-  money: 0,
-  innovation: 0,
+  sheep: 0,
+  wheat: 0,
+  wood: 0,
+  brick: 0,
+  ore: 0,
   ...values,
 });
-export interface BuildingDef {
-  name: string;
-  icon: string;
-  cost: Partial<Stock>;
-  yields: Partial<Stock>;
-  terrains: Terrain[];
-  description: string;
-  tech?: string;
-  civ?: CivId;
-  emissions?: number;
-}
-export interface DisasterDef {
-  name: string;
-  icon: string;
-  carrier: Carrier;
-  base: number;
-  climateDriven: boolean;
-  regions: CivId[];
-  losses: Partial<Stock>;
-  color: string;
-  lesson: string;
-  mitigation: string;
-  source: string;
-}
+
 export const RESOURCE_META = resourceData as Record<
   Resource,
   { name: string; icon: string; color: string }
 >;
+
 export const CIVS = civData as Record<
   CivId,
   {
@@ -64,32 +28,62 @@ export const CIVS = civData as Record<
     description: string;
     strength: string;
     weakness: string;
-    rate: number;
+    /** Starting stock. */
     start: Stock;
+    /** What the home land yields every cycle before any buildings. */
+    base: Stock;
+    buildings: string[];
   }
 >;
-export const TERRAIN = terrainData as Record<
-  Terrain,
-  {
-    name: string;
-    color: string;
-    glyph: string;
-    yield: Partial<Stock>;
-    note: string;
-  }
->;
+
+export interface BuildingDef {
+  name: string;
+  icon: string;
+  cost: Partial<Stock>;
+  description: string;
+  yields?: Partial<Stock>;
+  /** °C added (or removed, if negative) every cycle. */
+  climate?: number;
+  points?: number;
+  /** How many one town can have. */
+  max?: number;
+  /** Pollutes; a windmill halves it. */
+  dirty?: boolean;
+  green?: boolean;
+  /** Events whose future losses this building halves. */
+  protects?: EventId[];
+  /** Only earned through a sustainable choice, not built from the build menu. */
+  earned?: boolean;
+}
 export const BUILDINGS = buildingData as Record<string, BuildingDef>;
-export const TECHS = techData as Record<
-  string,
-  {
-    name: string;
-    branch: string;
-    cost: number;
-    requires?: string;
-    description: string;
-    affinity: CivId;
-  }
->;
-export const DISASTERS = eventData as Record<DisasterId, DisasterDef>;
-export const EDGES = edgeData as Edge[];
-export const createTiles = (): Tile[] => clone(mapData) as Tile[];
+
+export interface ChoiceDef {
+  label: string;
+  cost: Partial<Stock>;
+  effect: string;
+  climate?: number;
+  /** Which neighbor gets the pushed-off damage. */
+  spillTo?: "downstream" | "downwind" | "shared";
+  spill?: Partial<Stock>;
+  /** The protective building a sustainable choice earns. */
+  build?: string;
+}
+export interface EventDef {
+  name: string;
+  icon: string;
+  color: string;
+  carrier: string;
+  quizTypes: string[];
+  regions: Partial<Record<CivId, number>>;
+  loss: Partial<Stock>;
+  /** A building in a neighboring town that makes this event likelier. */
+  cause?: string;
+  climateDriven?: boolean;
+  tell: string;
+  caused?: string;
+  cheap: ChoiceDef;
+  green: ChoiceDef;
+  lesson: string;
+  source: string;
+}
+export const EVENTS = eventData as Record<EventId, EventDef>;

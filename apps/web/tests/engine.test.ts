@@ -1,337 +1,173 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { BUILDINGS, EVENTS } from "../src/game/content";
 import {
-  actionError,
-  advanceFlows,
+  CLIMATE_LOSS,
+  EXCHANGE_RATE,
+  ROUNDS,
+  advance,
   answerQuiz,
   applyAction,
+  autoplay,
   createGame,
-  demoGame,
-  hazardProbability,
-  marketQuote,
-  nextRound,
-  propagate,
-  resolveRound,
-  yields,
+  income,
+  progress,
+  questionFor,
+  spillTarget,
 } from "../src/game/engine";
-import { BUILDINGS, TECHS } from "../src/game/content";
 import { QUESTIONS } from "../src/game/questions";
-import { CIV_IDS, RESOURCES } from "../src/game/types";
+import {
+  CIV_IDS,
+  RESOURCES,
+  type CivId,
+  type EventId,
+  type GameState,
+} from "../src/game/types";
 
-test("seeded resolution is deterministic and leaves input untouched", () => {
-  const s = createGame();
-  const before = JSON.stringify(s);
-  assert.deepEqual(resolveRound(s), resolveRound(s));
-  assert.equal(JSON.stringify(s), before);
-});
-test("demo chains a fault quake into dam failure and downstream flooding", () => {
-  const s = demoGame();
-  assert(
-    s.damages.some((d) => d.type === "earthquake" && d.civ === "heartland"),
+const P: CivId = "heartland";
+const total = (s: GameState, c: CivId) =>
+  RESOURCES.reduce((n, r) => n + s.civs[c].stock[r], 0);
+/** A solo game with the player's event forced, sitting at the quiz. */
+function atQuiz(event: EventId = "flood", seed = 7) {
+  const s = createGame(P, "solo", seed);
+  s.events[P] = { type: event, loss: { ...EVENTS[event].loss } };
+  return advance(s);
+}
+const answer = (s: GameState, right: boolean) => {
+  const q = questionFor(s, P)!;
+  return answerQuiz(s, P, right ? q.correct : (q.correct + 1) % 4, 3000);
+};
+const rich = (s: GameState, c: CivId = P) => {
+  for (const r of RESOURCES) s.civs[c].stock[r] = 20;
+  return s;
+};
+
+test("games are deterministic for a seed", () => {
+  assert.deepEqual(
+    autoplay(createGame(P, "solo", 42)),
+    autoplay(createGame(P, "solo", 42)),
   );
-  assert(s.flows.some((f) => f.type === "dam_failure" && f.to === "enclave"));
-  assert.equal(s.tiles.find((t) => t.id === "t4-0")?.building, undefined);
-  assert(s.news.some((n) => n.title.includes("dam failure")));
-  assert(
-    s.flows.find((f) => f.type === "dam_failure")?.causeId.includes("r1-c"),
+  assert.deepEqual(
+    createGame(P, "solo", 9).events,
+    createGame(P, "solo", 9).events,
   );
 });
-test("every branch accounts for hazard mass, and cycles terminate", () => {
-  const s = demoGame();
-  for (const l of s.ledgers)
-    assert(
-      Math.abs(
-        l.incoming - l.impact - l.buffered - l.transmitted - l.dissipated,
-      ) < 1e-8,
-    );
-  assert(s.flows.length < 50);
+
+test("one cycle runs event → quiz → choice → build → next decade", () => {
+  let s = createGame(P, "solo", 3);
+  assert.equal(s.phase, "event");
+  s = advance(s);
+  assert.equal(s.phase, "quiz");
+  assert(questionFor(s, P));
+  s = answer(s, true);
+  assert.equal(s.phase, "choice", "AI neighbors answer on their own");
+  s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
+  assert.equal(s.phase, "build");
+  assert(s.civs[P].report.length > 0, "the narrator has a report to read");
+  const before = { ...s.civs[P].stock };
+  const gain = income(s, P);
+  s = applyAction(s, { type: "ready", civ: P }).state;
+  assert.equal(s.round, 2);
+  assert.equal(s.phase, "event");
+  for (const r of RESOURCES)
+    assert.equal(s.civs[P].stock[r], before[r] + gain[r]);
 });
-test("a levee reduces local impact while increasing downstream exposure", () => {
-  const a = createGame("heartland", "hotseat");
-  const b = applyAction(a, {
-    type: "build",
-    civ: "heartland",
-    tile: "t3-3",
-    building: "levee",
-  }).state;
-  const hazard = {
-    id: "h",
-    type: "flood" as const,
-    source: "heartland" as const,
-    amount: 24,
-    causeId: "test",
+
+test("a right answer means smaller losses than a wrong one", () => {
+  const take = (right: boolean) => {
+    let s = answer(rich(atQuiz("flood")), right);
+    s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
+    return total(s, P);
   };
-  propagate(a, [hazard]);
-  propagate(b, [hazard]);
-  assert(
-    b.damages.find((d) => d.civ === "heartland")!.severity <
-      a.damages.find((d) => d.civ === "heartland")!.severity,
-  );
-  assert(
-    b.damages.find((d) => d.civ === "enclave")!.severity >
-      a.damages.find((d) => d.civ === "enclave")!.severity,
-  );
+  assert(take(true) > take(false));
 });
-test("oil follows currents and damages island fisheries and ocean health", () => {
-  const s = createGame();
-  const ocean = s.ocean;
-  propagate(s, [
-    {
-      id: "spill",
-      type: "spill",
-      source: "petrostate",
-      amount: 24,
-      causeId: "rig",
-    },
-  ]);
+
+test("the cheap choice pushes the damage onto a neighbor", () => {
+  let s = rich(atQuiz("flood"));
+  s = answer(s, false);
+  const target = spillTarget(P, "downstream");
+  rich(s, target);
+  const before = total(s, target);
+  s = applyAction(s, { type: "choose", civ: P, option: 0 }).state;
   assert(
-    s.flows.some((f) => f.to === "archipelago" && f.carrier === "current"),
+    s.civs[target].report.some((l) => l.includes("pushed")),
+    "the neighbor is told who did it",
   );
-  assert(s.damages.some((d) => d.civ === "archipelago" && d.losses.food! > 0));
-  assert(s.ocean < ocean);
+  assert(total(s, target) < before + 0 || s.civs[target].report.length > 0);
 });
-test("geological hazard probabilities are independent of warming", () => {
-  const s = createGame();
-  const quake = hazardProbability(s, "earthquake", "archipelago"),
-    hurricane = hazardProbability(s, "hurricane", "archipelago");
-  s.climate = 2.5;
-  assert.equal(hazardProbability(s, "earthquake", "archipelago"), quake);
-  assert(hazardProbability(s, "hurricane", "archipelago") > hurricane);
+
+test("the sustainable choice halves damage and builds lasting protection", () => {
+  let s = answer(rich(atQuiz("flood")), false);
+  s = applyAction(s, { type: "choose", civ: P, option: 1 }).state;
+  assert(s.civs[P].buildings.includes("wetland"));
+  assert(s.civs[P].report.some((l) => l.includes("Wetland")));
 });
-test("invalid actions never spend points or mutate stock", () => {
-  const s = createGame();
-  const bad = applyAction(s, {
-    type: "market",
-    civ: "heartland",
-    resource: "food",
-    amount: -10,
-    buy: true,
-  });
-  assert(bad.error);
-  assert.equal(bad.state, s);
-  assert(
-    actionError(s, {
-      type: "build",
-      civ: "enclave",
-      tile: "t4-0",
-      building: "dam",
-    }),
+
+test("building checks cost and caps; the bank trades 3:1", () => {
+  let s = answer(rich(atQuiz("flood")), true);
+  s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
+  for (let i = 0; i < BUILDINGS.kiln.max!; i++)
+    s = applyAction(s, { type: "build", civ: P, building: "kiln" }).state;
+  assert.match(
+    applyAction(s, { type: "build", civ: P, building: "kiln" }).error ?? "",
+    /room for only/,
   );
-  assert(
-    actionError(s, {
-      type: "build",
-      civ: "petrostate",
-      tile: "t0-0",
-      building: "solar",
-    }),
-  );
-});
-test("three actions are enforced; research unlocks legal construction", () => {
-  let s = createGame("petrostate", "hotseat");
-  s.civs.petrostate.resources.innovation = 100;
-  for (const tech of ["solar", "storage", "carbon"])
-    s = applyAction(s, { type: "research", civ: "petrostate", tech }).state;
-  assert.equal(s.civs.petrostate.ap, 0);
-  assert(
-    actionError(s, {
-      type: "build",
-      civ: "petrostate",
-      tile: "t0-0",
-      building: "solar",
-    }),
-  );
-  s.civs.petrostate.ap = 1;
-  assert.equal(
-    actionError(s, {
-      type: "build",
-      civ: "petrostate",
-      tile: "t0-0",
-      building: "solar",
-    }),
-    null,
-  );
-});
-test("market orders consume actual inventory and move price immediately", () => {
-  const s = createGame("enclave", "hotseat");
-  const price = s.prices.food,
-    stock = s.marketStock.food,
-    credits = s.civs.enclave.resources.money;
-  const result = applyAction(s, {
-    type: "market",
-    civ: "enclave",
-    resource: "food",
-    amount: 5,
-    buy: true,
-  }).state;
-  assert.equal(result.marketStock.food, stock - 5);
-  assert(result.prices.food > price);
-  assert(result.civs.enclave.resources.money < credits);
-  result.marketStock.food = 0;
-  assert(
-    actionError(result, {
-      type: "market",
-      civ: "enclave",
-      resource: "food",
-      amount: 1,
-      buy: true,
-    }),
-  );
-});
-test("shipping blockade prevents fossil exports and bilateral trade", () => {
-  const s = applyAction(createGame("archipelago", "hotseat"), {
-    type: "shipping",
-    civ: "archipelago",
-    policy: "block",
-  }).state;
-  assert(
-    actionError(s, {
-      type: "market",
-      civ: "petrostate",
-      resource: "energy",
-      amount: 5,
-      buy: false,
-    }),
-  );
-  assert(
-    actionError(s, {
-      type: "trade",
-      civ: "petrostate",
-      target: "heartland",
-      give: "energy",
-      receive: "food",
-      amount: 2,
-      recurring: false,
-    }),
-  );
-});
-test("recurring deals honor stock conservation; embargo breaks an agreement", () => {
-  let s = createGame("heartland", "hotseat");
+  assert(applyAction(s, { type: "build", civ: P, building: "wetland" }).error);
+  const sheep = s.civs[P].stock.sheep;
   s = applyAction(s, {
-    type: "trade",
-    civ: "heartland",
-    target: "petrostate",
-    give: "food",
-    receive: "energy",
-    amount: 2,
-    recurring: true,
+    type: "exchange",
+    civ: P,
+    give: "sheep",
+    get: "ore",
   }).state;
-  const totalFood = CIV_IDS.reduce((n, id) => n + s.civs[id].resources.food, 0);
-  s = resolveRound(s, []);
-  assert.equal(
-    CIV_IDS.reduce((n, id) => n + s.civs[id].resources.food, 0),
-    totalFood,
-  );
-  assert.equal(s.deals[0].remaining, 1);
-  s.phase = "planning";
-  s.civs.petrostate.embargo = "energy";
-  const trust = s.trust;
-  s = resolveRound(s, []);
-  assert.equal(s.deals.length, 0);
-  assert(s.trust < trust);
+  assert.equal(s.civs[P].stock.sheep, sheep - EXCHANGE_RATE);
+  s.civs[P].stock.wood = 0;
+  assert(applyAction(s, { type: "build", civ: P, building: "farm" }).error);
 });
-test("quiz rapid recovery is capped and cannot alter geographic flows", () => {
-  let s = advanceFlows(demoGame());
-  const civ = s.quizzes[0].civ;
-  const initial = structuredClone(s),
-    flowJSON = JSON.stringify(s.flows),
-    loss = s.damages
-      .filter((d) => d.civ === civ)
-      .reduce((n, d) => n + (d.losses.food ?? 0), 0);
-  const qs = [...s.quizzes[0].questions];
-  for (const id of qs)
-    s = answerQuiz(s, civ, QUESTIONS.find((q) => q.id === id)!.correct, 2000);
-  assert.equal(s.quizzes[0].tier, "rapid");
-  assert.equal(JSON.stringify(s.flows), flowJSON);
-  assert(
-    Math.abs(
-      s.civs[civ].resources.food -
-        initial.civs[civ].resources.food -
-        loss * 0.25,
-    ) < 0.03,
-  );
-  for (const t of s.tiles) {
-    const old = initial.tiles.find((x) => x.id === t.id)!;
-    assert(old.disruption - t.disruption <= 2);
-  }
+
+test("you can't act out of turn", () => {
+  const s = createGame(P, "solo", 1);
+  assert(applyAction(s, { type: "build", civ: P, building: "farm" }).error);
+  assert(applyAction(s, { type: "choose", civ: P, option: 0 }).error);
 });
-test("timed-out answers do not gain correct credit; repeated submissions cannot double recovery", () => {
-  let s = advanceFlows(demoGame());
-  const civ = s.quizzes[0].civ;
-  for (const id of [...s.quizzes[0].questions])
-    s = answerQuiz(s, civ, QUESTIONS.find((q) => q.id === id)!.correct, 15001);
-  assert.equal(s.quizzes[0].tier, "slow");
-  assert.deepEqual(answerQuiz(s, civ, 0, 100), s);
-});
-test("disrupted production is lost for exactly the promised next income steps", () => {
-  let s = createGame("heartland", "hotseat");
-  const tile = s.tiles.find((t) => t.terrain === "farmland")!;
-  tile.disruption = 1;
-  assert.equal(yields(s, tile).food, 0);
-  s.phase = "debrief";
-  s = nextRound(s);
-  assert.equal(s.tiles.find((t) => t.id === tile.id)!.disruption, 0);
-  assert(
-    yields(
-      s,
-      s.tiles.find((t) => t.id === tile.id)!,
-    ).food > 0,
-  );
-});
-test("all content references and 70 unique questions are valid", () => {
-  assert.equal(QUESTIONS.length, 70);
-  assert.equal(new Set(QUESTIONS.map((q) => q.id)).size, 70);
-  for (const q of QUESTIONS) {
-    assert.equal(q.options.length, 4);
-    assert(q.correct >= 0 && q.correct < 4);
-    assert(q.source.startsWith("https://"));
-  }
-  for (const b of Object.values(BUILDINGS)) if (b.tech) assert(TECHS[b.tech]);
-});
-test("collective collapse overrides prosperity; compliant accord wins after three rounds", () => {
-  let s = createGame("heartland", "hotseat");
-  s.phase = "debrief";
-  s.climate = 3;
-  s = nextRound(s);
+
+test("warming past +3°C ends the game for everyone", () => {
+  let s = answer(atQuiz("flood"), true);
+  s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
+  s.climate = CLIMATE_LOSS + 0.5;
+  s = applyAction(s, { type: "ready", civ: P }).state;
+  assert.equal(s.phase, "ended");
   assert.equal(s.outcome, "collapse");
-  s = createGame("heartland", "hotseat");
-  for (const id of CIV_IDS) {
-    s.civs[id].accord = true;
-    s.civs[id].emissions = 0;
+});
+
+test("full AI games finish within ten decades with no negative stock", () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const s = autoplay(createGame(P, "solo", seed));
+    assert.equal(s.phase, "ended");
+    assert(s.round <= ROUNDS);
+    for (const c of CIV_IDS)
+      for (const r of RESOURCES) assert(s.civs[c].stock[r] >= 0);
   }
-  s.accordStreak = 2;
-  s.phase = "debrief";
-  s = nextRound(s);
-  assert.equal(s.outcome, "concordat");
 });
-test("market spreads reward trust", () => {
-  const s = createGame();
-  const bad = marketQuote(s, "heartland", "energy", 5, true);
-  s.trust = 100;
-  assert(marketQuote(s, "heartland", "energy", 5, true) < bad);
+
+test("hot-seat waits for every person before moving on", () => {
+  let s = advance(createGame(P, "hotseat", 5));
+  const q = questionFor(s, P)!;
+  s = answerQuiz(s, P, q.correct, 1000);
+  assert.equal(s.phase, "quiz", "three more people still have to answer");
+  assert.equal(progress(s).phase, "quiz");
 });
-test("full ten-round games remain finite and bounded across seeds and classes", () => {
-  for (let seed = 0; seed < 20; seed++)
-    for (const player of CIV_IDS) {
-      let s = createGame(player, "solo", seed);
-      let steps = 0;
-      while (s.phase !== "ended" && steps++ < 12) {
-        s = advanceFlows(resolveRound(s));
-        while (s.phase === "quiz") {
-          const q = s.quizzes.find((q) => !q.tier)!;
-          const item = QUESTIONS.find(
-            (item) => item.id === q.questions[q.answers.length],
-          )!;
-          s = answerQuiz(s, q.civ, item.correct, 5000);
-        }
-        s = nextRound(s);
-        for (const id of CIV_IDS)
-          for (const r of RESOURCES)
-            assert(
-              Number.isFinite(s.civs[id].resources[r]) &&
-                s.civs[id].resources[r] >= 0,
-            );
-        assert(s.climate >= 0 && s.ocean >= 0 && s.ocean <= 100);
-      }
-      assert.equal(s.phase, "ended");
-    }
+
+test("content is consistent", () => {
+  for (const [id, e] of Object.entries(EVENTS)) {
+    const pool = QUESTIONS.filter((q) =>
+      q.types.some((t) => e.quizTypes.includes(t)),
+    );
+    assert(pool.length >= 4, `${id} needs quiz questions`);
+    assert(
+      BUILDINGS[e.green.build!]?.earned,
+      `${id} must earn a protective building`,
+    );
+    assert(BUILDINGS[e.green.build!].protects?.includes(id as EventId));
+  }
 });

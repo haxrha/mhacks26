@@ -1,276 +1,206 @@
 {
-  "farm": {
-    "name": "Regenerative farm",
-    "icon": "♧",
-    "cost": {
-      "money": 8,
-      "materials": 4
-    },
-    "yields": {
-      "food": 3,
-      "water": -1
-    },
-    "terrains": [
-      "farmland",
-      "delta"
-    ],
-    "description": "More food. Drip irrigation reduces its water demand."
-  },
-  "solar": {
-    "name": "Solar array",
-    "icon": "☀",
-    "cost": {
-      "money": 12,
-      "materials": 6
-    },
-    "yields": {
-      "energy": 4
-    },
-    "terrains": [
-      "desert",
-      "farmland",
-      "urban"
-    ],
-    "tech": "solar",
-    "description": "Clean power; desert arrays generate an extra 2 energy."
-  },
-  "wind": {
-    "name": "Wind cooperative",
-    "icon": "✣",
-    "cost": {
-      "money": 10,
-      "materials": 6
-    },
-    "yields": {
-      "energy": 3
-    },
-    "terrains": [
-      "mountain",
-      "sea",
-      "delta"
-    ],
-    "description": "Distributed clean power with no fossil reserves required."
-  },
-  "dam": {
-    "name": "Hydro dam",
-    "icon": "▰",
-    "cost": {
-      "money": 10,
-      "materials": 8
-    },
-    "yields": {
-      "energy": 5,
-      "water": 2
-    },
-    "terrains": [
-      "mountain"
-    ],
-    "civ": "heartland",
-    "description": "Power and water. The headwaters sit on a fault: seismic failure releases a downstream flood."
-  },
-  "levee": {
-    "name": "Levee",
-    "icon": "▱",
-    "cost": {
-      "money": 8,
-      "materials": 5
-    },
-    "yields": {},
-    "terrains": [
-      "delta",
-      "farmland",
-      "wetland"
-    ],
-    "description": "Reduces local flood impact, redirects more water downstream."
-  },
-  "seawall": {
-    "name": "Sea barrier",
-    "icon": "⌇",
-    "cost": {
-      "money": 10,
-      "materials": 7
-    },
-    "yields": {},
-    "terrains": [
-      "delta",
-      "mangrove",
-      "urban"
-    ],
-    "description": "Protects your coast; displaces surge onto neighboring shores."
-  },
-  "vertical": {
-    "name": "Vertical farm",
-    "icon": "▤",
-    "cost": {
-      "money": 14,
-      "materials": 6
-    },
-    "yields": {
-      "food": 5,
-      "energy": -2
-    },
-    "terrains": [
-      "urban"
-    ],
-    "tech": "urban",
-    "description": "Food without new farmland; depends on a reliable grid."
-  },
-  "desal": {
-    "name": "Desalination plant",
-    "icon": "◈",
-    "cost": {
-      "money": 12,
-      "materials": 6
-    },
-    "yields": {
-      "water": 5,
-      "energy": -2
-    },
-    "terrains": [
-      "urban",
-      "delta",
-      "mangrove"
-    ],
-    "tech": "water",
-    "description": "Independent freshwater; energy costs and brine reduce ocean health slightly."
-  },
-  "geothermal": {
-    "name": "Geothermal station",
-    "icon": "△",
-    "cost": {
-      "money": 8,
-      "materials": 5
-    },
-    "yields": {
-      "energy": 4
-    },
-    "terrains": [
-      "volcanic"
-    ],
-    "description": "Reliable low-carbon baseload from the volcanic ridge."
-  },
-  "rig": {
-    "name": "Offshore rig",
-    "icon": "†",
-    "cost": {
-      "money": 8,
-      "materials": 6
-    },
-    "yields": {
-      "energy": 6,
-      "money": 3
-    },
-    "terrains": [
-      "sea",
-      "oil"
-    ],
-    "civ": "petrostate",
-    "emissions": 0.07,
-    "description": "Lucrative fossil energy. Spills follow currents toward island fisheries."
-  },
-  "reserve": {
-    "name": "Community reserves",
-    "icon": "▣",
-    "cost": {
-      "money": 8,
-      "materials": 4
-    },
-    "yields": {
-      "food": 1
-    },
-    "terrains": [
-      "urban",
-      "farmland",
-      "delta"
-    ],
-    "description": "Emergency stores cut drought and supply-shock losses by 35%."
-  },
-  "storage": {
-    "name": "Battery microgrid",
-    "icon": "ϟ",
-    "cost": {
-      "money": 12,
-      "materials": 5
-    },
-    "yields": {
-      "energy": 1
-    },
-    "terrains": [
-      "urban",
-      "desert",
-      "volcanic"
-    ],
-    "tech": "storage",
-    "description": "Keeps buildings online; reduces heat and grid failure damage."
-  },
-  "shelter": {
-    "name": "Resilience hub",
+  "house": {
+    "name": "House",
     "icon": "⌂",
     "cost": {
-      "money": 10,
-      "materials": 5
+      "wood": 1,
+      "brick": 1,
+      "wheat": 1,
+      "sheep": 1
     },
-    "yields": {
-      "innovation": 1
-    },
-    "terrains": [
-      "urban",
-      "mountain",
-      "volcanic",
-      "delta"
-    ],
-    "description": "Emergency shelter lowers wellbeing losses and coastal disruption."
+    "description": "More families call your town home. Worth 2 points.",
+    "points": 2,
+    "max": 6
   },
-  "lab": {
-    "name": "Research institute",
-    "icon": "✧",
+  "farm": {
+    "name": "Farm",
+    "icon": "♧",
     "cost": {
-      "money": 14,
-      "materials": 6
+      "wood": 1,
+      "brick": 1
     },
+    "description": "+1 wheat every cycle.",
     "yields": {
-      "innovation": 3,
-      "energy": -1
+      "wheat": 1
     },
-    "terrains": [
-      "urban",
-      "volcanic"
-    ],
-    "description": "Accelerates the technology transition."
+    "max": 3
   },
-  "port": {
-    "name": "Trading port",
-    "icon": "⚑",
+  "pasture": {
+    "name": "Pasture",
+    "icon": "ω",
     "cost": {
-      "money": 10,
-      "materials": 5
+      "wood": 1,
+      "wheat": 1
     },
+    "description": "+1 sheep every cycle.",
     "yields": {
-      "money": 5
+      "sheep": 1
     },
-    "terrains": [
-      "delta",
-      "mangrove",
-      "sea"
-    ],
-    "description": "Trade income; exposed to storm surge and supply-chain disruption."
+    "max": 3
   },
-  "restoration": {
-    "name": "Nature sanctuary",
-    "icon": "❧",
+  "lumber": {
+    "name": "Lumber camp",
+    "icon": "⚘",
     "cost": {
-      "money": 8,
-      "materials": 3
+      "ore": 1,
+      "wheat": 1
     },
+    "description": "+2 wood every cycle, but clear-cutting adds +0.03°C.",
     "yields": {
-      "water": 1,
-      "innovation": 1
+      "wood": 2
     },
-    "terrains": [
-      "forest",
-      "wetland",
-      "mangrove"
+    "climate": 0.03,
+    "dirty": true,
+    "max": 3
+  },
+  "grove": {
+    "name": "Tree grove",
+    "icon": "❦",
+    "cost": {
+      "wheat": 1,
+      "sheep": 1
+    },
+    "description": "+1 wood every cycle and pulls carbon back: −0.03°C.",
+    "yields": {
+      "wood": 1
+    },
+    "climate": -0.03,
+    "green": true,
+    "max": 3
+  },
+  "kiln": {
+    "name": "Brick kiln",
+    "icon": "▥",
+    "cost": {
+      "wood": 2
+    },
+    "description": "+2 brick every cycle, but its smoke adds +0.04°C.",
+    "yields": {
+      "brick": 2
+    },
+    "climate": 0.04,
+    "dirty": true,
+    "max": 3
+  },
+  "mine": {
+    "name": "Ore mine",
+    "icon": "⛏",
+    "cost": {
+      "wood": 1,
+      "wheat": 1
+    },
+    "description": "+2 ore every cycle, but tailings add +0.03°C.",
+    "yields": {
+      "ore": 2
+    },
+    "climate": 0.03,
+    "dirty": true,
+    "max": 3
+  },
+  "windmill": {
+    "name": "Windmill",
+    "icon": "✣",
+    "cost": {
+      "wood": 1,
+      "brick": 1,
+      "ore": 1
+    },
+    "description": "+1 wheat every cycle, and clean power halves the pollution of your kilns, mines and lumber camps.",
+    "yields": {
+      "wheat": 1
+    },
+    "green": true,
+    "max": 3
+  },
+  "wetland": {
+    "name": "Wetland",
+    "icon": "≋",
+    "cost": {},
+    "description": "Soaks up floods: future flood losses halved.",
+    "protects": [
+      "flood"
     ],
-    "description": "Restores ecosystems, removes carbon, improves ocean health."
+    "green": true,
+    "earned": true
+  },
+  "cistern": {
+    "name": "Cistern",
+    "icon": "◍",
+    "cost": {},
+    "description": "Stores rain: future drought losses halved.",
+    "protects": [
+      "drought"
+    ],
+    "green": true,
+    "earned": true
+  },
+  "firewatch": {
+    "name": "Fire watch",
+    "icon": "♜",
+    "cost": {},
+    "description": "Thinned forests and a lookout: future wildfire losses halved.",
+    "protects": [
+      "wildfire"
+    ],
+    "green": true,
+    "earned": true
+  },
+  "terraces": {
+    "name": "Terraces",
+    "icon": "☰",
+    "cost": {},
+    "description": "Replanted slopes hold the soil: future landslide losses halved, −0.02°C.",
+    "protects": [
+      "landslide"
+    ],
+    "climate": -0.02,
+    "green": true,
+    "earned": true
+  },
+  "filters": {
+    "name": "Air filters",
+    "icon": "◎",
+    "cost": {},
+    "description": "Clean air at home: future smog losses halved.",
+    "protects": [
+      "smog"
+    ],
+    "green": true,
+    "earned": true
+  },
+  "settling": {
+    "name": "Settling ponds",
+    "icon": "◒",
+    "cost": {},
+    "description": "Catch polluted runoff: future spill losses halved.",
+    "protects": [
+      "spill"
+    ],
+    "green": true,
+    "earned": true
+  },
+  "mangroves": {
+    "name": "Mangroves",
+    "icon": "⸙",
+    "cost": {},
+    "description": "A living seawall: future storm-surge losses halved, −0.02°C.",
+    "protects": [
+      "sea_rise"
+    ],
+    "climate": -0.02,
+    "green": true,
+    "earned": true
+  },
+  "shade": {
+    "name": "Shade trees",
+    "icon": "♣",
+    "cost": {},
+    "description": "Cooler streets: future heatwave losses halved, −0.01°C.",
+    "protects": [
+      "heatwave"
+    ],
+    "climate": -0.01,
+    "green": true,
+    "earned": true
   }
 }
