@@ -54,7 +54,10 @@ import {
   Resource,
   Tile,
 } from "@/game/types";
+import LeaderSelect from "./LeaderSelect";
 import WorldMap from "./WorldMap";
+import Narrator from "./Narrator";
+import { decadeLine, introLines } from "@/game/leaders";
 import { useWorld } from "@/game/useWorld";
 
 type Tab =
@@ -148,6 +151,7 @@ export default function Game() {
     [toast, setToast] = useState(""),
     [help, setHelp] = useState(false),
     [flowIndex, setFlowIndex] = useState(0),
+    [briefed, setBriefed] = useState<string>(),
     [importError, setImportError] = useState("");
   const world = useWorld(setState);
   const [roomCode, setRoomCode] = useState("");
@@ -217,11 +221,9 @@ export default function Game() {
     },
     [online, world.revision, world.roomId],
   );
-  function start(demo = false) {
+  function start(demo = false, civ: CivId = choice) {
     world.disconnect();
-    const s = demo
-      ? demoGame()
-      : createGame(choice, mode, Number(seed) || 260926);
+    const s = demo ? demoGame() : createGame(civ, mode, Number(seed) || 260926);
     setState(s);
     setActive(s.player);
     setSelected(undefined);
@@ -254,79 +256,15 @@ export default function Game() {
   }
   if (!state)
     return (
-      <main className="landing">
-        <div className="landing-grain" />
-        <header className="landing-header">
-          <a className="brand" href="/" aria-label="Earthshare home">
-            <Leaf size={28} />
-            <span>
-              earthshare<span className="brand-dot">.</span>
-            </span>
-          </a>
-          <span className="eyebrow">A WORLD WORTH SHARING</span>
-        </header>
-        <div className="landing-main">
-          <div className="landing-copy">
-            <div className="pill">
-              <i className="live-dot" /> THE COMMONS ARE CALLING
-            </div>
-            <h1>
-              Your civilization.
-              <br />
-              <em>Our consequences.</em>
-            </h1>
-            <p>
-              Build a thriving economy on a living planet. Trade with your
-              neighbors, navigate disasters, and discover that your greatest
-              resource is each other.
-            </p>
-            <div className="intro-points">
-              <span>
-                <Globe2 size={17} /> One interconnected world
-              </span>
-              <span>
-                <Handshake size={17} /> Four competing futures
-              </span>
-              <span>
-                <BookOpen size={17} /> Learn by changing it
-              </span>
-            </div>
-            <button className="text-button" onClick={() => setHelp(true)}>
-              How the world works <ArrowUpRight size={17} />
-            </button>
-            <div className="landing-note">
-              A ten-decade strategy experience. About 25–40 minutes.
-              <br />
-              No account required. Practice saves stay here; live worlds are
-              saved in SpacetimeDB.
-            </div>
-          </div>
-          <section className="setup-card">
-            <div className="section-heading">
-              <span className="eyebrow">01 / CHOOSE YOUR FUTURE</span>
-              <Compass size={20} />
-            </div>
-            <h2>Where will you begin?</h2>
-            <div className="civ-choices">
-              {CIV_IDS.map((id) => (
-                <button
-                  key={id}
-                  className={`civ-choice ${choice === id ? "chosen" : ""}`}
-                  onClick={() => setChoice(id)}
-                  style={
-                    { "--civ-color": CIVS[id].color } as React.CSSProperties
-                  }
-                >
-                  <span className="crest">{CIVS[id].crest}</span>
-                  <span>
-                    <b>{CIVS[id].name}</b>
-                    <small>{CIVS[id].strength}</small>
-                  </span>
-                  {choice === id && <ShieldCheck size={18} />}
-                </button>
-              ))}
-            </div>
-            <p className="choice-description">{CIVS[choice].description}</p>
+      <>
+        <LeaderSelect
+          choice={choice}
+          setChoice={setChoice}
+          mode={mode}
+          onConfirm={(civ) => start(false, civ)}
+        >
+          <div className="ls-option-group">
+            <b>GAME</b>
             <div className="segmented">
               <button
                 className={mode === "solo" ? "active" : ""}
@@ -348,27 +286,56 @@ export default function Game() {
                 value={seed}
                 onChange={(e) => setSeed(e.target.value)}
               />
-              <span>Same seed. Same possibilities.</span>
             </label>
-            <button className="primary start-button" onClick={() => start()}>
-              Begin your civilization <ArrowRight size={18} />
-            </button>
-            <div className="online-setup">
-              <b>PLAY A SHARED WORLD</b>
-              <p>
-                Live rooms use SpacetimeDB. Unclaimed civilizations become AI
-                neighbors when everyone locks their plan.
+            <div className="setup-footer">
+              <button onClick={() => start(true)}>
+                <Play size={14} /> Disaster-chain demo
+              </button>
+              {loaded && resume && (
+                <button
+                  onClick={() => {
+                    setState(resume);
+                    setActive(resume.player);
+                  }}
+                >
+                  Resume decade {resume.round} <ChevronRight size={14} />
+                </button>
+              )}
+              <button onClick={() => setHelp(true)}>
+                How to play <ArrowUpRight size={14} />
+              </button>
+            </div>
+            <label className="import-label">
+              Import a saved world{" "}
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => importSave(e.target.files?.[0])}
+              />
+            </label>
+            {importError && (
+              <p role="alert" className="error">
+                {importError}
               </p>
-              <label>
-                Room code{" "}
-                <input
-                  aria-label="Room code"
-                  maxLength={6}
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="ABC123"
-                />
-              </label>
+            )}
+          </div>
+          <div className="ls-option-group online-setup">
+            <b>PLAY A SHARED WORLD</b>
+            <p>
+              Live rooms use SpacetimeDB. You claim the leader you picked;
+              unclaimed civilizations become AI neighbors.
+            </p>
+            <label>
+              Room code{" "}
+              <input
+                aria-label="Room code"
+                maxLength={6}
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="ABC123"
+              />
+            </label>
+            <div className="setup-footer">
               <button
                 onClick={() => {
                   const id = Array.from(
@@ -389,49 +356,17 @@ export default function Game() {
               <button onClick={() => void world.connect(roomCode, choice)}>
                 Join / reconnect
               </button>
-              <span role="status">{world.status}</span>
-              {world.error && (
-                <p role="alert" className="error">
-                  {world.error}
-                </p>
-              )}
             </div>
-            <div className="setup-footer">
-              <button onClick={() => start(true)}>
-                <Play size={14} /> Disaster-chain demo
-              </button>
-              {loaded && resume && (
-                <button
-                  onClick={() => {
-                    setState(resume);
-                    setActive(resume.player);
-                  }}
-                >
-                  Resume decade {resume.round} <ChevronRight size={14} />
-                </button>
-              )}
-            </div>
-            <label className="import-label">
-              Import a saved world{" "}
-              <input
-                type="file"
-                accept=".json"
-                onChange={(e) => importSave(e.target.files?.[0])}
-              />
-            </label>
-            {importError && (
+            <span role="status">{world.status}</span>
+            {world.error && (
               <p role="alert" className="error">
-                {importError}
+                {world.error}
               </p>
             )}
-          </section>
-        </div>
-        <footer className="landing-footer">
-          <span>PROSPERITY HAS A RIPPLE EFFECT.</span>
-          <span>Build wisely. Share generously. Leave a better world.</span>
-        </footer>
+          </div>
+        </LeaderSelect>
         {help && <Help onClose={() => setHelp(false)} />}
-      </main>
+      </>
     );
   const civId = online
       ? world.civilization!
@@ -453,6 +388,8 @@ export default function Game() {
     debrief: "Decade debrief",
     ended: "Your world, remembered",
   };
+  // Your civilization's advisor narrates the game to you.
+  const narrator: CivId = (online && world.civilization) || state.player;
   return (
     <main
       className={`game-app ${tab === "world" ? "world-view" : "window-view"}`}
@@ -683,43 +620,53 @@ export default function Game() {
             />
           ) : (
             <>
-              {state.phase === "flows" && (
-                <div className="flow-banner">
-                  <div className="pulse-icon">
-                    <Radio size={22} />
-                  </div>
-                  <div>
-                    <span className="eyebrow">
-                      THE RIPPLE EFFECT ·{" "}
-                      {state.flows.length
-                        ? `${Math.min(flowIndex + 1, state.flows.length)} / ${state.flows.length} FLOWS`
-                        : "NO CROSS-BORDER FLOWS"}
-                    </span>
-                    <h3>
-                      {state.flows[flowIndex]?.caption ??
-                        "Local impacts are recorded. The world exchange has repriced."}
-                    </h3>
-                    <p>
-                      Follow the arrows. Every consequence carries the decision
-                      or event that caused it.
-                    </p>
-                  </div>
-                  <button
-                    className="primary"
-                    disabled={online && !world.isHost}
-                    onClick={() =>
-                      online
-                        ? void world.advance()
-                        : setState(advanceFlows(state))
+              {state.phase === "planning" &&
+                briefed !== `${state.seed}:${state.round}` && (
+                  <Narrator
+                    civ={narrator}
+                    className="narrator-docked"
+                    eyebrow={`DECADE ${String(state.round).padStart(2, "0")} / ${state.round === 1 ? "YOUR ADVISOR" : "BRIEFING"}`}
+                    lines={
+                      state.round === 1
+                        ? introLines(narrator)
+                        : [decadeLine(state.round, state.climate, state.ocean)]
                     }
-                  >
-                    Emergency response <ArrowRight size={16} />
-                  </button>
-                </div>
+                    onDone={() => setBriefed(`${state.seed}:${state.round}`)}
+                  />
+                )}
+              {state.phase === "flows" && (
+                <Narrator
+                  civ={narrator}
+                  className="narrator-docked"
+                  eyebrow={`THE RIPPLE EFFECT · ${
+                    state.flows.length
+                      ? `${Math.min(flowIndex + 1, state.flows.length)} / ${state.flows.length} FLOWS`
+                      : "NO CROSS-BORDER FLOWS"
+                  }`}
+                  lines={[
+                    state.flows[flowIndex]
+                      ? `Look! ${state.flows[flowIndex].caption}`
+                      : "The decade passed without anything crossing a border. Local impacts are recorded, and the world exchange has repriced.",
+                  ]}
+                  actions={
+                    <button
+                      className="primary"
+                      disabled={online && !world.isHost}
+                      onClick={() =>
+                        online
+                          ? void world.advance()
+                          : setState(advanceFlows(state))
+                      }
+                    >
+                      Emergency response <ArrowRight size={16} />
+                    </button>
+                  }
+                />
               )}
               {state.phase === "debrief" && (
                 <Debrief
                   state={state}
+                  civ={narrator}
                   onNext={() =>
                     online ? void world.advance() : setState(nextRound(state))
                   }
@@ -1694,49 +1641,54 @@ function Timeline({ state }: { state: GameState }) {
     </section>
   );
 }
-function Debrief({ state, onNext }: { state: GameState; onNext: () => void }) {
+function Debrief({
+  state,
+  civ,
+  onNext,
+}: {
+  state: GameState;
+  civ: CivId;
+  onNext: () => void;
+}) {
   const biggest = [...state.damages].sort((a, b) => b.severity - a.severity)[0],
     d = biggest ? DISASTERS[biggest.type] : null;
   return (
-    <section className="debrief-card">
-      <div>
-        <span className="eyebrow">
-          DECADE {state.round} / LESSONS FROM THE COMMONS
+    <Narrator
+      civ={civ}
+      className="narrator-docked"
+      eyebrow={`DECADE ${state.round} / LESSONS FROM THE COMMONS`}
+      lines={[
+        d
+          ? `${d.name}: the consequence is connected. ${d.lesson}`
+          : "A quiet decade. Prevention rarely makes headlines, so use this breathing room to invest in clean power, resilient systems and trusted relationships.",
+      ]}
+      actions={
+        <button className="primary" onClick={onNext}>
+          {state.round >= 10 || state.climate >= 3
+            ? "See your legacy"
+            : "Begin next decade"}{" "}
+          <ArrowRight size={17} />
+        </button>
+      }
+    >
+      <div className="debrief-stats">
+        <span>
+          <b>{state.damages.length}</b> regional impacts
         </span>
-        <h3>
-          {d
-            ? d.name + ": the consequence is connected"
-            : "The quiet decade is your opportunity"}
-        </h3>
-        <p>
-          {d?.lesson ??
-            "Prevention rarely makes headlines. Use this breathing room to invest in clean power, resilient systems and trusted relationships."}
-        </p>
-        <div className="debrief-stats">
-          <span>
-            <b>{state.damages.length}</b> regional impacts
-          </span>
-          <span>
-            <b>{state.flows.length}</b> cross-border flows
-          </span>
-          <span>
-            <b>{state.quizzes.filter((q) => q.tier === "rapid").length}</b>{" "}
-            rapid responses
-          </span>
-        </div>
+        <span>
+          <b>{state.flows.length}</b> cross-border flows
+        </span>
+        <span>
+          <b>{state.quizzes.filter((q) => q.tier === "rapid").length}</b> rapid
+          responses
+        </span>
         {d && (
           <a href={d.source} target="_blank" rel="noreferrer">
             Read the real-world science ↗
           </a>
         )}
       </div>
-      <button className="primary" onClick={onNext}>
-        {state.round >= 10 || state.climate >= 3
-          ? "See your legacy"
-          : "Begin next decade"}{" "}
-        <ArrowRight size={17} />
-      </button>
-    </section>
+    </Narrator>
   );
 }
 function Endgame({
