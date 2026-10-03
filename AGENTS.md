@@ -4,7 +4,9 @@
 
 A 4-player, turn-based strategy game for a sustainability hackathon. Each player runs a civilization with a unique starting class. The civs share one map and one river, so one player's choices (a dam release, a clear-cut, factory runoff) land on their neighbors. Players learn sustainability mostly by **managing** these trade-offs. Short timed quizzes during climate events are a secondary mechanic.
 
-This file tells a coding agent what to build and how. The visual reference is the **EARTHSHARE — 8-bit Reference** design canvas, which has four artboards: World Map, Civilizations, Game Screen (HUD) and Climate Event Quiz. The map image is `assets/world-map-v2.png`. Match these references. Don't redesign them.
+This file tells a coding agent what to build and how. The visual references are in `assets/reference/`: `civilizations.png`, `game-screen-hud.png`, `event-1-advisor-quiz.png` and `event-2-neighbor-response.png`. Match these. Don't redesign them.
+
+> **World map:** the original World Map artboard and `world-map-v2.png` were rejected and are not used. The map still needs a new design. Keep the region layout in §5.1 (Highland north, Verdant west of the river, Forge east, Tidehaven south) and the terrain palette in §4.
 
 ---
 
@@ -49,7 +51,7 @@ earthshare/
       MapScene.ts  HudScene.ts  EventScene.ts  CivSelectScene.ts
     ui/                     # DOM panels: top bar, side panels, action bar, modal
     assets/
-      world-map-v2.png  emblem-*.png  tiles.png (sprite sheet)
+      reference/  emblem-*.png  tiles.png (sprite sheet)
   tests/
 ```
 
@@ -128,7 +130,7 @@ The in-game screen follows RollerCoaster Tycoon: **the world fills the screen**,
 
 ## 5. The world
 
-### 5.1 Regions (see World Map artboard)
+### 5.1 Regions (map design TBD; the in-game map in `game-screen-hud.png` shows the layout)
 
 | Region | Owner | Terrain | Landmarks |
 |---|---|---|---|
