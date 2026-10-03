@@ -9,6 +9,10 @@ A 4-player, turn-based, 8-bit strategy game about sustainability, built for MHac
 
 ## Design reference
 
+### World map
+Each region is split into smaller areas, and each area is marked by a castle. Capitals have gold nameplates.
+![World map](assets/reference/world-map.png)
+
 ### Choose your leader
 ![Civilizations / leader select](assets/reference/civilizations.png)
 
@@ -21,4 +25,4 @@ A 4-player, turn-based, 8-bit strategy game about sustainability, built for MHac
 ### Climate event 2: neighbor response
 ![Event 2: neighbor response](assets/reference/event-2-neighbor-response.png)
 
-> The standalone world-map artboard was dropped; the map is being redesigned.
+> The HUD and event mockups still show the old map. Their UI is the reference; the terrain is replaced by the world map above.
