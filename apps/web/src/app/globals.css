@@ -3487,3 +3487,75 @@ svg image {
     bottom: 220px;
   }
 }
+
+/* Decade debrief: a parchment window docked above the HUD, like the ripple-effect banner,
+   so it never sits under the decade header or covers the top of the map. */
+.debrief-card {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 128px;
+  z-index: 4;
+  margin: 0;
+  padding: 14px 18px;
+  gap: 20px;
+  background: #f2e2b8;
+  color: #2a1a0e;
+  border: 5px ridge #a77b43;
+  border-radius: 0;
+  box-shadow: 5px 5px #2e1b12;
+}
+.debrief-card .eyebrow {
+  color: #7a3f12;
+  font-size: 9px;
+}
+.debrief-card h3 {
+  font-family: "Press Start 2P", monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 8px 0 4px;
+  color: #2a1a0e;
+}
+.debrief-card p {
+  font-family: "VT323", monospace;
+  font-size: 22px;
+  line-height: 1.15;
+  color: #4a2410;
+  max-width: 900px;
+  margin: 4px 0;
+}
+.debrief-stats {
+  font-family: "VT323", monospace;
+  font-size: 20px;
+  color: #4a2410;
+  gap: 24px;
+  margin: 8px 0 4px;
+}
+.debrief-stats b {
+  font-family: "Press Start 2P", monospace;
+  font-size: 12px;
+  color: #2d5e22;
+}
+.debrief-card a {
+  font-family: "VT323", monospace;
+  font-size: 19px;
+  color: #7a3f12;
+}
+.debrief-card .primary {
+  flex-shrink: 0;
+  background: #f5c542;
+  color: #2a1a0e;
+}
+@media (max-width: 900px) {
+  .debrief-card {
+    bottom: 220px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .debrief-card h3 {
+    font-size: 11px;
+  }
+  .debrief-card p {
+    font-size: 19px;
+  }
+}
