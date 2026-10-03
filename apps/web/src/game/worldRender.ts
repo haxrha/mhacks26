@@ -37,10 +37,8 @@ const C = {
   foam: rgb("#9fd6e4"),
   wave: rgb("#3b6ea8"),
   murk: rgb("#3c5446"),
-  ash: rgb("#3a3632"),
-  ashL: rgb("#4e4842"),
-  ember: rgb("#e8642c"),
-  emberY: rgb("#f5c542"),
+  char: rgb("#2a221c"),
+  charD: rgb("#16110e"),
   soil: rgb("#8a6238"),
   dry: rgb("#b8982e"),
   sludge: rgb("#6e6230"),
@@ -191,6 +189,80 @@ export function areaStatus(state?: GameState): AreaStatus[] {
     };
   });
 }
+/** Separate flame lobes, three poses, so the fire shifts instead of sitting in a bar. */
+const FLAMES = [
+  [
+    "..R...........",
+    ".ROR...R....R.",
+    "OYYO..ROR..ROR",
+    ".OOO.OYYO.OYYO",
+    "..O...OO...OO.",
+    "......O.....O.",
+  ],
+  [
+    ".......R......",
+    "..R...ROR...R.",
+    ".ROR.OYYO..ROR",
+    "OYYO..OOO.OYYO",
+    ".OO....O...OO.",
+    "..O.........O.",
+  ],
+  [
+    "...........R..",
+    "..R....R...ROR",
+    ".ROR..ROR.OYYO",
+    "OYYO.OYYO..OO.",
+    ".OO...OO....O.",
+    "..O....O......",
+  ],
+];
+const FLAME: Record<string, RGB> = {
+  R: rgb("#d02818"),
+  O: rgb("#f06020"),
+  Y: rgb("#ffe14a"),
+};
+
+const FIRE_RADIUS = 38;
+/** 1 in the middle of a town's fire, fading to 0 at a round, slightly uneven rim. */
+function fireSpread(x: number, y: number, h: number, status: AreaStatus[]) {
+  let burn = 0;
+  for (let a = 0; a < status.length; a++) {
+    const fx = status[a].effects;
+    if (!fx.has("wildfire") && !fx.has("volcano")) continue;
+    const [cx, cy] = TOWNS[a].keepTile;
+    const dist = Math.hypot(x - cx, y - cy);
+    const radius = FIRE_RADIUS + ((h + a * 13) % 7) - 3;
+    const rim = 8;
+    if (dist >= radius + rim) continue;
+    const t = dist <= radius ? 1 : 1 - (dist - radius) / rim;
+    if (t > burn) burn = t;
+  }
+  return burn;
+}
+/** Flame colour at this pixel, or undefined where the charred ground should show. */
+function flameColor(
+  x: number,
+  y: number,
+  frame: number,
+  hash: Uint8Array,
+): RGB | undefined {
+  const bob = (frame >> 2) & 1;
+  const rows = FLAMES[(frame >> 1) % FLAMES.length];
+  for (let dy = 0; dy < rows.length; dy++) {
+    const ay = y - dy + bob;
+    if (ay < 0 || ay >= MAP_H) continue;
+    const row = rows[dy];
+    for (let dx = 0; dx < row.length; dx++) {
+      const ch = row[dx];
+      if (ch === ".") continue;
+      const ax = x - dx;
+      if (ax < 0 || ax >= MAP_W) continue;
+      if (hash[ay * MAP_W + ax] % 251 === 0) return FLAME[ch];
+    }
+  }
+  return;
+}
+
 /** Snow at lower altitude melts first as the planet warms (climate is °C above baseline). */
 const meltThreshold = (y: number, h: number) =>
   3 - (Math.min(y, 50) / 50) * 2.6 + (h / 255 - 0.5) * 0.4;
@@ -230,61 +302,67 @@ function terrainPixel(
 
   // Hazards active in this area (sea tiles take the hazards of the nearest area).
   const owner = a !== NONE ? a : L.near[i];
-  if (owner === NONE) return c;
-  const fx = status[owner].effects;
-  if (!fx.size) return c;
+  const fx = owner === NONE ? undefined : status[owner].effects;
   const land = a !== NONE && !isSea(k);
-  for (const e of fx) {
-    if (
-      (e === "flood" || e === "dam_failure") &&
-      land &&
-      lowland(k) &&
-      L.distWater[i] <= 3
-    ) {
-      c =
-        ((x + y + (frame >> 1)) & 3) === 0
-          ? C.foam
-          : h < 90
-            ? C.shallow
-            : C.flood;
-    } else if (
-      (e === "hurricane" || e === "tsunami" || e === "sea_rise") &&
-      land &&
-      lowland(k) &&
-      L.distSea[i] <= 4
-    ) {
-      c = ((x - y + (frame >> 1)) & 3) === 0 ? C.foam : C.flood;
-    } else if (
-      (e === "wildfire" || e === "volcano") &&
-      land &&
-      (k === KIND.forest || k === KIND.grass || k === KIND.pasture)
-    ) {
-      if (k !== KIND.forest) c = h < 128 ? C.soil : C.dry;
-      else if (h < 36 && (frame + h) % 3 === 0) c = h < 18 ? C.emberY : C.ember;
-      else c = h < 128 ? C.ash : C.ashL;
-    } else if (e === "spill" && (isSea(k) || k === KIND.water)) {
-      const band = (x + 2 * y + (frame >> 1)) % 6;
-      if (band === 0) c = C.sludge;
-      else if (band === 1) c = C.sludgeD;
-    } else if ((e === "smog" || e === "heatwave") && (x + 2 * y) % 5 === 0) {
-      c = mix(c, rgb(EVENTS[e as keyof typeof EVENTS].color), 0.5);
-    } else if (e === "drought" && land) {
-      // Patchy, not total: keeps the area readable while showing it has dried out.
+  if (fx && fx.size) {
+    for (const e of fx) {
       if (
-        (k === KIND.grass || k === KIND.pasture || k === KIND.field) &&
-        h < 110
-      )
-        c = mix(c, h < 55 ? C.dry : C.soil, 0.7);
-      else if (k === KIND.water && x & 1) c = C.flood;
-    } else if ((e === "earthquake" || e === "landslide") && land) {
-      if ((x + (y >> 1) * 3) % 23 === 0 && h < 150) c = C.ink;
-      else if (e === "landslide" && L.distWater[i] <= 2 && h < 100) c = C.soil;
-    } else if (e === "grid_failure" && land) {
-      c = mix(c, C.ink, 0.35);
-    } else if (e === "pandemic" && land && (x + y * 2) % 7 === 0) {
-      c = mix(c, rgb(EVENTS.pandemic.color), 0.55);
-    } else if (e === "supply_shock" && land && h < 70) {
-      c = mix(c, rgb(EVENTS.supply_shock.color), 0.35);
+        (e === "flood" || e === "dam_failure") &&
+        land &&
+        lowland(k) &&
+        L.distWater[i] <= 3
+      ) {
+        c =
+          ((x + y + (frame >> 1)) & 3) === 0
+            ? C.foam
+            : h < 90
+              ? C.shallow
+              : C.flood;
+      } else if (
+        (e === "hurricane" || e === "tsunami" || e === "sea_rise") &&
+        land &&
+        lowland(k) &&
+        L.distSea[i] <= 4
+      ) {
+        c = ((x - y + (frame >> 1)) & 3) === 0 ? C.foam : C.flood;
+      } else if (e === "spill" && (isSea(k) || k === KIND.water)) {
+        const band = (x + 2 * y + (frame >> 1)) % 6;
+        if (band === 0) c = C.sludge;
+        else if (band === 1) c = C.sludgeD;
+      } else if ((e === "smog" || e === "heatwave") && (x + 2 * y) % 5 === 0) {
+        c = mix(c, rgb(EVENTS[e as keyof typeof EVENTS].color), 0.5);
+      } else if (e === "drought" && land) {
+        // Patchy, not total: keeps the area readable while showing it has dried out.
+        if (
+          (k === KIND.grass || k === KIND.pasture || k === KIND.field) &&
+          h < 110
+        )
+          c = mix(c, h < 55 ? C.dry : C.soil, 0.7);
+        else if (k === KIND.water && x & 1) c = C.flood;
+      } else if ((e === "earthquake" || e === "landslide") && land) {
+        if ((x + (y >> 1) * 3) % 23 === 0 && h < 150) c = C.ink;
+        else if (e === "landslide" && L.distWater[i] <= 2 && h < 100)
+          c = C.soil;
+      } else if (e === "grid_failure" && land) {
+        c = mix(c, C.ink, 0.35);
+      } else if (e === "pandemic" && land && (x + y * 2) % 7 === 0) {
+        c = mix(c, rgb(EVENTS.pandemic.color), 0.55);
+      } else if (e === "supply_shock" && land && h < 70) {
+        c = mix(c, rgb(EVENTS.supply_shock.color), 0.35);
+      }
+    }
+  }
+  // A wildfire is a circle around the town, not a fill up to the region line.
+  if (k === KIND.forest || k === KIND.grass || k === KIND.pasture) {
+    const burn = fireSpread(x, y, h, status);
+    if (burn > 0.8) {
+      c = mix(c, h & 1 ? C.char : C.charD, 0.92);
+      const flame = flameColor(x, y, frame, L.hash);
+      if (flame) c = flame;
+    } else if (burn > 0.35) {
+      c = mix(c, C.char, 0.4 + burn * 0.45);
+    } else if (burn > 0) {
+      c = mix(c, C.char, burn * 0.45);
     }
   }
   return c;

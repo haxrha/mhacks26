@@ -69,6 +69,44 @@ test("a flood only recolours the region it hits", () => {
     );
 });
 
+test("wildfire spreads in a circle around the town", () => {
+  const civ: CivId = "enclave";
+  const quiet = render(withEvent(civ, "drought"), 0);
+  const fire = render(withEvent(civ, "wildfire"), 0);
+  const later = render(withEvent(civ, "wildfire"), 4);
+  const L = worldLayers();
+  const [kx, ky] = TOWNS[townIndex(civ)].keepTile;
+  const forest = 5;
+  let core = 0;
+  let coreHit = 0;
+  let far = 0;
+  let farHit = 0;
+  let beyond = 0;
+  for (let i = 0; i < MAP_W * MAP_H; i++) {
+    if (L.kind[i] !== forest) continue;
+    const x = i % MAP_W;
+    const y = (i / MAP_W) | 0;
+    const d = Math.hypot(x - kx, y - ky);
+    const hit =
+      fire[i * 4] !== quiet[i * 4] ||
+      fire[i * 4 + 1] !== quiet[i * 4 + 1] ||
+      fire[i * 4 + 2] !== quiet[i * 4 + 2];
+    if (d > 14 && d < 26) {
+      core++;
+      if (hit) coreHit++;
+    }
+    if (d > 62) {
+      far++;
+      if (hit) farHit++;
+    }
+    if (hit && d > 52) beyond++;
+  }
+  assert(core > 30 && coreHit / core > 0.7, "the middle of the circle burns");
+  assert(far > 30 && farHit / far < 0.05, "the region edge stays unburned");
+  assert(beyond === 0, "the burn stays inside the circle");
+  assert(changed(fire, later).length > 10, "flames should move between frames");
+});
+
 test("all 16 event ids reach the live map status", () => {
   const ids: EventId[] = [
     "flood",
