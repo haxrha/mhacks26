@@ -5,3 +5,9 @@ target/
 .env.*
 infra/.env
 infra/.host
+*.tsbuildinfo
+.tools/
+.venv/
+__pycache__/
+spacetime/dist/
+!.env.example

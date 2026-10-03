@@ -1,0 +1,32 @@
+{
+  "food": {
+    "name": "Food",
+    "icon": "◒",
+    "color": "#aec887"
+  },
+  "water": {
+    "name": "Water",
+    "icon": "◈",
+    "color": "#88c7dc"
+  },
+  "energy": {
+    "name": "Energy",
+    "icon": "ϟ",
+    "color": "#e8c779"
+  },
+  "materials": {
+    "name": "Materials",
+    "icon": "⬡",
+    "color": "#c8af93"
+  },
+  "money": {
+    "name": "Credits",
+    "icon": "◎",
+    "color": "#f1d59c"
+  },
+  "innovation": {
+    "name": "Insight",
+    "icon": "✧",
+    "color": "#b6a6e6"
+  }
+}

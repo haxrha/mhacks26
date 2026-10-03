@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - "spacetime/**"
-      - "apps/orchestrator/**"
+      - "apps/web/src/game/**"
+      - "src/data/**"
       - "infra/**"
   workflow_dispatch:
 

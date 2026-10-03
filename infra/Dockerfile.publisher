@@ -1,0 +1,12 @@
+FROM node:24-bookworm-slim
+ARG SPACETIME_VERSION=2.10.2
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL "https://github.com/clockworklabs/SpacetimeDB/releases/download/v${SPACETIME_VERSION}/spacetime-x86_64-unknown-linux-gnu.tar.gz" | tar -xz -C /usr/local/bin && ln -s /usr/local/bin/spacetimedb-cli /usr/local/bin/spacetime
+WORKDIR /game
+COPY spacetime/package*.json ./spacetime/
+RUN npm ci --prefix spacetime
+COPY spacetime/src ./spacetime/src
+COPY spacetime/tsconfig.json ./spacetime/
+COPY apps/web/src/game ./apps/web/src/game
+COPY src/data ./src/data
+ENTRYPOINT ["spacetime"]

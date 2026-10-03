@@ -1,51 +1,16 @@
-# AWS hosting
+# Optional hosting
 
-```
-Browser ──https──▶ AWS Amplify (apps/web, auto-deploys from main)
-   │
-   └──wss──▶ EC2 t3.small (Elastic IP, <ip>.sslip.io)
-               docker compose: Caddy (TLS) → SpacetimeDB ← Orchestrator (AI, Sonnet 5.5)
-```
-No SSH: the instance only opens ports 80/443. Admin access is through **SSM Session Manager**. Secrets live in **SSM Parameter Store**. Pushing to `main` redeploys automatically through GitHub Actions + OIDC, with no AWS keys stored in GitHub.
+The supported local setup is in the root README; Maincloud setup is in docs/SPACETIMEDB.md. This folder retains the repository's optional AWS/Caddy self-hosting path, adapted for the native TypeScript module. No Flask or AI orchestrator runs in this stack.
 
-## One-time setup (~15 min)
-
-### 1. AWS CLI + login
-```powershell
-winget install Amazon.AWSCLI
-aws configure            # access key from IAM, region e.g. us-east-2 (Ohio, closest to Ann Arbor)
-aws sts get-caller-identity
+```sh
+cd infra
+GAME_HOST=your.domain docker compose up -d caddy spacetimedb
+# Wait until the server is listening, then publish:
+docker compose run --rm --build publisher
 ```
 
-### 2. Store the Anthropic key (optional: without it, AI survivors use the rule engine only)
-```powershell
-aws ssm put-parameter --name /mhacks26/anthropic_api_key --type SecureString --value "sk-ant-..."
-```
+The publisher image supplies Node.js and the pinned official SpacetimeDB CLI for bundling TypeScript. The module imports shared rules and JSON from the repository. Persistent volumes hold database state and publisher identity, so later publishes retain ownership. Publishing refuses destructive migrations. The publisher image targets x86_64 Linux, matching the existing EC2 template.
 
-### 3. Create the server
-```powershell
-aws cloudformation deploy --stack-name mhacks26 --template-file infra/aws/stack.yaml --capabilities CAPABILITY_IAM
-aws cloudformation describe-stacks --stack-name mhacks26 --query "Stacks[0].Outputs" --output table
-```
-If the account already has a GitHub OIDC provider, add `--parameter-overrides CreateGitHubOIDCProvider=false`.
-First boot takes ~3–5 min. Check with `curl https://<GameHost>`.
+Set the hosted frontend's `NEXT_PUBLIC_SPACETIME_URI` to `wss://your.domain` and `NEXT_PUBLIC_SPACETIME_DATABASE` to `earthshare-game`, then rebuild. Caddy handles HTTPS/WebSocket forwarding. The backend container exposes port 3000 only within the Compose network.
 
-### 4. Hook up auto-deploys
-GitHub repo → Settings → Secrets and variables → Actions → **Variables**:
-- `AWS_DEPLOY_ROLE_ARN` = the `GitHubDeployRoleArn` output
-- `GAME_INSTANCE_ID` = the `InstanceId` output
-- `AWS_REGION` = your region
-
-Pushes that touch `spacetime/`, `apps/orchestrator/`, or `infra/` then run `infra/aws/deploy.sh` on the server.
-
-### 5. Website on Amplify
-AWS Console → Amplify → *Deploy an app* → GitHub → `john-yang-11/mhacks26`, branch `main`, enable **monorepo** with app root `apps/web` (uses `amplify.yml`). Add the env var `NEXT_PUBLIC_SPACETIME_URI` = the `SpacetimeUri` output. Do this once `apps/web` exists.
-
-## Day-to-day
-- **Shell on the server:** `aws ssm start-session --target <InstanceId>` (needs the Session Manager plugin), then `cd /opt/game/infra && sudo docker compose logs -f`
-- **Manual redeploy:** Actions tab → *Deploy game server* → Run workflow
-- **Cost:** about $15–20/mo for t3.small + Elastic IP, covered by credits. **After MHacks:** `aws cloudformation delete-stack --stack-name mhacks26` deletes everything.
-
-## To verify on the first real deploy
-- The SpacetimeDB container's `start` flags and data path (in `docker-compose.yml`) against the current self-hosting docs.
-- That the `publisher` service can build our module. If the image lacks the toolchain (Rust/wasm or Node), swap it for a small Dockerfile that installs it.
+Docker and AWS deployment have not been executed in this Windows environment. Validate the release image tag, publisher image, volume persistence, TLS, IAM/SSM configuration and two-device gameplay on your chosen host before enabling deployment. The existing CloudFormation template and GitHub workflow are optional scaffolding; deploying them may create billable resources.

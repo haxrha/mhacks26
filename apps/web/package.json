@@ -1,0 +1,31 @@
+{
+  "name": "earthshare-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "simulate": "tsx tests/simulate.ts",
+    "format": "prettier --write src tests next.config.ts tsconfig.json package.json",
+    "format:check": "prettier --check src tests next.config.ts tsconfig.json package.json",
+    "test:integration": "tsx tests/spacetime.integration.ts"
+  },
+  "dependencies": {
+    "lucide-react": "^1.51.0",
+    "next": "^16.3.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "spacetimedb": "^2.10.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

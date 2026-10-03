@@ -1,0 +1,14 @@
+{
+  "name": "earthshare",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/web run build",
+    "test": "npm --prefix apps/web test",
+    "typecheck": "npm --prefix apps/web run typecheck && npm --prefix spacetime run typecheck",
+    "db:start": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 start",
+    "db:publish": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 publish",
+    "db:generate": "powershell -ExecutionPolicy Bypass -File scripts/spacetime.ps1 generate",
+    "test:integration": "npm --prefix apps/web run test:integration"
+  }
+}

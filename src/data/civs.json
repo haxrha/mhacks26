@@ -1,0 +1,74 @@
+{
+  "petrostate": {
+    "name": "Forge Dominion",
+    "title": "Industry today. A cleaner tomorrow.",
+    "color": "#dc9554",
+    "crest": "ϟ",
+    "description": "Your industrial heartland exports energy and materials. Emissions travel beyond your borders; invest in clean power before extraction runs out.",
+    "strength": "Energy & credits",
+    "weakness": "Water & stranded assets",
+    "rate": 0.8,
+    "start": {
+      "food": 12,
+      "water": 10,
+      "energy": 24,
+      "materials": 16,
+      "money": 40,
+      "innovation": 8
+    }
+  },
+  "heartland": {
+    "name": "Highland Hold",
+    "title": "The highlands hold the headwaters.",
+    "color": "#9d83c5",
+    "crest": "❧",
+    "description": "Control the headwaters and nurture forests, farms and wetlands. Protect natural buffers or divert water, knowing every decision reaches your downstream neighbors.",
+    "strength": "Food & materials",
+    "weakness": "Smog & slow research",
+    "rate": 0.6,
+    "start": {
+      "food": 30,
+      "water": 24,
+      "energy": 12,
+      "materials": 24,
+      "money": 32,
+      "innovation": 8
+    }
+  },
+  "enclave": {
+    "name": "Verdant Reach",
+    "title": "Knowledge takes root. Cooperation grows.",
+    "color": "#79a64f",
+    "crest": "✧",
+    "description": "Use scientific insight, forecasts and efficient trade to prosper with limited land. Share discoveries and build resilient infrastructure before disasters arrive.",
+    "strength": "Insight & trade",
+    "weakness": "Floods & import dependency",
+    "rate": 1.5,
+    "start": {
+      "food": 10,
+      "water": 10,
+      "energy": 16,
+      "materials": 14,
+      "money": 50,
+      "innovation": 24
+    }
+  },
+  "archipelago": {
+    "name": "Tidehaven",
+    "title": "Every river ends at your shore.",
+    "color": "#62b8ca",
+    "crest": "≈",
+    "description": "Island fisheries and geothermal power support your people. Guard the strait, preserve mangroves and prepare for storms, tsunamis and upstream pollution.",
+    "strength": "Clean energy & fisheries",
+    "weakness": "Quakes & imported materials",
+    "rate": 1,
+    "start": {
+      "food": 22,
+      "water": 16,
+      "energy": 20,
+      "materials": 12,
+      "money": 36,
+      "innovation": 12
+    }
+  }
+}

@@ -1,0 +1,306 @@
+{
+  "flood": {
+    "name": "River flood",
+    "icon": "≋",
+    "carrier": "river",
+    "base": 0.09,
+    "climateDriven": true,
+    "regions": [
+      "heartland"
+    ],
+    "losses": {
+      "food": 1,
+      "materials": 0.4
+    },
+    "color": "#7bc5e5",
+    "lesson": "Wetlands hold floodwater; levees can transfer risk downstream.",
+    "mitigation": "Preserve wetlands, restore forests, coordinate river defenses.",
+    "source": "https://www.epa.gov/wetlands"
+  },
+  "dam_failure": {
+    "name": "Dam-break flood",
+    "icon": "▰",
+    "carrier": "river",
+    "base": 0,
+    "climateDriven": false,
+    "regions": [
+      "heartland"
+    ],
+    "losses": {
+      "food": 1,
+      "water": 0.8,
+      "materials": 0.8
+    },
+    "color": "#66b4e4",
+    "lesson": "A dam is part of a larger hazard system: shaking can become a downstream flood.",
+    "mitigation": "Seismic engineering and downstream buffers.",
+    "source": "https://www.usgs.gov/programs/earthquake-hazards"
+  },
+  "hurricane": {
+    "name": "Hurricane & surge",
+    "icon": "🌀",
+    "carrier": "coast",
+    "base": 0.12,
+    "climateDriven": true,
+    "regions": [
+      "archipelago",
+      "enclave"
+    ],
+    "losses": {
+      "food": 0.7,
+      "energy": 0.6,
+      "money": 0.8
+    },
+    "color": "#9aceda",
+    "lesson": "Storm surge is pushed ashore by storm winds. Coastal ecosystems reduce wave energy.",
+    "mitigation": "Mangroves, shelters, resilient grids and coordinated barriers.",
+    "source": "https://www.nhc.noaa.gov/surge/"
+  },
+  "earthquake": {
+    "name": "Earthquake",
+    "icon": "⌁",
+    "carrier": "fault",
+    "base": 0.1,
+    "climateDriven": false,
+    "regions": [
+      "archipelago"
+    ],
+    "losses": {
+      "materials": 1.2,
+      "energy": 0.5
+    },
+    "color": "#e6a08b",
+    "lesson": "Earthquakes are tectonic, not caused by warming. Fault exposure and building design matter.",
+    "mitigation": "Seismic engineering, repair and avoid fragile dams on faults.",
+    "source": "https://www.usgs.gov/programs/earthquake-hazards"
+  },
+  "tsunami": {
+    "name": "Tsunami",
+    "icon": "∿",
+    "carrier": "coast",
+    "base": 0.02,
+    "climateDriven": false,
+    "regions": [
+      "archipelago"
+    ],
+    "losses": {
+      "food": 0.8,
+      "water": 1,
+      "materials": 1.2
+    },
+    "color": "#73bcd8",
+    "lesson": "Sudden displacement of seawater can produce waves across an ocean. It is distinct from storm surge.",
+    "mitigation": "Early warning, elevated shelters and evacuation routes.",
+    "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis"
+  },
+  "volcano": {
+    "name": "Volcanic eruption",
+    "icon": "△",
+    "carrier": "wind",
+    "base": 0.07,
+    "climateDriven": false,
+    "regions": [
+      "archipelago"
+    ],
+    "losses": {
+      "food": 0.6,
+      "energy": 0.7,
+      "water": 0.4
+    },
+    "color": "#dfac87",
+    "lesson": "Ash travels downwind, damaging machinery, air quality and water supplies far from the vent.",
+    "mitigation": "Forecasting, shelters, water reserves and diversified power.",
+    "source": "https://volcanoes.usgs.gov/volcanic_ash/"
+  },
+  "drought": {
+    "name": "Drought",
+    "icon": "☀",
+    "carrier": "local",
+    "base": 0.12,
+    "climateDriven": true,
+    "regions": [
+      "heartland",
+      "petrostate"
+    ],
+    "losses": {
+      "water": 1.6,
+      "food": 1
+    },
+    "color": "#e5c383",
+    "lesson": "Water scarcity links agriculture, energy and trade. Shared aquifers make over-pumping everyone’s problem.",
+    "mitigation": "Drip irrigation, reserves and climate-ready crops.",
+    "source": "https://www.drought.gov/what-is-drought"
+  },
+  "heatwave": {
+    "name": "Heat dome",
+    "icon": "☼",
+    "carrier": "local",
+    "base": 0.1,
+    "climateDriven": true,
+    "regions": [
+      "enclave",
+      "petrostate"
+    ],
+    "losses": {
+      "energy": 1.1,
+      "water": 0.8,
+      "money": 0.4
+    },
+    "color": "#e8ad74",
+    "lesson": "Urban surfaces retain heat. Cooling demand can overwhelm electricity grids.",
+    "mitigation": "Trees, reflective surfaces, water access and microgrids.",
+    "source": "https://www.epa.gov/heatislands"
+  },
+  "wildfire": {
+    "name": "Wildfire & smoke",
+    "icon": "♨",
+    "carrier": "wind",
+    "base": 0.07,
+    "climateDriven": true,
+    "regions": [
+      "heartland",
+      "petrostate"
+    ],
+    "losses": {
+      "food": 0.7,
+      "materials": 1,
+      "money": 0.4
+    },
+    "color": "#e49a74",
+    "lesson": "Fire damages landscapes while smoke affects communities downwind.",
+    "mitigation": "Land stewardship, resilient shelters and warning networks.",
+    "source": "https://www.epa.gov/wildfire-smoke-course"
+  },
+  "spill": {
+    "name": "Oil spill",
+    "icon": "◉",
+    "carrier": "current",
+    "base": 0.07,
+    "climateDriven": false,
+    "regions": [
+      "petrostate"
+    ],
+    "losses": {
+      "food": 1.1,
+      "money": 0.8
+    },
+    "color": "#b3a0c9",
+    "lesson": "Ocean currents transport oil beyond the producer’s coast; fisheries and tourism bear the cost.",
+    "mitigation": "Transition away from rigs, blue restoration and mutual aid.",
+    "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills"
+  },
+  "smog": {
+    "name": "Smog & acid deposition",
+    "icon": "≍",
+    "carrier": "wind",
+    "base": 0.06,
+    "climateDriven": false,
+    "regions": [
+      "petrostate"
+    ],
+    "losses": {
+      "food": 0.8,
+      "water": 0.4
+    },
+    "color": "#b9b694",
+    "lesson": "Air pollution crosses borders. Sulfur and nitrogen emissions contribute to acid deposition.",
+    "mitigation": "Clean energy, forests and emissions controls.",
+    "source": "https://www.epa.gov/acidrain/what-acid-rain"
+  },
+  "sea_rise": {
+    "name": "Coastal inundation",
+    "icon": "≈",
+    "carrier": "coast",
+    "base": 0.05,
+    "climateDriven": true,
+    "regions": [
+      "archipelago",
+      "enclave"
+    ],
+    "losses": {
+      "water": 1,
+      "food": 0.6,
+      "money": 0.8
+    },
+    "color": "#84b7c9",
+    "lesson": "Warming seas expand and land ice melts. Saltwater intrusion threatens freshwater supplies.",
+    "mitigation": "Cut emissions, preserve coastal buffers and adapt infrastructure.",
+    "source": "https://oceanservice.noaa.gov/facts/sealevel.html"
+  },
+  "landslide": {
+    "name": "Landslide",
+    "icon": "◭",
+    "carrier": "river",
+    "base": 0.04,
+    "climateDriven": true,
+    "regions": [
+      "heartland"
+    ],
+    "losses": {
+      "materials": 1,
+      "water": 0.6
+    },
+    "color": "#bfa48c",
+    "lesson": "Slope failure can block transport and add sediment to downstream rivers.",
+    "mitigation": "Forest protection, slope planning and warning networks.",
+    "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html"
+  },
+  "grid_failure": {
+    "name": "Grid cascade",
+    "icon": "ϟ",
+    "carrier": "local",
+    "base": 0.06,
+    "climateDriven": true,
+    "regions": [
+      "enclave"
+    ],
+    "losses": {
+      "energy": 1.5,
+      "food": 0.5,
+      "money": 0.8
+    },
+    "color": "#e5d092",
+    "lesson": "Interdependent infrastructure spreads outages into food, water and economic systems.",
+    "mitigation": "Storage, distributed generation and energy reserves.",
+    "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics"
+  },
+  "pandemic": {
+    "name": "Public-health shock",
+    "icon": "✚",
+    "carrier": "local",
+    "base": 0.025,
+    "climateDriven": false,
+    "regions": [
+      "enclave",
+      "heartland"
+    ],
+    "losses": {
+      "money": 1,
+      "food": 0.3
+    },
+    "color": "#b7a6db",
+    "lesson": "Prepared health systems and cooperation limit disruption to communities and livelihoods.",
+    "mitigation": "Resilience hubs, reserves, mutual aid and research.",
+    "source": "https://www.who.int/health-topics/emergencies"
+  },
+  "supply_shock": {
+    "name": "Supply-chain shock",
+    "icon": "⚑",
+    "carrier": "local",
+    "base": 0.04,
+    "climateDriven": false,
+    "regions": [
+      "petrostate",
+      "enclave"
+    ],
+    "losses": {
+      "materials": 1,
+      "energy": 0.8,
+      "money": 0.5
+    },
+    "color": "#d4be91",
+    "lesson": "Dependence on a narrow set of suppliers turns distant disruption into local shortages.",
+    "mitigation": "Diversify trade, keep reserves and maintain open shipping.",
+    "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf"
+  }
+}

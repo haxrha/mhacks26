@@ -1,0 +1,276 @@
+{
+  "farm": {
+    "name": "Regenerative farm",
+    "icon": "♧",
+    "cost": {
+      "money": 8,
+      "materials": 4
+    },
+    "yields": {
+      "food": 3,
+      "water": -1
+    },
+    "terrains": [
+      "farmland",
+      "delta"
+    ],
+    "description": "More food. Drip irrigation reduces its water demand."
+  },
+  "solar": {
+    "name": "Solar array",
+    "icon": "☀",
+    "cost": {
+      "money": 12,
+      "materials": 6
+    },
+    "yields": {
+      "energy": 4
+    },
+    "terrains": [
+      "desert",
+      "farmland",
+      "urban"
+    ],
+    "tech": "solar",
+    "description": "Clean power; desert arrays generate an extra 2 energy."
+  },
+  "wind": {
+    "name": "Wind cooperative",
+    "icon": "✣",
+    "cost": {
+      "money": 10,
+      "materials": 6
+    },
+    "yields": {
+      "energy": 3
+    },
+    "terrains": [
+      "mountain",
+      "sea",
+      "delta"
+    ],
+    "description": "Distributed clean power with no fossil reserves required."
+  },
+  "dam": {
+    "name": "Hydro dam",
+    "icon": "▰",
+    "cost": {
+      "money": 10,
+      "materials": 8
+    },
+    "yields": {
+      "energy": 5,
+      "water": 2
+    },
+    "terrains": [
+      "mountain"
+    ],
+    "civ": "heartland",
+    "description": "Power and water. The headwaters sit on a fault: seismic failure releases a downstream flood."
+  },
+  "levee": {
+    "name": "Levee",
+    "icon": "▱",
+    "cost": {
+      "money": 8,
+      "materials": 5
+    },
+    "yields": {},
+    "terrains": [
+      "delta",
+      "farmland",
+      "wetland"
+    ],
+    "description": "Reduces local flood impact, redirects more water downstream."
+  },
+  "seawall": {
+    "name": "Sea barrier",
+    "icon": "⌇",
+    "cost": {
+      "money": 10,
+      "materials": 7
+    },
+    "yields": {},
+    "terrains": [
+      "delta",
+      "mangrove",
+      "urban"
+    ],
+    "description": "Protects your coast; displaces surge onto neighboring shores."
+  },
+  "vertical": {
+    "name": "Vertical farm",
+    "icon": "▤",
+    "cost": {
+      "money": 14,
+      "materials": 6
+    },
+    "yields": {
+      "food": 5,
+      "energy": -2
+    },
+    "terrains": [
+      "urban"
+    ],
+    "tech": "urban",
+    "description": "Food without new farmland; depends on a reliable grid."
+  },
+  "desal": {
+    "name": "Desalination plant",
+    "icon": "◈",
+    "cost": {
+      "money": 12,
+      "materials": 6
+    },
+    "yields": {
+      "water": 5,
+      "energy": -2
+    },
+    "terrains": [
+      "urban",
+      "delta",
+      "mangrove"
+    ],
+    "tech": "water",
+    "description": "Independent freshwater; energy costs and brine reduce ocean health slightly."
+  },
+  "geothermal": {
+    "name": "Geothermal station",
+    "icon": "△",
+    "cost": {
+      "money": 8,
+      "materials": 5
+    },
+    "yields": {
+      "energy": 4
+    },
+    "terrains": [
+      "volcanic"
+    ],
+    "description": "Reliable low-carbon baseload from the volcanic ridge."
+  },
+  "rig": {
+    "name": "Offshore rig",
+    "icon": "†",
+    "cost": {
+      "money": 8,
+      "materials": 6
+    },
+    "yields": {
+      "energy": 6,
+      "money": 3
+    },
+    "terrains": [
+      "sea",
+      "oil"
+    ],
+    "civ": "petrostate",
+    "emissions": 0.07,
+    "description": "Lucrative fossil energy. Spills follow currents toward island fisheries."
+  },
+  "reserve": {
+    "name": "Community reserves",
+    "icon": "▣",
+    "cost": {
+      "money": 8,
+      "materials": 4
+    },
+    "yields": {
+      "food": 1
+    },
+    "terrains": [
+      "urban",
+      "farmland",
+      "delta"
+    ],
+    "description": "Emergency stores cut drought and supply-shock losses by 35%."
+  },
+  "storage": {
+    "name": "Battery microgrid",
+    "icon": "ϟ",
+    "cost": {
+      "money": 12,
+      "materials": 5
+    },
+    "yields": {
+      "energy": 1
+    },
+    "terrains": [
+      "urban",
+      "desert",
+      "volcanic"
+    ],
+    "tech": "storage",
+    "description": "Keeps buildings online; reduces heat and grid failure damage."
+  },
+  "shelter": {
+    "name": "Resilience hub",
+    "icon": "⌂",
+    "cost": {
+      "money": 10,
+      "materials": 5
+    },
+    "yields": {
+      "innovation": 1
+    },
+    "terrains": [
+      "urban",
+      "mountain",
+      "volcanic",
+      "delta"
+    ],
+    "description": "Emergency shelter lowers wellbeing losses and coastal disruption."
+  },
+  "lab": {
+    "name": "Research institute",
+    "icon": "✧",
+    "cost": {
+      "money": 14,
+      "materials": 6
+    },
+    "yields": {
+      "innovation": 3,
+      "energy": -1
+    },
+    "terrains": [
+      "urban",
+      "volcanic"
+    ],
+    "description": "Accelerates the technology transition."
+  },
+  "port": {
+    "name": "Trading port",
+    "icon": "⚑",
+    "cost": {
+      "money": 10,
+      "materials": 5
+    },
+    "yields": {
+      "money": 5
+    },
+    "terrains": [
+      "delta",
+      "mangrove",
+      "sea"
+    ],
+    "description": "Trade income; exposed to storm surge and supply-chain disruption."
+  },
+  "restoration": {
+    "name": "Nature sanctuary",
+    "icon": "❧",
+    "cost": {
+      "money": 8,
+      "materials": 3
+    },
+    "yields": {
+      "water": 1,
+      "innovation": 1
+    },
+    "terrains": [
+      "forest",
+      "wetland",
+      "mangrove"
+    ],
+    "description": "Restores ecosystems, removes carbon, improves ocean health."
+  }
+}

@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >
-  MHacks 26 game server: one EC2 instance running SpacetimeDB + AI orchestrator + Caddy (HTTPS/WSS)
+  MHacks 26 game server: one EC2 instance running native TypeScript SpacetimeDB + Caddy (HTTPS/WSS)
   via docker compose. Reached at https://<elastic-ip>.sslip.io. No SSH; admin access is through SSM Session Manager.
 
 Parameters:
