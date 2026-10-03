@@ -3108,11 +3108,27 @@ svg image {
   z-index: 4;
   padding: 10px;
   background: #f2e2b8;
+  color: #2a1a0e;
   border: 5px ridge #a77b43;
+}
+.flow-banner .eyebrow {
+  color: #7a3f12;
+  font-size: 9px;
 }
 .flow-banner h3 {
   font-family: "VT323", monospace;
-  font-size: 23px;
+  font-size: 26px;
+  color: #2a1a0e;
+}
+.flow-banner .pulse-icon {
+  background: #8a5a32;
+  color: #fff1c9;
+  border-radius: 0;
+  box-shadow: 3px 3px #1a120a;
+}
+.flow-banner .primary {
+  background: #f5c542;
+  color: #2a1a0e;
 }
 .flow-banner p {
   display: none;
@@ -3145,6 +3161,75 @@ svg image {
 .quiz-timer {
   background: #deb86a !important;
   border: 3px solid #725326;
+}
+/* Parchment quiz: dark ink on cream so every label reads at a glance (≥4.5:1). */
+.quiz-modal .eyebrow {
+  color: #7a3f12;
+}
+.quiz-modal .pill {
+  color: #2a1a0e;
+  background: #e8cf95;
+  border: 2px solid #8a5a32;
+  font-size: 10px;
+}
+.quiz-modal h2 {
+  color: #2a1a0e;
+}
+.quiz-subtitle {
+  color: #4a2410;
+}
+.quiz-options button {
+  color: #2a1a0e;
+}
+.quiz-options button > span {
+  background: #8a5a32;
+  color: #fff1c9;
+  border-radius: 0;
+  font-size: 12px;
+}
+.quiz-options button:hover:not(:disabled),
+.quiz-options button:focus-visible {
+  background: #f7d9a0;
+  border-color: #3e2414;
+}
+.quiz-options button.correct {
+  background: #cfe6b5;
+  border-color: #2d5e22;
+}
+.quiz-options button.incorrect {
+  background: #f1c9b4;
+  border-color: #8c2929;
+}
+.quiz-options svg {
+  color: #2d5e22;
+}
+.quiz-options button:disabled {
+  opacity: 0.8;
+}
+.answer-feedback {
+  background: #f7e7c2;
+  border: 2px solid #8a5a32;
+  color: #2a1a0e;
+}
+.answer-feedback a {
+  color: #7a3f12;
+  font-size: 11px;
+}
+.quiz-footer button {
+  color: #2a1a0e;
+}
+.quiz-footer > span {
+  color: #4a2410;
+  font-size: 11px;
+}
+.quiz-progress i {
+  background: #d9c08a;
+}
+.quiz-progress i.complete {
+  background: #2d5e22;
+}
+.quiz-progress i.current {
+  background: #f5c542;
 }
 .toast {
   background: #f4e3b9;

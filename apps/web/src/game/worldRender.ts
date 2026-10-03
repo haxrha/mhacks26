@@ -242,8 +242,12 @@ function terrainPixel(
     } else if ((e === "smog" || e === "heatwave") && ((x + y) & 1) === 0) {
       c = mix(c, rgb(DISASTERS[e].color), 0.45);
     } else if (e === "drought" && land) {
-      if (k === KIND.grass || k === KIND.pasture || k === KIND.field)
-        c = h < 128 ? C.dry : C.soil;
+      // Patchy, not total: keeps the area readable while showing it has dried out.
+      if (
+        (k === KIND.grass || k === KIND.pasture || k === KIND.field) &&
+        h < 110
+      )
+        c = mix(c, h < 55 ? C.dry : C.soil, 0.7);
       else if (k === KIND.water && x & 1) c = C.flood;
     } else if ((e === "earthquake" || e === "landslide") && land) {
       if ((x + (y >> 1) * 3) % 23 === 0 && h < 150) c = C.ink;
