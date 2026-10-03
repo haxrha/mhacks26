@@ -47,6 +47,7 @@ import { townOf } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
 import Narrator from "./Narrator";
+import RadioControl from "./RadioControl";
 import WorldMap from "./WorldMap";
 
 const SAVE_KEY = "earthshare-v2";
@@ -323,6 +324,7 @@ export default function Game() {
           </span>
         </a>
         <div className="sidebar-bottom">
+          <RadioControl state={state} civ={civId} />
           <button onClick={() => setHelp(true)}>
             <BookOpen size={15} /> How to play
           </button>

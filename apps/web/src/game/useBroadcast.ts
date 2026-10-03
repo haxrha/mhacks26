@@ -1,15 +1,17 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { BroadcastFacts } from "./radioScript";
+import { playBlob, stopAudio } from "./voiceChannel";
 
 const KEY = "earthshare-radio";
 export type RadioStatus = "idle" | "loading" | "playing" | "error";
 
-/** Plays text through /api/tts. Opt-in: voice is off until the player turns the radio on. */
+/** Opt-in voice setting plus the decade debrief as a voiced radio broadcast via /api/broadcast. */
 export function useBroadcast() {
   const [enabled, setEnabledState] = useState(false),
     [status, setStatus] = useState<RadioStatus>("idle");
-  const audio = useRef<HTMLAudioElement | null>(null),
-    abort = useRef<AbortController | null>(null);
+  const abort = useRef<AbortController | null>(null),
+    playingOwn = useRef(false);
   useEffect(() => {
     try {
       setEnabledState(localStorage.getItem(KEY) === "on");
@@ -18,8 +20,8 @@ export function useBroadcast() {
   const stop = useCallback(() => {
     abort.current?.abort();
     abort.current = null;
-    audio.current?.pause();
-    audio.current = null;
+    if (playingOwn.current) stopAudio();
+    playingOwn.current = false;
     setStatus("idle");
   }, []);
   const setEnabled = useCallback((on: boolean) => {
@@ -28,36 +30,31 @@ export function useBroadcast() {
       localStorage.setItem(KEY, on ? "on" : "off");
     } catch {}
   }, []);
+  /** Fetches the broadcast now; if `after` is given, waits for it before playing (e.g. until the advisor finishes). */
   const speak = useCallback(
-    async (text: string) => {
+    async (facts: BroadcastFacts, after?: Promise<void>) => {
       stop();
       const ac = new AbortController();
       abort.current = ac;
       setStatus("loading");
       try {
-        const res = await fetch("/api/tts", {
+        const res = await fetch("/api/broadcast", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ facts }),
           signal: ac.signal,
         });
         if (!res.ok) throw new Error(String(res.status));
-        const url = URL.createObjectURL(await res.blob());
-        const a = new Audio(url);
-        audio.current = a;
-        const done = () => {
-          URL.revokeObjectURL(url);
-          if (audio.current === a) {
-            audio.current = null;
-            setStatus("idle");
-          }
-        };
-        a.onended = done;
-        a.onerror = () => {
-          done();
-          setStatus("error");
-        };
-        await a.play();
+        const blob = await res.blob();
+        if (after) await after;
+        if (ac.signal.aborted) return;
+        playingOwn.current = true;
+        await playBlob(blob, () => {
+          if (abort.current !== ac) return;
+          abort.current = null;
+          playingOwn.current = false;
+          setStatus("idle");
+        });
         if (!ac.signal.aborted) setStatus("playing");
       } catch {
         if (!ac.signal.aborted) setStatus("error");

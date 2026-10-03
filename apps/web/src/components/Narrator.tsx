@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { CIVS } from "@/game/content";
 import { LEADERS, leaderArt } from "@/game/leaders";
 import type { CivId } from "@/game/types";
+import { announceLine } from "@/game/voiceChannel";
 
 const CHARS_PER_SECOND = 40;
 const MOUTH_MS = 120;
@@ -74,6 +75,11 @@ export default function Narrator({
       window.clearInterval(talk);
     };
   }, [typing, line]);
+
+  // Lets the optional voice layer read each line aloud as it appears (a no-op unless it is on).
+  useEffect(() => {
+    announceLine({ civ, lines, index: Math.min(index, lines.length - 1) });
+  }, [civ, index, script]);
 
   const advance = () => {
     if (typing) setShown(line.length);
