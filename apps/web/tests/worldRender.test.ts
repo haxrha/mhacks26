@@ -9,6 +9,7 @@ import {
 } from "../src/game/engine";
 import { TOWNS, townIndex } from "../src/game/towns";
 import {
+  areaStatus,
   MAP_H,
   MAP_W,
   renderWorld,
@@ -18,7 +19,6 @@ import {
   portRoute,
   tradeTraffic,
   tsunamiDirection,
-  wildfireMask,
 } from "../src/game/worldRender";
 import type { CivId, EventId, GameState } from "../src/game/types";
 
@@ -43,6 +43,7 @@ function withEvent(civ: CivId, type: EventId) {
   s = advance(s);
   const q = questionFor(s, "heartland")!;
   s = answerQuiz(s, "heartland", q.correct, 1000);
+  s = applyAction(s, { type: "acknowledge", civ: "heartland" }).state;
   return applyAction(s, { type: "choose", civ: "heartland", option: 2 }).state;
 }
 
@@ -155,35 +156,6 @@ test("water shimmer holds its frame rather than flashing at the render rate", ()
       assert.deepEqual(seaPixel(x, y, 0), seaPixel(x, y, 11));
 });
 
-test("wildfire leaves forest gaps, crosses borders and stops at natural barriers", () => {
-  const s = createGame("enclave", "solo", 11);
-  for (const c of Object.keys(s.events) as CivId[])
-    s.events[c] = { type: "heatwave", loss: {} };
-  s.events.enclave = { type: "wildfire", loss: {} };
-  const mask = wildfireMask(s),
-    L = worldLayers(),
-    owner = townIndex("enclave");
-  let burnt = 0,
-    untouched = 0,
-    crossed = 0;
-  for (let i = 0; i < mask.length; i++) {
-    if (L.area[i] === owner && L.kind[i] === 5) {
-      if (mask[i] > 0) burnt++;
-      else untouched++;
-    }
-    if (mask[i] > 0 && L.area[i] !== owner) crossed++;
-    if ([0, 1, 2, 3, 4, 8, 9].includes(L.kind[i])) assert.equal(mask[i], 0);
-  }
-  assert(burnt > 50, "fire remains visible");
-  assert(untouched > burnt, "most forest must remain green");
-  assert(crossed > 0, "political borders do not stop the fire mask");
-  assert(
-    mask.some((v) => v > 0 && v < 0.15),
-    "fire edges taper rather than ending solidly",
-  );
-  assert.deepEqual(mask, wildfireMask(structuredClone(s)));
-});
-
 test("a flood only recolours the region it hits", () => {
   const civ: CivId = "enclave";
   const calm = withEvent(civ, "heatwave");
@@ -197,6 +169,92 @@ test("a flood only recolours the region it hits", () => {
       L.area[i] === area || L.near[i] === area,
       `pixel ${i} outside the region changed`,
     );
+});
+
+test("wildfire spreads in a circle around the town", () => {
+  const civ: CivId = "enclave";
+  const quiet = render(withEvent(civ, "drought"), 0);
+  const fire = render(withEvent(civ, "wildfire"), 0);
+  const later = render(withEvent(civ, "wildfire"), 4);
+  const L = worldLayers();
+  const [kx, ky] = TOWNS[townIndex(civ)].keepTile;
+  const forest = 5;
+  let core = 0;
+  let coreHit = 0;
+  let far = 0;
+  let farHit = 0;
+  let beyond = 0;
+  for (let i = 0; i < MAP_W * MAP_H; i++) {
+    if (L.kind[i] !== forest) continue;
+    const x = i % MAP_W;
+    const y = (i / MAP_W) | 0;
+    const d = Math.hypot(x - kx, y - ky);
+    const hit =
+      fire[i * 4] !== quiet[i * 4] ||
+      fire[i * 4 + 1] !== quiet[i * 4 + 1] ||
+      fire[i * 4 + 2] !== quiet[i * 4 + 2];
+    if (d > 14 && d < 26) {
+      core++;
+      if (hit) coreHit++;
+    }
+    if (d > 62) {
+      far++;
+      if (hit) farHit++;
+    }
+    if (hit && d > 52) beyond++;
+  }
+  assert(core > 30 && coreHit / core > 0.7, "the middle of the circle burns");
+  assert(far > 30 && farHit / far < 0.05, "the region edge stays unburned");
+  assert(beyond === 0, "the burn stays inside the circle");
+  assert(changed(fire, later).length > 10, "flames should move between frames");
+});
+
+test("all 16 event ids reach the live map status", () => {
+  const ids: EventId[] = [
+    "flood",
+    "dam_failure",
+    "hurricane",
+    "earthquake",
+    "tsunami",
+    "volcano",
+    "drought",
+    "heatwave",
+    "wildfire",
+    "spill",
+    "smog",
+    "sea_rise",
+    "landslide",
+    "grid_failure",
+    "pandemic",
+    "supply_shock",
+  ];
+  for (const id of ids) {
+    const state = withEvent("heartland", id);
+    assert(areaStatus(state)[townIndex("heartland")].effects.has(id), id);
+  }
+});
+
+test("each visual effect family changes map pixels", () => {
+  const cases: [CivId, EventId][] = [
+    ["heartland", "dam_failure"],
+    ["archipelago", "hurricane"],
+    ["archipelago", "earthquake"],
+    ["archipelago", "volcano"],
+    ["archipelago", "spill"],
+    ["petrostate", "smog"],
+    ["petrostate", "drought"],
+    ["enclave", "grid_failure"],
+    ["enclave", "pandemic"],
+    ["petrostate", "supply_shock"],
+  ];
+  for (const [civ, event] of cases) {
+    const baseline = render(withEvent(civ, "heatwave"));
+    const affected = render(withEvent(civ, event));
+    assert(
+      changed(baseline, affected).length > 0,
+      `${event} should be visible`,
+    );
+  }
 });
 
 test("warming melts mountain snow", () => {

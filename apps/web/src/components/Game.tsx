@@ -29,6 +29,7 @@ import {
   greenCount,
   income,
   questionFor,
+  responseTarget,
   score,
   spillTarget,
 } from "@/game/engine";
@@ -47,6 +48,7 @@ import { townOf } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
 import Narrator from "./Narrator";
+import RadioControl from "./RadioControl";
 import WorldMap from "./WorldMap";
 import WorldStage from "./WorldStage";
 import ResourceIcon from "./ResourceIcon";
@@ -119,6 +121,7 @@ export default function Game() {
     const pending = state.humans.find((c) => {
       const civ = state.civs[c];
       if (state.phase === "quiz") return civ.quiz?.option === undefined;
+      if (state.phase === "response") return !civ.responded;
       if (state.phase === "choice") return civ.choice === undefined;
       if (state.phase === "build") return !civ.ready;
       return false;
@@ -297,6 +300,7 @@ export default function Game() {
   const phaseLabels = {
     event: "Something is coming",
     quiz: "Quick question",
+    response: "Your neighbor responds",
     choice: "Make your choice",
     build: "Build your town",
     ended: "Your legacy",
@@ -331,6 +335,7 @@ export default function Game() {
           </span>
         </a>
         <div className="sidebar-bottom">
+          <RadioControl state={state} civ={civId} />
           <button onClick={() => setHelp(true)}>
             <BookOpen size={15} /> How to play
           </button>
@@ -353,6 +358,19 @@ export default function Game() {
             <h1>{phaseLabels[state.phase]}</h1>
           </div>
           <div className="header-actions">
+            {online && (
+              <span className="seat-strip" aria-label="Claimed civilizations">
+                {world.seats.map((seat) => {
+                  const id = seat.civ as CivId;
+                  return CIV_IDS.includes(id) ? (
+                    <i key={id} title={`${CIVS[id].name} claimed`}>
+                      {CIVS[id].crest}
+                    </i>
+                  ) : null;
+                })}
+                <small>{world.seats.length}/4 claimed</small>
+              </span>
+            )}
             <span className="mode-pill">
               {online
                 ? `ROOM ${world.roomId}`
@@ -430,6 +448,17 @@ export default function Game() {
                         void world.answer(civ.quiz!.questionId, option, false);
                       else setState(answerQuiz(state, civId, option, ms));
                     }}
+                  />
+                ))}
+
+              {state.phase === "response" &&
+                (civ.responded ? (
+                  waiting(true)
+                ) : (
+                  <NeighborResponse
+                    state={state}
+                    civ={civId}
+                    onContinue={() => act({ type: "acknowledge", civ: civId })}
                   />
                 ))}
 
@@ -623,18 +652,9 @@ function ChoiceBox({
 }) {
   const ev = state.events[civ];
   const e = EVENTS[ev.type];
-  const quiz = state.civs[civ].quiz;
-  const q = QUESTIONS.find((x) => x.id === quiz?.questionId);
   const target = e.cheap.spillTo
     ? CIVS[spillTarget(civ, e.cheap.spillTo)].name
     : "";
-  const feedback = !q
-    ? []
-    : quiz?.correct
-      ? [`That's right! ${q.explanation}`]
-      : [
-          `${quiz?.option === -1 ? "Out of time." : "Not quite."} The answer was "${q.options[q.correct]}". ${q.explanation}`,
-        ];
   const card = (option: 0 | 1, kind: "cheap" | "green") => {
     const c = e[kind];
     const cost = choiceCost(state, civ, option);
@@ -658,10 +678,7 @@ function ChoiceBox({
       civ={civ}
       className="narrator-docked"
       eyebrow={`YOUR CHOICE · ${e.name.toUpperCase()}`}
-      lines={[
-        ...feedback,
-        `So how do we face this ${e.name.toLowerCase()}? ${e.lesson}`,
-      ]}
+      lines={[`So how do we face this ${e.name.toLowerCase()}? ${e.lesson}`]}
       actions={
         <div className="choice-cards">
           {card(0, "cheap")}
@@ -670,6 +687,39 @@ function ChoiceBox({
             Brace and take the full hit
           </button>
         </div>
+      }
+    />
+  );
+}
+
+function NeighborResponse({
+  state,
+  civ,
+  onContinue,
+}: {
+  state: GameState;
+  civ: CivId;
+  onContinue: () => void;
+}) {
+  const event = EVENTS[state.events[civ].type];
+  const target = responseTarget(state, civ);
+  const quiz = state.civs[civ].quiz;
+  const question = QUESTIONS.find((q) => q.id === quiz?.questionId);
+  const feedback = !question
+    ? "The advisor recorded your answer."
+    : quiz?.correct
+      ? `Correct. ${question.explanation}`
+      : `${quiz?.option === -1 ? "Time ran out." : "That answer was not correct."} The answer was "${question.options[question.correct]}". ${question.explanation}`;
+  return (
+    <Narrator
+      civ={target}
+      className="narrator-docked neighbor-response"
+      eyebrow={`${CIVS[target].name.toUpperCase()} RESPONDS · ${event.name.toUpperCase()}`}
+      lines={[feedback, event.neighbor]}
+      actions={
+        <button className="primary" onClick={onContinue}>
+          We must decide <ArrowRight size={16} />
+        </button>
       }
     />
   );
@@ -949,7 +999,9 @@ function validSave(value: unknown): value is GameState {
     Number.isFinite(s.climate) &&
     CIV_IDS.includes(s.player) &&
     ["solo", "hotseat"].includes(s.mode) &&
-    ["event", "quiz", "choice", "build", "ended"].includes(s.phase) &&
+    ["event", "quiz", "response", "choice", "build", "ended"].includes(
+      s.phase,
+    ) &&
     Array.isArray(s.humans) &&
     CIV_IDS.every(
       (id) =>

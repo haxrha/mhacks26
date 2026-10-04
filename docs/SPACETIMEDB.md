@@ -8,25 +8,25 @@ The SDK and module dependency are pinned through lockfiles at 2.10.2. Generated 
 
 ## Local setup
 
-The root `npm run db:start`, `db:publish`, and `db:generate` scripts are Windows PowerShell helpers. They use the portable `.tools/spacetime/spacetimedb-cli.exe` if present, otherwise a globally installed `spacetime` command. Database files and local CLI identity remain in ignored `.tools/` folders. **Keep this folder to retain local worlds and publisher ownership.**
+The root `npm run db:start`, `db:publish`, and `db:generate` scripts use a cross-platform Node launcher. It uses a portable CLI under `.tools/spacetime/` when present, otherwise a globally installed `spacetime` command, and refuses versions other than 2.10.2. Database files and local CLI identity remain in ignored `.tools/` folders. **Keep this folder to retain local worlds and publisher ownership.**
 
-On other platforms, from the repository root:
+From the repository root on macOS or Windows:
 
 ```sh
 npm ci --prefix spacetime
 npm ci --prefix apps/web
-spacetime start --listen-addr 127.0.0.1:3001 --data-dir .tools/data --non-interactive
+npm run db:start
 # In another terminal:
-spacetime publish earthshare-game --module-path spacetime --server http://127.0.0.1:3001 --delete-data=never --no-config
-spacetime generate --lang typescript --out-dir apps/web/src/module_bindings --module-path spacetime
+npm run db:publish
+npm run db:generate
 npm run dev
 ```
 
-A first local publish may prompt for authentication; keep using the same publisher identity for updates. `--delete-data=never` refuses destructive migrations. If the name is already owned by another identity, choose an unused name and set the frontend database variable accordingly.
+The launcher consistently uses `.tools/data`, `.tools/config`, `--delete-data=never`, and a server-local publisher identity, so local development does not depend on cloud-account authentication. On first use it installs/selects CLI 2.10.2 under the ignored project configuration; subsequent publishes reuse the same identity. Set `SPACETIME_DATABASE=another-name` when running `db:publish` if you need a different local database name, and point the frontend variable at the same name. Manual Maincloud commands continue to use your normal global `spacetime login`.
 
 ## Publish to Maincloud
 
-1. Install the official CLI, then run `spacetime login` yourself and finish its browser authentication.
+1. Install the official 2.10.2 CLI, then run `spacetime login` yourself and finish its browser authentication. This login is only for publishing; browser players receive separate SDK identities automatically.
 2. Pick an available database name that you own. Publish from the repository root:
 
 ```sh

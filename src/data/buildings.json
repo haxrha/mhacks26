@@ -159,10 +159,10 @@
     "earned": true
   },
   "settling": {
-    "name": "Settling ponds",
+    "name": "Spill response depot",
     "icon": "◒",
     "cost": {},
-    "description": "Catch polluted runoff: future spill losses halved.",
+    "description": "Booms and trained crews: future oil-spill losses halved.",
     "protects": ["spill"],
     "green": true,
     "earned": true
@@ -187,12 +187,75 @@
     "green": true,
     "earned": true
   },
-  "refuge": {
-    "name": "High-ground refuge",
-    "icon": "♜",
+  "dam_retrofit": {
+    "name": "Dam retrofit",
+    "icon": "▥",
     "cost": {},
-    "description": "Marked evacuation routes and high-ground storage halve future tsunami losses.",
+    "description": "Monitoring and reinforcement halve future dam-break losses.",
+    "protects": ["dam_failure"],
+    "green": true,
+    "earned": true
+  },
+  "storm_shelter": {
+    "name": "Storm-ready district",
+    "icon": "⌂",
+    "cost": {},
+    "description": "Hardened roofs and restored dunes halve future hurricane losses.",
+    "protects": ["hurricane"],
+    "green": true,
+    "earned": true
+  },
+  "seismic_code": {
+    "name": "Seismic building code",
+    "icon": "⌁",
+    "cost": {},
+    "description": "Flexible structures halve future earthquake losses.",
+    "protects": ["earthquake"],
+    "green": true,
+    "earned": true
+  },
+  "tsunami_warning": {
+    "name": "Tsunami warning route",
+    "icon": "≋",
+    "cost": {},
+    "description": "Sirens and marked high-ground routes halve future tsunami losses.",
     "protects": ["tsunami"],
+    "green": true,
+    "earned": true
+  },
+  "ash_shelter": {
+    "name": "Ash shelter",
+    "icon": "▲",
+    "cost": {},
+    "description": "Protected water and roofs halve future volcanic-ash losses.",
+    "protects": ["volcano"],
+    "green": true,
+    "earned": true
+  },
+  "microgrid": {
+    "name": "Renewable microgrid",
+    "icon": "ϟ",
+    "cost": {},
+    "description": "Local generation and storage halve future grid-cascade losses.",
+    "protects": ["grid_failure"],
+    "green": true,
+    "earned": true
+  },
+  "clinic": {
+    "name": "Community clinic",
+    "icon": "✚",
+    "cost": {},
+    "description": "Care, testing and paid isolation halve future public-health losses.",
+    "protects": ["pandemic"],
+    "green": true,
+    "earned": true
+  },
+  "reserves": {
+    "name": "Shared reserves",
+    "icon": "⬡",
+    "cost": {},
+    "description": "Diversified emergency stocks halve future supply-chain losses.",
+    "protects": ["supply_shock"],
     "green": true,
     "earned": true
   }

@@ -2,7 +2,7 @@ import civData from "../../../../src/data/civs.json";
 import buildingData from "../../../../src/data/buildings.json";
 import eventData from "../../../../src/data/events.json";
 import resourceData from "../../../../src/data/resources.json";
-import type { CivId, EventId, Resource, Stock } from "./types";
+import type { CivId, DisasterId, EventId, Resource, Stock } from "./types";
 
 export const stock = (values: Partial<Stock> = {}): Stock => ({
   sheep: 0,
@@ -86,14 +86,19 @@ export interface EventDef {
   icon: string;
   color: string;
   carrier: string;
-  quizTypes: string[];
+  quizTypes: DisasterId[];
   regions: Partial<Record<CivId, number>>;
   loss: Partial<Stock>;
   /** A building in a neighboring town that makes this event likelier. */
   cause?: string;
   climateDriven?: boolean;
+  /** Chain-only hazards replace one of these primary events after a second seeded roll. */
+  chainFrom?: EventId[];
+  chainChance?: number;
   tell: string;
   caused?: string;
+  /** Spoken by the neighbor who would receive the cheap option's consequences. */
+  neighbor: string;
   cheap: ChoiceDef;
   green: ChoiceDef;
   lesson: string;

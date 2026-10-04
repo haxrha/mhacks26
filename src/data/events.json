@@ -18,6 +18,8 @@
     "cause": "lumber",
     "tell": "Snowmelt and rain have swollen the river. A flood is rolling toward our fields.",
     "caused": "Clear-cut hills upstream in {cause} sent the water down faster.",
+    "climateDriven": true,
+    "neighbor": "The river is already at our doors. Whatever you hold back has to go somewhere, so do not make our town your overflow channel.",
     "cheap": {
       "label": "Throw up a quick levee",
       "cost": {
@@ -59,6 +61,7 @@
     },
     "climateDriven": true,
     "tell": "No rain for months. The wells are dropping and the wheat is wilting.",
+    "neighbor": "Our wells draw from the same water below us. If you pump without restraint, our families will be the ones left thirsty.",
     "cheap": {
       "label": "Pump the shared aquifer hard",
       "cost": {},
@@ -97,6 +100,7 @@
     },
     "climateDriven": true,
     "tell": "Heat and dry wind have lit the forest. Fire is racing toward the town.",
+    "neighbor": "Smoke and embers are crossing the border. A bare firebreak may save you today, but losing that forest heats every future summer.",
     "cheap": {
       "label": "Clear-cut a wide firebreak",
       "cost": {},
@@ -133,6 +137,8 @@
     "cause": "lumber",
     "tell": "Days of rain loosened the hillside. Mud is sliding toward the town.",
     "caused": "The bare slopes from {cause}'s lumber camps gave way first.",
+    "climateDriven": true,
+    "neighbor": "The mud from those bare slopes is filling our river and fields. Hold the hillside with roots instead of sending the silt downstream.",
     "cheap": {
       "label": "Pile up stone walls",
       "cost": {
@@ -174,6 +180,7 @@
     "cause": "kiln",
     "tell": "A brown haze has settled over the town. People and flocks are falling sick.",
     "caused": "It blew in on the wind from {cause}'s kilns.",
+    "neighbor": "We can taste your smoke in our air. A taller stack only makes another town breathe what you refuse to clean.",
     "cheap": {
       "label": "Build taller smokestacks",
       "cost": {
@@ -197,43 +204,44 @@
     "source": "https://www.epa.gov/criteria-air-pollutants"
   },
   "spill": {
-    "name": "River pollution",
+    "name": "Oil spill",
     "icon": "☣",
     "color": "#b3a0c9",
     "carrier": "river",
     "quizTypes": ["spill"],
     "regions": {
-      "archipelago": 3,
-      "enclave": 2,
-      "petrostate": 1
+      "archipelago": 4,
+      "petrostate": 3,
+      "enclave": 1
     },
     "loss": {
       "sheep": 2,
       "wheat": 1
     },
-    "cause": "mine",
-    "tell": "The river has turned grey with mine tailings. Our flocks won't drink it.",
-    "caused": "The runoff came down from {cause}'s mines.",
+    "cause": "kiln",
+    "tell": "A fuel barge has ruptured. Oil is spreading through the river mouth and coastal fishing grounds.",
+    "caused": "Heavy industry in {cause} put more fuel traffic on the shared waterway.",
+    "neighbor": "The slick is moving with the current toward our nets and marshes. Flushing your harbor clean only sends the poison to us.",
     "cheap": {
-      "label": "Flush it on downstream",
+      "label": "Flush the slick out with the tide",
       "cost": {},
       "spillTo": "downstream",
       "spill": {
         "sheep": 1
       },
-      "effect": "Our stretch runs clear again, and {target} gets the sludge instead."
+      "effect": "Our harbor looks clear again, and {target} gets the slick instead."
     },
     "green": {
-      "label": "Dig settling ponds",
+      "label": "Deploy booms and recovery crews",
       "cost": {
         "brick": 1,
         "wood": 1
       },
       "build": "settling",
-      "effect": "Half the damage now, and the ponds catch the runoff from now on."
+      "effect": "Half the damage now, and trained crews contain future spills."
     },
-    "lesson": "Pollution in a river is never gone; it moves to whoever lives downstream.",
-    "source": "https://www.epa.gov/nps"
+    "lesson": "Oil carried away by water is not gone; currents move it onto another shore.",
+    "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/oil-spills"
   },
   "sea_rise": {
     "name": "Storm surge",
@@ -253,6 +261,7 @@
       "wood": 1
     },
     "tell": "A storm is driving the sea over the beach. Higher seas make every surge worse.",
+    "neighbor": "A hard wall can turn the waves sideways onto our shore. Living coastal buffers slow water without sacrificing the next town.",
     "cheap": {
       "label": "Pour a concrete seawall",
       "cost": {
@@ -294,6 +303,7 @@
       "wheat": 1
     },
     "tell": "The hottest summer anyone remembers. Streets bake and the herds are struggling.",
+    "neighbor": "Your extra fuel may cool one building, but its heat stays in the atmosphere above every town. Please cool the streets without feeding the next heat wave.",
     "cheap": {
       "label": "Burn ore to run coolers",
       "cost": {
@@ -314,45 +324,328 @@
     "lesson": "Trees and light roofs cool cities without burning more fuel.",
     "source": "https://www.epa.gov/heatislands"
   },
-  "tsunami": {
-    "name": "Tsunami",
-    "icon": "≋",
-    "color": "#9fd6e4",
-    "carrier": "sea",
-    "quizTypes": ["tsunami"],
+  "dam_failure": {
+    "name": "Dam-break flood",
+    "icon": "▥",
+    "color": "#5baed4",
+    "carrier": "river",
+    "quizTypes": ["dam_failure", "flood"],
     "regions": {
-      "archipelago": 2,
-      "enclave": 1,
-      "petrostate": 1
+      "heartland": 4
     },
     "loss": {
+      "brick": 2,
       "wheat": 2,
-      "wood": 1,
-      "brick": 2
+      "wood": 1
     },
-    "tell": "An offshore earthquake has sent a series of waves toward our coast. Move away from the shore and follow the marked route to high ground.",
+    "chainFrom": ["flood", "earthquake"],
+    "chainChance": 0.28,
+    "tell": "The dam is cracking under a sudden load. A wall of water could tear through every town below it.",
+    "neighbor": "We live below your reservoir. Patch-and-pray repairs leave us beneath the same risk; lower the pressure and reinforce the whole structure.",
     "cheap": {
-      "label": "Close our harbor and divert cargo",
+      "label": "Patch the visible cracks",
+      "cost": {
+        "brick": 1
+      },
+      "spillTo": "downstream",
+      "spill": {
+        "wheat": 2,
+        "wood": 1
+      },
+      "effect": "The wall holds for now, but an emergency release floods {target}."
+    },
+    "green": {
+      "label": "Lower the reservoir and retrofit the dam",
+      "cost": {
+        "brick": 2,
+        "ore": 1
+      },
+      "build": "dam_retrofit",
+      "effect": "Half the damage now, and monitoring plus reinforcement reduces future failures."
+    },
+    "lesson": "Safe dams combine monitoring, maintenance and controlled reservoir levels.",
+    "source": "https://www.fema.gov/emergency-managers/risk-management/dam-safety"
+  },
+  "hurricane": {
+    "name": "Hurricane and surge",
+    "icon": "◉",
+    "color": "#5d8fd5",
+    "carrier": "coast",
+    "quizTypes": ["hurricane"],
+    "regions": {
+      "archipelago": 4,
+      "enclave": 2
+    },
+    "loss": {
+      "wood": 2,
+      "wheat": 1,
+      "ore": 1
+    },
+    "climateDriven": true,
+    "tell": "A powerful cyclone is driving wind and seawater into the coast.",
+    "neighbor": "The surge runs along the whole coast. If your barriers deflect it, our harbor takes the energy you turned away.",
+    "cheap": {
+      "label": "Raise a hard storm barrier",
+      "cost": {
+        "brick": 2
+      },
+      "spillTo": "shared",
+      "spill": {
+        "wood": 1,
+        "wheat": 1
+      },
+      "effect": "Our waterfront holds, but the reflected surge strikes {target}."
+    },
+    "green": {
+      "label": "Harden roofs and restore dunes",
+      "cost": {
+        "wood": 1,
+        "brick": 1
+      },
+      "build": "storm_shelter",
+      "effect": "Half the damage now, with safer roofs and dunes for future storms."
+    },
+    "lesson": "Prepared buildings and natural shorelines reduce both wind and surge damage.",
+    "source": "https://www.noaa.gov/education/resource-collections/weather-atmosphere/hurricanes"
+  },
+  "earthquake": {
+    "name": "Earthquake",
+    "icon": "⌁",
+    "color": "#a58c78",
+    "carrier": "fault",
+    "quizTypes": ["earthquake"],
+    "regions": {
+      "archipelago": 3,
+      "heartland": 1
+    },
+    "loss": {
+      "brick": 2,
+      "ore": 1
+    },
+    "tell": "The ground is rolling along the fault. Walls, roads and lifelines are breaking.",
+    "neighbor": "Your damaged roads and utilities connect to ours. A rushed rebuild leaves the whole network brittle for the next shock.",
+    "cheap": {
+      "label": "Rebuild quickly to the old standard",
       "cost": {
         "brick": 1
       },
       "spillTo": "shared",
       "spill": {
+        "ore": 1
+      },
+      "effect": "We reopen first, but failures in the shared network cost {target}."
+    },
+    "green": {
+      "label": "Rebuild to seismic code",
+      "cost": {
+        "brick": 2,
+        "wood": 1
+      },
+      "build": "seismic_code",
+      "effect": "Half the damage now, and flexible structures withstand future shaking."
+    },
+    "lesson": "Seismic codes and flexible connections prevent shaking from becoming collapse.",
+    "source": "https://www.usgs.gov/programs/earthquake-hazards"
+  },
+  "tsunami": {
+    "name": "Tsunami",
+    "icon": "≋",
+    "color": "#438db8",
+    "carrier": "coast",
+    "quizTypes": ["tsunami"],
+    "regions": {
+      "archipelago": 4
+    },
+    "loss": {
+      "wheat": 2,
+      "wood": 1,
+      "brick": 1
+    },
+    "chainFrom": ["earthquake"],
+    "chainChance": 0.35,
+    "tell": "The sea has pulled back after the earthquake. A tsunami is racing toward the low coast.",
+    "neighbor": "The wave will wrap around seawalls and cross every low shoreline. Warning and evacuation protect people without throwing water at another harbor.",
+    "cheap": {
+      "label": "Close a harbor wall",
+      "cost": {
+        "brick": 2
+      },
+      "spillTo": "shared",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "The harbor mouth is shielded, but redirected water reaches {target}."
+    },
+    "green": {
+      "label": "Sound warnings and evacuate uphill",
+      "cost": {
+        "wheat": 1,
+        "wood": 1
+      },
+      "build": "tsunami_warning",
+      "effect": "Half the damage now, and warning routes protect every future evacuation."
+    },
+    "lesson": "After strong coastal shaking, immediate warning and high ground save lives.",
+    "source": "https://www.noaa.gov/jetstream/tsunamis"
+  },
+  "volcano": {
+    "name": "Volcanic eruption",
+    "icon": "▲",
+    "color": "#b85b3e",
+    "carrier": "wind",
+    "quizTypes": ["volcano"],
+    "regions": {
+      "archipelago": 3
+    },
+    "loss": {
+      "wheat": 2,
+      "sheep": 1,
+      "wood": 1
+    },
+    "tell": "The island volcano is erupting. Ash is darkening the sky and choking fields.",
+    "neighbor": "Ash is crossing the water on the wind. Dumping it loose only lets the next gust carry it onto our crops.",
+    "cheap": {
+      "label": "Sweep ash into open dumps",
+      "cost": {},
+      "spillTo": "downwind",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "Our streets clear, but wind carries the loose ash onto {target}."
+    },
+    "green": {
+      "label": "Shelter water and collect ash safely",
+      "cost": {
         "wood": 1,
         "brick": 1
       },
-      "effect": "Our stores are saved, but {target} must pay for emergency deliveries while our harbor is shut."
+      "build": "ash_shelter",
+      "effect": "Half the damage now, with protected water and safe ash storage next time."
+    },
+    "lesson": "Ash protection focuses on clean water, strong roofs and safe cleanup.",
+    "source": "https://www.usgs.gov/programs/VHP/volcanic-ash"
+  },
+  "grid_failure": {
+    "name": "Grid cascade",
+    "icon": "ϟ",
+    "color": "#6b6b72",
+    "carrier": "shared",
+    "quizTypes": ["grid_failure"],
+    "regions": {
+      "enclave": 3,
+      "petrostate": 2,
+      "heartland": 1,
+      "archipelago": 1
+    },
+    "loss": {
+      "ore": 2,
+      "wheat": 1
+    },
+    "climateDriven": true,
+    "tell": "Heat and peak demand have tripped one line after another. The regional grid is going dark.",
+    "neighbor": "Our lines are tied together. Pulling every spare unit toward your town makes the shared blackout deeper here.",
+    "cheap": {
+      "label": "Take priority power from the grid",
+      "cost": {},
+      "spillTo": "shared",
+      "spill": {
+        "ore": 1,
+        "wheat": 1
+      },
+      "effect": "Our lights return first, while {target} stays dark longer."
     },
     "green": {
-      "label": "Build routes and refuges on high ground",
+      "label": "Build a renewable microgrid",
       "cost": {
-        "brick": 1,
+        "ore": 2,
         "wood": 1
       },
-      "build": "refuge",
-      "effect": "Half the damage now, and marked routes and safe storage reduce future losses."
+      "build": "microgrid",
+      "effect": "Half the damage now, and local clean power isolates future failures."
     },
-    "lesson": "Tsunamis come in several waves. Move inland or uphill and return only when local officials say it is safe. Trees and seawalls cannot guarantee safety.",
-    "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis"
+    "lesson": "Distributed generation and storage keep one grid fault from cascading.",
+    "source": "https://www.energy.gov/oe/microgrid-program-strategy"
+  },
+  "pandemic": {
+    "name": "Public-health shock",
+    "icon": "✚",
+    "color": "#8eb89d",
+    "carrier": "local",
+    "quizTypes": ["pandemic"],
+    "regions": {
+      "enclave": 2,
+      "heartland": 2,
+      "petrostate": 1,
+      "archipelago": 1
+    },
+    "loss": {
+      "sheep": 2,
+      "wheat": 1
+    },
+    "tell": "A fast-moving illness is straining clinics and keeping workers home.",
+    "neighbor": "People cross our border every day. Hiding cases buys you time only by sending an unseen outbreak into our town.",
+    "cheap": {
+      "label": "Hide cases and keep markets open",
+      "cost": {},
+      "spillTo": "shared",
+      "spill": {
+        "sheep": 1,
+        "wheat": 1
+      },
+      "effect": "Trade continues here, but the unreported outbreak reaches {target}."
+    },
+    "green": {
+      "label": "Fund clinics and paid isolation",
+      "cost": {
+        "wheat": 1,
+        "brick": 1
+      },
+      "build": "clinic",
+      "effect": "Half the damage now, and stronger public health limits future outbreaks."
+    },
+    "lesson": "Early reporting, care and support reduce transmission across every border.",
+    "source": "https://www.who.int/emergencies/diseases"
+  },
+  "supply_shock": {
+    "name": "Supply-chain shock",
+    "icon": "⬡",
+    "color": "#c79b68",
+    "carrier": "shared",
+    "quizTypes": ["supply_shock"],
+    "regions": {
+      "petrostate": 3,
+      "enclave": 2,
+      "archipelago": 1
+    },
+    "loss": {
+      "brick": 1,
+      "ore": 1,
+      "wood": 1
+    },
+    "tell": "A distant disruption has stopped critical materials from reaching the valley.",
+    "neighbor": "If you buy every remaining crate, our builders stop entirely. Shared reserves make the whole valley less fragile.",
+    "cheap": {
+      "label": "Corner the remaining supplies",
+      "cost": {
+        "sheep": 1
+      },
+      "spillTo": "shared",
+      "spill": {
+        "brick": 1,
+        "ore": 1
+      },
+      "effect": "Our projects continue, while shortages deepen in {target}."
+    },
+    "green": {
+      "label": "Pool reserves and diversify suppliers",
+      "cost": {
+        "wood": 1,
+        "wheat": 1
+      },
+      "build": "reserves",
+      "effect": "Half the damage now, and diverse shared stocks absorb future shocks."
+    },
+    "lesson": "Diverse suppliers and emergency reserves reduce cascading shortages.",
+    "source": "https://www.fema.gov/emergency-managers/national-preparedness/supply-chain"
   }
 }
