@@ -5175,3 +5175,11 @@ svg image {
     grid-template-columns: 1fr;
   }
 }
+/* Both option boxes start on the same line and match heights (overrides the old landing margins). */
+.ls-options-body > .ls-option-group {
+  margin: 0;
+  align-self: stretch;
+}
+.ls-options-body {
+  align-items: stretch;
+}
