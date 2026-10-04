@@ -32,6 +32,10 @@ const NONE = 255;
 
 const C = {
   fissure: rgb("#3e2414"),
+  shimmer: rgb("#e8f6fb"),
+  seaShallow: rgb("#3a8bbd"),
+  seaMid: rgb("#2b6fa0"),
+  waveMark: rgb("#21497a"),
   deep: rgb(OCEAN.deep),
   sea: rgb("#21497a"),
   crest: rgb(OCEAN.crest),
@@ -69,6 +73,8 @@ export interface WorldLayers {
   near: Uint8Array;
   distWater: Uint8Array;
   distSea: Uint8Array;
+  /** For sea tiles: how far out from the shore (1 = touching land). */
+  distLand: Uint8Array;
   hash: Uint8Array;
 }
 
@@ -135,6 +141,7 @@ export function worldLayers(): WorldLayers {
     near: unrle(world.near),
     distWater: distance(kind, (k) => k <= KIND.water),
     distSea: distance(kind, (k) => k <= KIND.shallow),
+    distLand: distance(kind, (k) => k > KIND.shallow),
     hash,
   };
   return cached;
@@ -160,18 +167,52 @@ export function seaPixel(
   y: number,
   frame: number,
   climate = 0,
-  shallow = false,
 ): RGB {
-  const drift = Math.floor(frame / OCEAN.shimmer.framesPerDrift);
-  const step = Math.floor(frame / OCEAN.shimmer.framesPerStep);
-  const anchor = Math.floor((x - drift) / 2) * 2 + y * MAP_W;
-  let h = Math.imul(anchor ^ 0x9e3779b9, 0x85ebca6b);
+  const CELL = 16;
+  const drift = Math.floor(frame / 24); // one pixel every 4 seconds
+  const wx = x + drift;
+  const cx = Math.floor(wx / CELL),
+    cy = Math.floor(y / CELL);
+  let h = Math.imul((cx * 73856093) ^ (cy * 19349663) ^ 0x9e3779b9, 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  const noise = (h ^ (h >>> 16)) & 255;
-  let c = shallow ? C.sea : C.deep;
-  if (noise < OCEAN.shimmer.density && ((step + noise) & 3) < 3) c = C.wave;
+  h = (h ^ (h >>> 16)) >>> 0;
+  const ox = 2 + (h % 11),
+    oy = 2 + ((h >>> 8) % 11);
+  const dx = wx - cx * CELL - ox,
+    dy = y - cy * CELL - oy;
+  let c = C.deep;
+  // a small "~": low-high-low over three pixels
+  if (
+    (dx === 0 && dy === 1) ||
+    (dx === 1 && dy === 0) ||
+    (dx === 2 && dy === 1)
+  )
+    c = C.waveMark;
   const health = 100 - climate * 12;
   if (health < 85) c = mix(c, C.murk, Math.min(0.6, (85 - health) / 100));
+  return c;
+}
+
+/**
+ * Sea colour by distance from shore: foam (1px, broken, rocking 1px every 500ms) → shallow (4px) →
+ * mid (8px) → deep with wave marks. One set of bands, no repeated rings.
+ */
+function oceanPixel(
+  L: WorldLayers,
+  i: number,
+  x: number,
+  y: number,
+  frame: number,
+  climate: number,
+): RGB {
+  const d = L.distLand[i];
+  const phase = Math.floor(frame / 3) % 2; // 3 frames at 6fps = 500ms
+  if (d === 1 + phase && (x * 3 + y * 7) % 9 !== 0) return C.shimmer;
+  let c =
+    d <= 4 ? C.seaShallow : d <= 12 ? C.seaMid : seaPixel(x, y, frame, climate);
+  const health = 100 - climate * 12;
+  if (d <= 12 && health < 85)
+    c = mix(c, C.murk, Math.min(0.6, (85 - health) / 100));
   return c;
 }
 
@@ -526,8 +567,7 @@ function terrainPixel(
     h = L.hash[i],
     a = L.area[i];
   let c: RGB = L.palette[L.base[i]];
-  if (k === KIND.deep || k === KIND.sea)
-    c = seaPixel(x, y, frame, climate, k === KIND.sea);
+  if (isSea(k)) c = oceanPixel(L, i, x, y, frame, climate);
 
   // Global state: melting snow, rising seas, ocean health.
   if (k === KIND.snow && climate > meltThreshold(y, h))
@@ -544,16 +584,9 @@ function terrainPixel(
     c = mix(c, C.murk, Math.min(0.6, (85 - ocean) / 100));
 
   // Ambient animation: water shimmer and drifting waves.
-  const riverStep = Math.floor(frame / OCEAN.shimmer.riverFramesPerStep);
-  const seaStep = Math.floor(frame / OCEAN.shimmer.framesPerStep);
-  if (k === KIND.water && (x + y * 3 - riverStep) % 11 === 0 && h < 70)
-    c = C.foam;
-  if (
-    k === KIND.shallow &&
-    h < OCEAN.shimmer.density &&
-    ((seaStep + h) & 3) === 0
-  )
-    c = C.wave;
+  // River shimmer: sparse white glints that step downstream (down the map) on a 3-frame loop.
+  if (k === KIND.water && h < 120 && (x * 5 + y - (frame % 3) * 2) % 13 === 0)
+    c = C.shimmer;
 
   // Hazards active in this area (sea tiles take the hazards of the nearest area).
   const owner = a !== NONE ? a : L.near[i];

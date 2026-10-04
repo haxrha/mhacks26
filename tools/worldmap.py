@@ -34,6 +34,9 @@ P = {k: hx(v) for k, v in dict(
     mt_light="#9a907e", mt_shadow="#5a5348", mt_ridge="#b8ad97", mt_line="#3e3830", mt_floor="#776e60",
     mt_snow="#f4f4ec", mt_snow_d="#c6d4e0", foothill="#8c7d4b", foothill_d="#6f6239", ice="#bfe4f2",
     pine="#3d7a2e", pine_d="#24501b",
+    # river (section 1 polish)
+    river_deep="#2a78ad", river_edge="#7cc9ee", bank="#5d7a3a", dam_l="#a0a0a0", dam_d="#5a5a58",
+    spill="#e8f6fb", wet_sand="#c9b06a",
 ).items()}
 CIVS = ["highland", "verdant", "forge", "tidehaven"]
 
@@ -63,7 +66,7 @@ def river_x(y): return 160 + 12 * math.sin(y / 16) + 5 * math.sin(y / 6.5 + 1)
 
 water = np.zeros((H, W), bool)
 lake_c = (river_x(46), 45)
-lake = (((xx - lake_c[0]) / 14.0) ** 2 + ((yy - lake_c[1]) / 7.5) ** 2 + (n_b - 0.5) * 0.5) < 1
+lake = (((xx - lake_c[0]) / 14.0) ** 2 + ((yy - lake_c[1]) / 7.5) ** 2 + (n_land - 0.5) * 0.2) < 1
 water |= lake & land
 DAM_Y = 54
 def paint_line(pts, width):
@@ -73,11 +76,16 @@ def paint_line(pts, width):
         for xi in range(x0, x1):
             yi = int(round(y))
             if 0 <= xi < W and 0 <= yi < H: water[yi, xi] = True
+def river_w(y):
+    if y >= 168: return 3
+    if y >= 140: return 6
+    if y >= 92: return 4
+    return 2
 for y in np.arange(DAM_Y - 2, H, 0.5):                       # main river
     x = river_x(y)
     if y > 120 and not land[int(y), int(x)]:
         break
-    paint_line([(x, y)], 2 if y < 100 else 3)
+    paint_line([(x, y)], river_w(y))
 for k in (-1, 1):                                            # delta branches
     for y in np.arange(168, 192, 0.5):
         paint_line([(river_x(y) + k * (y - 168) * 1.1, y)], 2)
@@ -115,7 +123,7 @@ def dist_from(mask, maxd):
         dist[nxt & ~cur] = i; cur = nxt
     return dist
 d_land = dist_from(land, 14)
-d_sea = dist_from(~land, 4)
+d_sea = dist_from(~land, 6)
 
 # ---------- base paint ----------
 img = np.zeros((H, W, 3), np.uint8)
@@ -172,13 +180,27 @@ desert_edge = 170 + (n_c - 0.5) * 14 + 4 * np.sin(xx / 12.0)
 sand_t = td & (across(yy, desert_edge, 5.0) > bayer)
 put(sand_t, "sand"); put(sand_t & (rnd < 0.3), "sand_d")
 # beaches
-beach = land & (d_sea <= 2) & ~(hl & (yy < 40))
+beach_w = 3 + np.floor(n_c * 2.99).astype(int)          # 3-5px of sand along the coast
+beach = land & (d_sea <= beach_w) & ~(hl & (yy < 40))
 put(beach, "sand"); put(beach & (rnd < 0.2), "sand_d")
-# water on land
-put(water_land, "river")
-put(water_land & (rnd < 0.08), "foam")
-put(lake & land & (((xx - lake_c[0]) / 9.0) ** 2 + ((yy - lake_c[1]) / 4.0) ** 2 < 1), "shallow")
+put(beach & (d_sea == 1), "wet_sand")                     # darker wet line next to the foam
+# water on land: body, deep centre, lit top-left edge, and a 1px darker bank outside
+ice &= ~lake                       # glacier channels stop at the reservoir's edge
+wl = water_land & ~ice
+lk = wl & lake
+d_in = dist_from(~wl, 4)
+put(wl, "river")
+put(wl & ~lk & (d_in >= 2), "river_deep")                       # river: centre channel
+put(lk & (d_in >= 3), "river_deep")                              # lake: deep middle
+lit = wl & (~np.roll(wl, 1, axis=1) | ~np.roll(wl, 1, axis=0))  # left or top neighbour is dry
+put(wl & ~lk & lit, "river_edge")
+put(lk & (d_in == 1), "river_edge")                              # lake: lighter rim all round
 put(ice & land & ~lake, "ice")
+near_wl = np.zeros_like(wl)
+near_wl[1:, :] |= wl[:-1, :]; near_wl[:-1, :] |= wl[1:, :]; near_wl[:, 1:] |= wl[:, :-1]; near_wl[:, :-1] |= wl[:, 1:]
+sandy = (img == P["sand"]).all(2) | (img == P["sand_d"]).all(2)
+bank = land & ~water & ~ice & near_wl & ~sandy & (d_sea > 1)
+put(bank, "bank")
 
 occupied = water.copy() | ~land       # sprite placement blocker
 
@@ -470,10 +492,10 @@ def scatter(rows_pal, region, n, cond=None):
         x, y = int(rng.integers(0, W - w)), int(rng.integers(0, H - h))
         if cond is not None and not cond[y + h // 2, x + w // 2]: continue
         if free(x, y, w, h, region): blit(rows, pal, x, y, mark=False); occupied[y + 2:y + h - 1, x + 1:x + w - 1] = True
-scatter(TREE, 1, 9000, cond=~clear_v & ~marsh_v)
-scatter(TREE_L, 1, 300, cond=clear_v)
-scatter(TREE_L, 2, 220)
-scatter(TREE_L, 3, 120, cond=~marsh_t)
+scatter(TREE, 1, 9000, cond=~clear_v & ~marsh_v & ~beach)
+scatter(TREE_L, 1, 300, cond=clear_v & ~beach)
+scatter(TREE_L, 2, 220, cond=~beach)
+scatter(TREE_L, 3, 120, cond=~marsh_t & ~beach)
 
 def place(rows, pal, region, near, tries=400, dyn=None):
     w, h = len(rows[0]), len(rows)
@@ -484,8 +506,8 @@ def place(rows, pal, region, near, tries=400, dyn=None):
 
 # dam across the lake outlet
 dxc = int(round(river_x(DAM_Y)))
-blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMfMfMfMfMO", "OOOOOOOOOOO"],
-     {"O": "ink", "L": "stone_l", "M": "stone_m", "f": "foam"}, dxc - 5, DAM_Y - 2, dyn="dam")
+blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMMMsssMMMO", "OOOOsssOOOO"],
+     {"O": "ink", "L": "dam_l", "M": "dam_d", "s": "spill"}, dxc - 5, DAM_Y - 2, dyn="dam")
 # farm plots (Verdant west fields + Forge fields + Tidehaven)
 def field(region, near, w, h, kind):
     rows = []
@@ -549,7 +571,7 @@ KINDS = ["deep", "sea", "shallow", "water", "marsh", "forest", "grass", "pasture
 COLOR_KIND = {}
 for name, kname in [("forest", "forest"), ("forest_d", "forest"), ("tree", "forest"), ("tree_d", "forest"),
                     ("trunk", "forest"), ("grass", "grass"), ("grass_l", "grass"), ("grass_d", "grass"),
-                    ("meadow", "grass"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
+                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
                     ("rock_l", "rock"), ("rock_d", "rock"), ("snow", "snow"), ("snow_d", "snow"), ("sand", "beach"),
                     ("sand_d", "beach"), ("marsh", "marsh"), ("shallow", "marsh"), ("wheat", "field"),
                     ("wheat_d", "field"), ("soil", "field"), ("soil_d", "field"), ("sludge", "sludge"),
