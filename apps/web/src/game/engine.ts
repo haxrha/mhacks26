@@ -145,6 +145,7 @@ export function createGame(
         hazards: [],
         technologies: [],
         actionsUsed: 0,
+        recent: [],
       } satisfies Civ,
     ]),
   ) as unknown as Record<CivId, Civ>;
@@ -167,7 +168,7 @@ export function createGame(
   return s;
 }
 
-/** Each town draws this cycle's event, weighted by its geography, the climate and its neighbors. */
+/** Each town draws this cycle's event, weighted by geography, climate and persistent damage. */
 export function rollEvents(s: GameState) {
   if (s.phase === "ended") return;
   drawRegionalEvents(s, () => random(s));

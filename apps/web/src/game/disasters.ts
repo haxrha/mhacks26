@@ -135,6 +135,8 @@ export function drawRegionalEvents(s: GameState, dice: Dice) {
   s.scheduled = s.scheduled.filter((h) => h.arrives > s.round);
   for (const c of CIV_IDS) {
     const town = s.civs[c];
+    const recent = town.recent ?? [];
+    const previous = recent.at(-1);
     town.hazards = (town.hazards ?? []).filter(
       (h) => !RISK.disabledEvents.includes(h.type),
     );
@@ -146,7 +148,8 @@ export function drawRegionalEvents(s: GameState, dice: Dice) {
           ? eligibleOilSources(s, c).length
             ? Math.max(e.regions[c] ?? 0, RISK.fossilOilWeight)
             : 0
-          : (e.regions[c] ?? 0);
+          : (e.regions[c] ?? 0) ** 0.6;
+      if (recent.includes(id)) w *= 0.35;
       if (e.climateDriven) w *= 1 + s.climate / RISK.climateSeverityThreshold;
       if (e.cause)
         w *=
@@ -166,9 +169,13 @@ export function drawRegionalEvents(s: GameState, dice: Dice) {
           );
       return w;
     };
-    const small = (Object.keys(EVENTS) as EventId[]).filter(
+    const allSmall = (Object.keys(EVENTS) as EventId[]).filter(
       (id) => !profile(id).major && weight(id) > 0,
     );
+    // Fresh minor pressures make each decade feel different. Active major incidents may repeat
+    // while recovery continues because their consequences deliberately last several rounds.
+    const freshSmall = allSmall.filter((id) => id !== previous);
+    const small = freshSmall.length ? freshSmall : allSmall;
     const minor = event(
       weighted(
         small.map((id) => ({ id, weight: weight(id) })),
@@ -179,6 +186,7 @@ export function drawRegionalEvents(s: GameState, dice: Dice) {
       s.round,
     );
     s.minorEvents[c] = minor;
+    town.recent = [...recent, minor.type].slice(-3);
     const incoming = due
       .filter((h) => h.target === c)
       .sort((a, b) => b.severity - a.severity);
