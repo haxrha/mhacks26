@@ -33,7 +33,7 @@ P = {k: hx(v) for k, v in dict(
     # northern range (lit from the top-left)
     mt_light="#9a907e", mt_shadow="#5a5348", mt_ridge="#b8ad97", mt_line="#3e3830", mt_floor="#776e60",
     mt_snow="#f4f4ec", mt_snow_d="#c6d4e0", foothill="#8c7d4b", foothill_d="#6f6239", ice="#bfe4f2",
-    pine="#3d7a2e", pine_d="#24501b",
+    pine="#3d7a2e", pine_d="#24501b", foothill_l="#a39260",
     # river (section 1 polish)
     river_deep="#2a78ad", river_edge="#7cc9ee", bank="#5d7a3a", dam_l="#a0a0a0", dam_d="#5a5a58",
     spill="#e8f6fb", wet_sand="#c9b06a",
@@ -483,17 +483,8 @@ put(floor & (rnd < 0.11), "mt_shadow")              # pebbles
 put(floor & (np.roll(rnd, 1, axis=1) < 0.04), "mt_shadow")   # a few 2px pebbles
 
 # foothills: a 6-10px band below the front row, dithered 2px into the grass
-fh_len = (3 + 3 * vnoise(10)).astype(int)
-foot = np.zeros((H, W), bool)
-for x in range(W):
-    for y in range(front[x] + 2, min(H, front[x] + 2 + fh_len[0, x])):
-        foot[y, x] = True
-foot &= range_land & ~protect
-edge = foot & ~np.roll(foot, -2, axis=0)            # bottom 2 rows of the band
-foot_fill = foot & ~(edge & (((xx + yy) & 1) == 1))   # checker blend into grass
-put(foot_fill, "foothill")
-put(foot_fill & ((xx // 5 + yy // 3) % 3 == 0) & (xx % 5 >= 3), "foothill_d")   # bump shading
-occupied |= floor | foot
+fh_len = (3 + 3 * vnoise(10)).astype(int)   # (kept for the RNG stream; the transition is drawn later)
+occupied |= floor
 
 # peaks: back to front, seeded spacing, +-3px jitter, never two same-size peaks in a perfect line
 union = np.zeros((H, W), bool)
@@ -511,9 +502,11 @@ def fits(mask, x, top, avoid_union=False):
     if avoid_union and (union[box] & mask).any(): return False
     return True
 
+PEAKS = []   # (x, top, mask) for every stamped peak
 def stamp(mask, grid, x, top):
     global placed_peaks
     hgt, wid = mask.shape
+    PEAKS.append((x, top, mask))
     for j2 in range(hgt):
         for i2 in range(wid):
             if mask[j2, i2]:
@@ -554,16 +547,105 @@ for row in ("small",):
 outline = ~union & (np.roll(union, 1, axis=1) | np.roll(union, -1, axis=1) | np.roll(union, -1, axis=0)) & land
 img[outline] = P["mt_line"]
 occupied |= union | outline
-
-# life: pines on the foothills, and 1-2 mine entrances with plank frames on the lower slopes
 PINE = (["..g..", ".gGg.", ".ggG.", "ggGGG", ".ggG.", "gggGG", "..t.."], {"g": "pine", "G": "pine_d", "t": "trunk"})
-pines = 0
-for _ in range(400):
-    x, y = int(mrng.integers(4, W - 9)), int(mrng.integers(30, 60))
-    near_foot = foot[min(H - 1, y + 6), x + 2] or (front[x + 2] + 2 <= y + 6 <= front[x + 2] + 16 and highland_land[min(H - 1, y + 6), x + 2])
-    if near_foot and not union[y:y + 7, x:x + 5].any() and not protect[y:y + 7, x:x + 5].any():
-        blit(PINE[0], PINE[1], x, y); pines += 1
-    if pines >= 9: break
+
+# ---------- mountain-to-grass transition (scree -> foothills -> dithered blend) ----------
+erng = np.random.default_rng(3131)
+# Irregular bottom edge: value noise with knots every ~6px (+-8px), plus a 1px step every few columns
+# so no horizontal run is longer than 8px. It bulges down under peaks and pulls up between them.
+knots = erng.uniform(-8, 8, W // 6 + 3)
+wander = np.interp(np.arange(W), np.arange(len(knots)) * 6, knots)
+wander += np.where((np.arange(W) // 4) % 2 == 0, 1, -1) * (erng.random(W) < 0.7)
+peak_base = np.full(W, -1)
+for x0p, top_p, mask_p in PEAKS:
+    hgt_p, wid_p = mask_p.shape
+    for i in range(wid_p):
+        if mask_p[:, i].any():
+            peak_base[x0p + i] = max(peak_base[x0p + i], top_p + int(np.nonzero(mask_p[:, i])[0].max()))
+bulge = peak_base.copy()
+for k in (1, 2, 3):          # spread each base a few px sideways so the bulge has rounded shoulders
+    bulge = np.maximum(bulge, np.maximum(np.roll(peak_base, k), np.roll(peak_base, -k)) - k)
+edge_y = np.round(front + 1 + wander - np.where(bulge < 0, 4, 0) - np.where(west, 7, 0)).astype(int)
+edge_y = np.where(bulge >= 0, np.maximum(edge_y, bulge + 1), edge_y)
+fh_w = (8 + 4 * erng.random(W // 5 + 2)).repeat(5)[:W].astype(int)     # foothill band 8-12px
+
+zone_ok = range_land & land & ~protect & ~union & ~outline & (dist_from(TOWN_LAND, 4) > 3)   # keep towns' pasture green
+rel = yy - edge_y[None, :]                  # rows below the irregular edge
+scree = zone_ok & (rel <= 6)                # above the edge and Zone A
+foot_b = zone_ok & (rel > 6) & (rel <= 6 + fh_w[None, :])
+blend_c = zone_ok & (rel > 6 + fh_w[None, :]) & (rel <= 12 + fh_w[None, :])
+# (only where the highland mountain area actually sits above: keep the zones under the range)
+under = np.zeros((H, W), bool)
+for x in range(W):
+    col = range_land[:, x] & (yy[:, x] <= edge_y[x])
+    if col.any(): under[:, x] = True
+scree &= under; foot_b &= under; blend_c &= under
+
+# Zone A / gaps between peaks: scree (rock floor with dark and light pebbles)
+put(scree, "mt_floor")
+put(scree & (rnd < 0.10), "mt_shadow")
+put(scree & (rnd > 0.93), "mt_light")
+# Zone B: earthy foothills with shading and small mound bumps
+put(foot_b, "foothill")
+put(foot_b & ((xx + yy * 2) % 7 == 0), "foothill_d")
+for _ in range(W // 3):
+    mx, mw = int(erng.integers(2, W - 6)), int(erng.integers(3, 6))
+    col_rows = np.nonzero(foot_b[:, mx])[0]
+    if len(col_rows) < 4: continue
+    my = int(erng.choice(col_rows[1:-1]))
+    if not foot_b[my, mx:mx + mw].all() or not foot_b[my - 1, mx + 1:mx + mw - 1].all(): continue
+    img[my, mx:mx + mw] = P["foothill"]
+    img[my, mx + mw // 2:mx + mw] = P["foothill_d"]            # shaded right side
+    img[my - 1, mx + 1:mx + mw - 1] = P["foothill"]
+    img[my - 1, mx + 1] = P["foothill_l"]                       # light top pixel
+# Zone C: 2x2 checker dither from foothill into grass, 75% -> 50% -> 25% foothill going down
+depth_c = rel - (7 + fh_w[None, :])         # 0..5 inside Zone C
+density = np.where(depth_c < 2, 0.75, np.where(depth_c < 4, 0.5, 0.25))
+block = np.array([[0.0, 0.5], [0.75, 0.25]])[(yy // 2) % 2, (xx // 2) % 2]
+put(blend_c & (block < density), "foothill")
+put(blend_c & ~(block < density), "grass")
+
+# Ground the peaks: their bottom rows sink into the scree, and a 1-2px shadow spills down-right.
+for x0p, top_p, mask_p in PEAKS:
+    hgt_p, wid_p = mask_p.shape
+    apex = wid_p // 2
+    for i in range(wid_p):
+        rows = np.nonzero(mask_p[:, i])[0]
+        if not len(rows): continue
+        by, bx = top_p + rows.max(), x0p + i
+        if not (0 <= bx < W and by + 3 < H): continue
+        if erng.random() < 0.5 and union[by, bx] and not protect[by, bx]:
+            img[by, bx] = P["mt_floor"] if erng.random() < 0.6 else P["mt_shadow"]   # sunk base
+        if i >= apex:
+            for d in (1, 2) if erng.random() < 0.6 else (1,):
+                if zone_ok[by + d, bx]: img[by + d, bx] = P["mt_shadow"]
+
+# Cover the seam: pines and boulders along Zones B and C (denser toward the grass), and a few
+# tiny grass tufts poking up into Zone B.
+BOULDER = (["LLD", "DDD"], {"L": "mt_light", "D": "mt_shadow"})
+seam = foot_b | blend_c
+placed_pines = placed_boulders = 0
+for _ in range(1400):
+    x, y = int(erng.integers(2, W - 8)), int(erng.integers(10, H // 2))
+    if not seam[y, x]: continue
+    in_c = blend_c[y, x]
+    if not in_c and erng.random() < 0.5: continue          # denser near the grass
+    if erng.random() < 0.55 and placed_pines < 26:
+        box = (slice(y - 6, y + 1), slice(x - 2, x + 3))
+        if y >= 6 and not (union[box] | protect[box] | occupied[box]).any():
+            blit(PINE[0], PINE[1], x - 2, y - 6); placed_pines += 1
+    elif placed_boulders < 30:
+        box = (slice(y - 1, y + 1), slice(x, x + 3))
+        if not (union[box] | protect[box] | occupied[box]).any():
+            blit(BOULDER[0], BOULDER[1], x, y - 1); placed_boulders += 1
+tufts = foot_b & (rel > 6 + fh_w[None, :] - 3) & (erng.random((H, W)) < 0.03) & ~occupied
+put(tufts, "tuft_l")
+put(np.roll(tufts, -1, axis=0) & foot_b, "tuft_l")             # 2px tall blades
+occupied |= scree | foot_b | blend_c
+print("transition:", placed_pines, "pines,", placed_boulders, "boulders")
+
+# life: 1-2 mine entrances with plank frames on the lower slopes
+pines = placed_pines
 MINE_FRAME = [".PPP.", "PdddP", "PdddP", "PdddP"]
 mines = 0
 for _ in range(800):
