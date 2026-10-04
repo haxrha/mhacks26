@@ -23,15 +23,15 @@ export const LEADERS: Leader[] = [
     sprite: "ostra",
     size: [29, 46],
     role: "DAM KEEPER",
-    name: "OSTRA",
-    title: "WARDEN OSTRA",
+    name: "LORAX",
+    title: "THE LORAX",
     color: "#a07ad6",
     ability: [
       "Headwaters",
       "ore and sheep from the high pastures, and the river starts here.",
     ],
     exposure:
-      "smog drifts in, and the dam sits on the fault. If she lets the water go, everyone downstream feels it.",
+      "smog drifts in, and the dam sits on the fault. If he lets the water go, everyone downstream feels it.",
     pollution: 2,
     resilience: 3,
   },
@@ -64,10 +64,10 @@ export const LEADERS: Leader[] = [
   {
     civ: "archipelago",
     sprite: "pell",
-    size: [22, 45],
+    size: [29, 46],
     role: "HARBORMASTER",
-    name: "PELL",
-    title: "HARBORMASTER PELL",
+    name: "TUNG TUNG TUNG SAHUR",
+    title: "TUNG TUNG TUNG SAHUR",
     color: "#46d6d0",
     ability: ["Harbor", "wheat and sheep from the rich delta."],
     exposure:
@@ -212,7 +212,9 @@ export default function LeaderSelect({
             >
               <i className="ls-diamond" />
               <small>{l.role}</small>
-              <strong>{l.name}</strong>
+              <strong className={l.name.length > 10 ? "ls-long" : ""}>
+                {l.name}
+              </strong>
               <em>{CIVS[l.civ].name}</em>
               <span className="ls-figure">
                 {i === cursor && (

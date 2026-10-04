@@ -14,10 +14,10 @@ export interface Leader {
 export const LEADERS: Record<CivId, Leader> = {
   heartland: {
     id: "ostra",
-    name: "Warden Ostra",
+    name: "The Lorax",
     role: "Dam keeper",
     greeting:
-      "I keep the Highland Dam. Every drop that reaches the valley passes our gate first.",
+      "I speak for the trees, and I keep the Highland Dam. Every drop that reaches the valley passes my gate first.",
     color: "#a07ad6",
   },
   enclave: {
@@ -38,10 +38,10 @@ export const LEADERS: Record<CivId, Leader> = {
   },
   archipelago: {
     id: "pell",
-    name: "Harbormaster Pell",
+    name: "Tung Tung Tung Sahur",
     role: "Harbormaster",
     greeting:
-      "I watch the harbor. Every river ends at our shore, along with whatever it carries.",
+      "Tung tung tung! I drum the harbor awake. Every river ends at our shore, along with whatever it carries.",
     color: "#46d6d0",
   },
 };

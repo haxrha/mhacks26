@@ -13,12 +13,15 @@ export type Speaker = (typeof SPEAKERS)[number];
 export const CAST: Record<Speaker, { name: string; role: string }> = {
   anchor: { name: "Anchor", role: "World Service news anchor, calm and warm" },
   reporter: { name: "Reporter", role: "Field reporter, quick and curious" },
-  ostra: { name: "Warden Ostra", role: "Highland dam keeper, steady and dry" },
+  ostra: {
+    name: "The Lorax",
+    role: "Highland dam keeper who speaks for the trees, grumpy and blunt",
+  },
   moss: { name: "Elder Moss", role: "Verdant grove elder, gentle and wise" },
   brask: { name: "Foreman Brask", role: "Forge foreman, gruff and blunt" },
   pell: {
-    name: "Harbormaster Pell",
-    role: "Tidehaven harbormaster, weathered",
+    name: "Tung Tung Tung Sahur",
+    role: "Tidehaven harbormaster, a wide-eyed wooden log with a bat who drums 'tung tung tung'",
   },
 };
 
