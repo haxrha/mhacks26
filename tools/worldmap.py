@@ -37,6 +37,9 @@ P = {k: hx(v) for k, v in dict(
     # river (section 1 polish)
     river_deep="#2a78ad", river_edge="#7cc9ee", bank="#5d7a3a", dam_l="#a0a0a0", dam_d="#5a5a58",
     spill="#e8f6fb", wet_sand="#c9b06a",
+    # farms (section 3 polish)
+    hedge="#2f5a26", wheat_r="#b39432", crop_l="#7cbf4a", crop_r="#5a9a34", soil_r="#6e4a28",
+    roof="#b5432f", roof_d="#8a2f22", wall="#efe2bc",
 ).items()}
 CIVS = ["highland", "verdant", "forge", "tidehaven"]
 
@@ -136,6 +139,72 @@ for y, x in zip(*np.nonzero(waves)):
     img[y, x:x + 2] = P["wave"]
 
 def put(mask, col): img[mask] = P[col]
+
+# ---------- farms: irregular clusters of 2-4 fields sharing hedges, plus a farmhouse ----------
+FIELD_TONES = {"wheat": ("wheat", "wheat_r"), "crop": ("crop_l", "crop_r"), "soil": ("soil", "soil_r")}
+def paint_field(x, y, w, h, kind, dirn):
+    """Rows of two tones; `dirn` is h (rows), v (columns) or d (diagonal furrows)."""
+    a, b = FIELD_TONES[kind]
+    for j in range(h):
+        for i in range(w):
+            dark = (j % 2) if dirn == "h" else (i % 2) if dirn == "v" else ((i + j) % 3 == 0)
+            img[y + j, x + i] = P[b if dark else a]
+
+FARMHOUSE = [".OOO.", "ORRrO", "OWWWO", "OWdWO", "OOOOO"]
+FARM_PAL = {"O": "ink", "R": "roof", "r": "roof_d", "W": "wall", "d": "door"}
+HAY = [".OO.", "OHhO", ".OO."]
+HAY_PAL = {"O": "ink", "H": "wheat", "h": "wheat_r"}
+
+def farm_layout(frng):
+    """2-4 fields as (dx, dy, w, h), packed side by side or stacked with 1px hedges, staggered."""
+    n = int(frng.integers(2, 5))
+    fields = [(0, 0, int(frng.integers(6, 10)), int(frng.integers(5, 8)))]
+    for k in range(1, n):
+        px, py, pw, ph = fields[k - 1] if k != 2 or n < 4 else fields[0]
+        if k % 2 == 1:   # to the right, sharing the hedge column, slightly staggered
+            fields.append((px + pw + 1, py + int(frng.integers(-2, 3)), int(frng.integers(5, 9)), int(frng.integers(5, 8))))
+        else:            # below, sharing the hedge row
+            fields.append((px + int(frng.integers(-2, 3)), py + ph + 1, int(frng.integers(6, 10)), int(frng.integers(4, 6))))
+    return fields
+
+def farm_fits(cells, region):
+    for (x, y) in cells:
+        if not (0 <= x < W and 0 <= y < H): return False
+        if not land[y, x] or water[y, x] or occupied[y, x] or civ[y, x] != region: return False
+        if d_sea[y, x] <= 5: return False
+    return True
+
+def farm_cluster(region, near, frng, extras=True):
+    """Find a spot near `near`, paint the fields, hedges, farmhouse and hay; return the bounding box."""
+    fields = farm_layout(frng)
+    kinds = ["wheat", "crop", "soil"]
+    for r in range(0, 30):
+        for _ in range(8):
+            ox = near[0] + int(frng.integers(-r - 1, r + 2))
+            oy = near[1] + int(frng.integers(-r // 2 - 1, r // 2 + 2))
+            rects = [(ox + dx, oy + dy, w, h) for (dx, dy, w, h) in fields]
+            x0 = min(x for x, _, _, _ in rects) - 1; y0 = min(y for _, y, _, _ in rects) - 1
+            x1 = max(x + w for x, _, w, _ in rects); y1 = max(y + h for _, y, _, h in rects)
+            hx, hy = (x1 + 1, y0 + 1) if frng.random() < 0.5 else (x0 - 6, y0 + 1)   # farmhouse side
+            cells = {(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)}
+            cells |= {(hx + i, hy + j) for i in range(5) for j in range(5)}
+            if not farm_fits(cells, region): continue
+            hedge = set()
+            for (x, y, w, h) in rects:
+                hedge |= {(x + i, y + j) for i in range(-1, w + 1) for j in range(-1, h + 1)}
+            for (x, y) in hedge: img[y, x] = P["hedge"]
+            for (x, y, w, h) in rects:
+                paint_field(x, y, w, h, kinds[int(frng.integers(0, 3))], "hvd"[int(frng.integers(0, 3))])
+            blit(FARMHOUSE, FARM_PAL, hx, hy)
+            if extras:
+                for k in range(int(frng.integers(1, 3))):
+                    bx, by = (hx + int(frng.integers(-1, 3)), hy + 6 + k * 3)
+                    if farm_fits({(bx + i, by + j) for i in range(4) for j in range(3)}, region):
+                        blit(HAY, HAY_PAL, bx, by)
+            for (x, y) in cells: occupied[y, x] = True
+            FARMS.append((x0 - 1, y0 - 1, x1 - x0 + 3, y1 - y0 + 3))
+            return True
+    return False
 # Biome boundaries flow organically. Every seam feathers with the SAME system: ordered (Bayer)
 # dithering over a fixed band, keyed to distance from the seam, so transitions are coherent
 # gradients rather than per-pixel noise. Each tile is painted a single palette colour (no blends),
@@ -318,10 +387,9 @@ for (pid, name, c, cap, (cx, cy)) in PROV:
     if c == 0:
         # A fenced wheat farm at the edge of Frostpeak's pasture (kept out of the building plots).
         fx, fy = kcx - 21, kcy - 4
-        for j in range(6):
-            for i in range(9):
-                edge = i in (0, 8) or j in (0, 5)
-                img[fy + j, fx + i] = P["soil_d"] if edge else P["wheat" if j % 2 else "wheat_d"]
+        img[fy:fy + 6, fx:fx + 9] = P["hedge"]
+        paint_field(fx + 1, fy + 1, 3, 4, "wheat", "h")
+        paint_field(fx + 5, fy + 1, 3, 4, "crop", "v")
         FARMS.append((fx - 1, fy - 1, 11, 8))
         TOWN_LAND[fy - 1:fy + 7, fx - 1:fx + 10] = True
 
@@ -508,23 +576,14 @@ def place(rows, pal, region, near, tries=400, dyn=None):
 dxc = int(round(river_x(DAM_Y)))
 blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMMMsssMMMO", "OOOOsssOOOO"],
      {"O": "ink", "L": "dam_l", "M": "dam_d", "s": "spill"}, dxc - 5, DAM_Y - 2, dyn="dam")
-# farm plots (Verdant west fields + Forge fields + Tidehaven)
-def field(region, near, w, h, kind):
-    rows = []
-    for j in range(h):
-        if kind == "wheat": rows.append(("W" if j % 2 == 0 else "w") * w)
-        elif kind == "soil": rows.append(("S" if j % 2 == 0 else "s") * w)
-        else: rows.append(("C" if j % 2 == 0 else "g") * w)
-    rows = ["O" * (w + 2)] + ["O" + r + "O" for r in rows] + ["O" * (w + 2)]
-    return place(rows, {"O": "soil_d", "W": "wheat", "w": "wheat_d", "S": "soil", "s": "soil_d",
-                        "C": "crop", "g": "grass_d"}, region, near, tries=200)
-for near in [(60, 128), (72, 136), (100, 96)]:
-    field(1, near, int(rng.integers(6, 10)), int(rng.integers(4, 6)), str(rng.choice(["wheat", "soil", "crop"])))
-for _ in range(16):
-    field(2, (int(rng.integers(180, 290)), int(rng.integers(72, 142))), int(rng.integers(6, 12)),
-          int(rng.integers(4, 7)), str(rng.choice(["wheat", "wheat", "soil", "crop"])))
-for near in [(150, 156), (240, 170)]:
-    field(3, near, 7, 4, "crop")
+# farm clusters: Verdant west, Forge plains, Tidehaven
+frng = np.random.default_rng(4242)
+for near in [(60, 128), (100, 96)]:
+    farm_cluster(1, near, frng)
+for near in [(196, 84), (262, 86), (210, 126), (272, 128), (240, 100)]:
+    farm_cluster(2, near, frng)
+for near in [(150, 156), (240, 166)]:
+    farm_cluster(3, near, frng)
 # windmill (Verdant)
 place(["x.x", ".x.", "x.x", ".B.", ".B.", "BBB"], {"x": "white", "B": "plank"}, 1, (100, 92))
 # (Kilns, mines, windmills and the rest are built by players and drawn by the game around each town.)
@@ -571,7 +630,8 @@ KINDS = ["deep", "sea", "shallow", "water", "marsh", "forest", "grass", "pasture
 COLOR_KIND = {}
 for name, kname in [("forest", "forest"), ("forest_d", "forest"), ("tree", "forest"), ("tree_d", "forest"),
                     ("trunk", "forest"), ("grass", "grass"), ("grass_l", "grass"), ("grass_d", "grass"),
-                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
+                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("hedge", "grass"),
+                    ("wheat_r", "field"), ("crop_l", "field"), ("crop_r", "field"), ("soil_r", "field"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
                     ("rock_l", "rock"), ("rock_d", "rock"), ("snow", "snow"), ("snow_d", "snow"), ("sand", "beach"),
                     ("sand_d", "beach"), ("marsh", "marsh"), ("shallow", "marsh"), ("wheat", "field"),
                     ("wheat_d", "field"), ("soil", "field"), ("soil_d", "field"), ("sludge", "sludge"),
