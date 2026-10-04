@@ -50,44 +50,15 @@ const C = {
   sludgeD: rgb("#4e4520"),
   smoke: rgb("#c9c9c9"),
   smokeD: rgb("#6b6b72"),
-  sand: rgb("#efdca8"),
-  sandD: rgb("#e3cd93"),
-  dune: rgb("#ecd79a"),
-  scrub: rgb("#b7b56a"),
 };
+// Territory (including Harborkeep's desert shore) is baked into the map's terrain by the generator
+// with ordered dithering, so the renderer paints no translucent washes over the land.
 const FLAG: Record<string, RGB> = {
   highland: rgb("#a07ad6"),
   verdant: rgb("#7fd65a"),
   forge: rgb("#f08a3c"),
   tidehaven: rgb("#46d6d0"),
 };
-// Territory is shown by a faint per-civ wash over the land (borders are no longer baked into the map).
-const TERRITORY: Record<string, { tint: RGB; strength: number }> = {
-  highland: { tint: rgb("#a07ad6"), strength: 0.1 },
-  verdant: { tint: rgb("#7fd65a"), strength: 0.1 },
-  forge: { tint: rgb("#f08a3c"), strength: 0.12 },
-  tidehaven: { tint: rgb("#46d6d0"), strength: 0.1 }, // Plus a coastal desert band (desertAmount).
-};
-/** Harborkeep's land reads as desert: greenery turns to sand and dune, rock to sandstone. */
-function desertPixel(c: RGB, k: number, h: number): RGB {
-  if (k === KIND.forest) return mix(C.scrub, C.sandD, h < 128 ? 0.4 : 0.7);
-  if (k === KIND.grass || k === KIND.pasture || k === KIND.field || k === KIND.marsh)
-    return h < 60 ? C.dune : h < 150 ? C.sand : C.sandD;
-  if (k === KIND.rock) return mix(c, C.sand, 0.4);
-  if (k === KIND.beach) return c;
-  return mix(c, C.sand, 0.3);
-}
-// The desert is only a coastal strip along Harborkeep's south, with an organic, curved edge
-// that fades into the grassland rather than cutting a straight line across the territory.
-const DESERT_EDGE = 170;
-function desertAmount(x: number, y: number, h: number): number {
-  const edge =
-    DESERT_EDGE +
-    Math.sin(x * 0.08) * 7 +
-    Math.sin(x * 0.19 + 1) * 3 +
-    (h / 255 - 0.5) * 7;
-  return Math.max(0, Math.min(1, (y - edge) / 9));
-}
 
 export interface WorldLayers {
   base: Uint8Array;
@@ -508,25 +479,6 @@ function terrainPixel(
   if (k === KIND.deep || k === KIND.sea)
     c = seaPixel(x, y, frame, climate, k === KIND.sea);
 
-  // Territory wash over soft ground (not snow, rock, rivers or structures): a faint per-civ tint,
-  // and a full desert for Harborkeep. Snow peaks keep their colour so melting still reads.
-  const soil =
-    k === KIND.grass ||
-    k === KIND.pasture ||
-    k === KIND.field ||
-    k === KIND.forest ||
-    k === KIND.marsh ||
-    k === KIND.beach;
-  if (a !== NONE && soil) {
-    const civName = TOWNS[a].civ;
-    const terr = TERRITORY[civName];
-    if (terr && terr.strength > 0) c = mix(c, terr.tint, terr.strength);
-    if (civName === "tidehaven") {
-      const amt = desertAmount(x, y, h);
-      if (amt > 0) c = mix(c, desertPixel(c, k, h), amt);
-    }
-  }
-
   // Global state: melting snow, rising seas, ocean health.
   if (k === KIND.snow && climate > meltThreshold(y, h))
     c = h & 1 ? C.rock : C.rockD;
@@ -823,6 +775,19 @@ export function renderWorld(
   for (const civ of CIV_IDS) {
     const [x, y] = portRoute(civ)[0];
     blit(out, ["PPPP", ".P.P"], { P: "#b07a45" }, x - 1, y);
+  }
+  // Harborkeep is a working harbour: fishing boats always sail out and back off its port.
+  const harbor = portRoute("archipelago");
+  if (harbor.length > 1) {
+    const boatRows = [".F.", ".s.", "sss", "BBB"];
+    const boatPal = { F: FLAG.tidehaven, s: rgb("#efe2bc"), B: rgb("#8a5a32") };
+    const PERIOD = 150;
+    for (let b = 0; b < 3; b++) {
+      const t = (((frame + b * 50) % PERIOD) / PERIOD) * 2;
+      const along = 1 - Math.abs(t - 1); // ping-pong out to sea and back
+      const [x, y] = harbor[Math.round(along * (harbor.length - 1))];
+      blit(out, boatRows, boatPal, x - 1, y - 3 + ((frame + b) >> 1 & 1));
+    }
   }
   for (const trip of traffic) {
     const route = portRoute(trip.civ);

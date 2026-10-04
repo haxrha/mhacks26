@@ -120,17 +120,24 @@ for y, x in zip(*np.nonzero(waves)):
     img[y, x:x + 2] = P["wave"]
 
 def put(mask, col): img[mask] = P[col]
-# Biome boundaries flow organically like real coastlines/treelines: the terrain masks below use
-# noise-perturbed, wavy edges that interlace across territories. Ownership (`civ`) keeps its
-# clean borders -- only the look of the land bleeds, not who owns it.
+# Biome boundaries flow organically. Every seam feathers with the SAME system: ordered (Bayer)
+# dithering over a fixed band, keyed to distance from the seam, so transitions are coherent
+# gradients rather than per-pixel noise. Each tile is painted a single palette colour (no blends),
+# and ownership (`civ`) keeps its clean borders -- only the look of the land bleeds, not who owns it.
+BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], np.float32) / 16.0
+bayer = BAYER[yy % 4, xx % 4]
+BAND = 3.0   # tiles over which one biome dithers into the next
+def across(coord, edge, band=BAND):
+    """0 on the near side of `edge`, 1 on the far side, ramping across `band` tiles."""
+    return np.clip((coord - edge) / band + 0.5, 0.0, 1.0)
 north = 66 + (n_a - 0.5) * 26 + (n_b - 0.5) * 10 + 4 * np.sin(xx / 13.0)
 south = 146 + (n_c - 0.5) * 28 + (n_a - 0.5) * 10 + 4 * np.sin(xx / 11.0 + 2)
 river_seam = rx + (n_b - 0.5) * 16 + 3 * np.sin(yy / 9.0)
-hl = land & (yy < north)
-td = land & (yy >= south)
+hl = land & (across(yy, north) <= bayer)
+td = land & (across(yy, south) > bayer)
 mid = land & ~hl & ~td
-vd = mid & (xx < river_seam)
-fg = mid & (xx >= river_seam)
+vd = mid & (across(xx, river_seam) <= bayer)
+fg = mid & (across(xx, river_seam) > bayer)
 # Highland: rock & snow up top, pasture below
 put(hl, "pasture")
 put(hl & (rnd < 0.18), "grass")
@@ -147,13 +154,17 @@ marsh_v = vd & (n_b > 0.74)
 put(marsh_v, "marsh"); put(marsh_v & (rnd < 0.05), "shallow")
 # Forge: plains
 put(fg, "grass"); put(fg & (rnd < 0.2), "grass_l"); put(fg & (n_a > 0.68), "grass_d")
-# Riparian treeline: Verdant's forest scatters a little way onto the Forge bank near the river.
-fringe = fg & (xx < river_seam + 7 + (n_c - 0.5) * 8) & (rnd < 0.5)
+# Riparian treeline: Verdant's forest feathers east onto the Forge bank, fading with the same dither.
+fringe = fg & (np.clip((river_seam + 7 - xx) / 7.0, 0, 1) > bayer)
 put(fringe, "forest_d"); put(fringe & (rnd < 0.15), "tree_d")
-# Tidehaven: grass + marsh
+# Tidehaven: grass + marsh, with a desert shore
 put(td, "grass_l"); put(td & (rnd < 0.2), "grass")
 marsh_t = td & (n_c > 0.66)
 put(marsh_t, "marsh"); put(marsh_t & (rnd < 0.05), "shallow")
+# Harborkeep's southern shore is desert: a sand band between the beach and the grass, dithered inland.
+desert_edge = 170 + (n_c - 0.5) * 14 + 4 * np.sin(xx / 12.0)
+sand_t = td & (across(yy, desert_edge, 5.0) > bayer)
+put(sand_t, "sand"); put(sand_t & (rnd < 0.3), "sand_d")
 # beaches
 beach = land & (d_sea <= 2) & ~(hl & (yy < 40))
 put(beach, "sand"); put(beach & (rnd < 0.2), "sand_d")
