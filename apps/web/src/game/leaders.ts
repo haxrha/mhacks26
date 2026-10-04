@@ -30,10 +30,10 @@ export const LEADERS: Record<CivId, Leader> = {
   },
   petrostate: {
     id: "brask",
-    name: "Foreman Brask",
+    name: "Olaf",
     role: "Foreman",
     greeting:
-      "I run the works. Our factories power the valley, and their smoke drifts wherever the wind goes.",
+      "Hi, I'm Olaf, and I like warm hugs! I run the works. Our factories power the valley, but their smoke drifts wherever the wind goes.",
     color: "#f08a3c",
   },
   archipelago: {

@@ -51,10 +51,10 @@ export const LEADERS: Leader[] = [
   {
     civ: "petrostate",
     sprite: "brask",
-    size: [26, 44],
+    size: [29, 46],
     role: "FOREMAN",
-    name: "BRASK",
-    title: "FOREMAN BRASK",
+    name: "OLAF",
+    title: "OLAF",
     color: "#f08a3c",
     ability: ["Industry", "brick and ore, and a kiln already burning."],
     exposure: "droughts and smog. His smoke lands on his neighbors.",

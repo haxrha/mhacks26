@@ -37,6 +37,11 @@ TUNIC_L, TUNIC, TUNIC_D = (240, 234, 214, 255), (220, 210, 184, 255), (184, 172,
 VEST, VEST_D = (110, 76, 46, 255), (74, 50, 30, 255)
 PANTS, PANTS_D = (140, 104, 48, 255), (112, 80, 36, 255)
 BOOT, BOOT_D = (78, 62, 52, 255), (52, 40, 34, 255)
+# Olaf
+SNOW_L, SNOW, SNOW_D = (252, 253, 255, 255), (228, 236, 246, 255), (182, 198, 220, 255)
+COAL = (40, 40, 48, 255)
+TWIG, TWIG_D = (118, 78, 44, 255), (84, 54, 30, 255)
+CARROT, CARROT_D = (244, 126, 44, 255), (204, 88, 26, 255)
 
 
 def canvas():
@@ -218,6 +223,56 @@ def draw_shrek(talking=False):
     return outline(img)
 
 
+def draw_olaf(talking=False):
+    img, put, line, row = canvas()
+
+    def ball(cx, cy, rx, ry):
+        """Snowball: bright on the upper left, cool shade on the lower right."""
+        for y in range(cy - ry, cy + ry + 1):
+            for x in range(cx - rx, cx + rx + 1):
+                if ((x - cx) / (rx + 0.5)) ** 2 + ((y - cy) / (ry + 0.5)) ** 2 <= 1:
+                    d = (x - cx) / rx + (y - cy) / ry
+                    put(x, y, SNOW_L if d < -0.6 else SNOW_D if d > 0.7 else SNOW)
+
+    # Twig arms behind the body, waving up and out, with little forked fingers.
+    line(10, 21, 3, 14, TWIG)
+    line(3, 14, 1, 11, TWIG); line(3, 14, 2, 15, TWIG_D); line(5, 16, 4, 13, TWIG)
+    line(19, 21, 25, 14, TWIG)
+    line(25, 14, 27, 11, TWIG); line(25, 14, 27, 15, TWIG_D); line(23, 16, 24, 13, TWIG)
+
+    # Three snowballs: big bottom, small middle, wide head. Two little snowball feet.
+    ball(14, 34, 7, 6)
+    ball(9, 42, 2, 1); ball(19, 42, 2, 1)
+    ball(14, 23, 4, 4)
+    ball(14, 12, 6, 6)
+
+    # Hair twigs sprouting from the top of the head.
+    line(13, 6, 11, 1, TWIG); line(14, 6, 15, 0, TWIG); line(15, 6, 18, 2, TWIG_D)
+    put(10, 2, TWIG); put(16, 1, TWIG)
+
+    # Coal buttons.
+    for x, y in ((14, 23), (13, 32), (15, 36)):
+        row(y, x, x + 1, COAL); row(y + 1, x, x + 1, COAL)
+
+    # Big round eyes, eyebrows, carrot nose pointing right.
+    row(7, 10, 12, TWIG_D); row(7, 15, 17, TWIG_D)
+    for ex in (10, 15):
+        row(8, ex, ex + 2, WHITE); row(9, ex, ex + 2, WHITE); row(10, ex, ex + 2, WHITE)
+        put(ex + 1, 9, COAL); put(ex + 1, 10, COAL)
+    row(11, 13, 17, CARROT); row(12, 13, 16, CARROT_D); put(18, 11, CARROT_D)
+
+    # Huge happy open mouth with Olaf's single big front tooth.
+    row(13, 10, 18, MOUTH)
+    row(14, 11, 17, INSIDE); row(14, 13, 15, WHITE)
+    row(15, 12, 16, INSIDE); put(14, 15, WHITE)
+    if talking:
+        row(16, 12, 16, INSIDE); put(14, 16, TONGUE); put(13, 16, TONGUE)
+        row(17, 13, 15, MOUTH)
+    else:
+        row(16, 13, 15, MOUTH)
+    return outline(img)
+
+
 def draw_log(talking=False):
     img, put, line, row = canvas()
 
@@ -289,7 +344,7 @@ def portrait(sprite):
     return port
 
 
-CHARACTERS = {"ostra": draw_lorax, "moss": draw_shrek, "pell": draw_log}
+CHARACTERS = {"ostra": draw_lorax, "moss": draw_shrek, "brask": draw_olaf, "pell": draw_log}
 
 if __name__ == "__main__":
     outs = sys.argv[1:] or ["."]
