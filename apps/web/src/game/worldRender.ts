@@ -243,8 +243,17 @@ export function portRoute(civ: CivId): [number, number][] {
   const anchor = OCEAN.ports[civ];
   let start = -1,
     closest = Infinity;
+  const touchesLand = (i: number) => {
+    const x = i % MAP_W;
+    return [
+      x > 0 ? i - 1 : -1,
+      x < MAP_W - 1 ? i + 1 : -1,
+      i - MAP_W,
+      i + MAP_W,
+    ].some((j) => j >= 0 && j < L.kind.length && L.kind[j] > KIND.water);
+  };
   for (let i = 0; i < L.kind.length; i++) {
-    if (L.kind[i] > KIND.water) continue;
+    if (L.kind[i] > KIND.water || !touchesLand(i)) continue;
     const d =
       Math.abs((i % MAP_W) - anchor[0]) +
       Math.abs(Math.floor(i / MAP_W) - anchor[1]);
@@ -888,10 +897,7 @@ export function renderWorld(
     }
   });
   // Each town has a berth; cargo sails out and returns after an actual bank exchange.
-  for (const civ of CIV_IDS) {
-    const [x, y] = portRoute(civ)[0];
-    blit(out, ["PPPP", ".P.P"], { P: "#b07a45" }, x - 1, y);
-  }
+  for (const civ of CIV_IDS) drawPier(out, portRoute(civ)[0]);
   // Harborkeep is a working harbour: fishing boats always sail out and back off its port.
   const harbor = portRoute("archipelago");
   if (harbor.length > 1) {
@@ -920,6 +926,45 @@ export function renderWorld(
       x - 2,
       y - 4 + ((frame >> 1) & 1),
     );
+  }
+}
+
+/**
+ * A wooden pier for a berth: it starts on the neighbouring land tile and runs straight out over the
+ * water (away from the shore) for 3px, two planks wide with a dark edge, so it always touches land.
+ */
+function drawPier(out: Uint8ClampedArray, [bx, by]: [number, number]) {
+  const L = worldLayers();
+  const land = (x: number, y: number) =>
+    x >= 0 &&
+    y >= 0 &&
+    x < MAP_W &&
+    y < MAP_H &&
+    L.kind[y * MAP_W + x] > KIND.water;
+  const dirs: [number, number][] = [
+    [0, -1],
+    [0, 1],
+    [-1, 0],
+    [1, 0],
+  ];
+  const shore = dirs.find(([dx, dy]) => land(bx + dx, by + dy));
+  if (!shore) return;
+  const [ox, oy] = [-shore[0], -shore[1]]; // out toward open water
+  const [px, py] = [-oy, ox]; // across the pier
+  const plank = rgb("#b07a45"),
+    edge = rgb("#6e4a28");
+  for (let k = -1; k < 3; k++) {
+    // k = -1 is the land end; 0..2 run over the water
+    for (let w = 0; w < 2; w++) {
+      const x = bx + ox * k + px * w,
+        y = by + oy * k + py * w;
+      if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
+      const c = w === 1 || k === 2 ? edge : plank;
+      const o = (y * MAP_W + x) * 4;
+      out[o] = c[0];
+      out[o + 1] = c[1];
+      out[o + 2] = c[2];
+    }
   }
 }
 
