@@ -1,3 +1,4 @@
+import { areaDistance, BLEED } from "../src/game/effectReach";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -175,7 +176,7 @@ test("water shimmer holds its frame rather than flashing at the render rate", ()
       assert.deepEqual(seaPixel(x, y, 0), seaPixel(x, y, 5));
 });
 
-test("a flood only recolours the region it hits", () => {
+test("a flood stays around the region it hits and spills a little past the border", () => {
   const civ: CivId = "enclave";
   const calm = withEvent(civ, "heatwave");
   const flooded = withEvent(civ, "flood");
@@ -183,11 +184,16 @@ test("a flood only recolours the region it hits", () => {
   const L = worldLayers();
   const diff = changed(render(calm), render(flooded));
   assert(diff.length > 50, "flood should be visible on the map");
+  const reach = areaDistance(L, area);
   for (const i of diff)
     assert(
-      L.area[i] === area || L.near[i] === area,
-      `pixel ${i} outside the region changed`,
+      L.area[i] === area || L.near[i] === area || reach[i] <= BLEED,
+      `pixel ${i} changed too far from the region`,
     );
+  assert(
+    diff.some((i) => L.kind[i] > 2 && L.area[i] !== area && L.area[i] !== 255),
+    "effects should cross the region border for visuals",
+  );
 });
 
 test("wildfire ignites irregular tree groups and grows on five-second ticks", () => {
@@ -447,8 +453,9 @@ test("earthquake faults and shaking stay regional; fire storms have distinct ani
     quiet = withEvent("petrostate", "heatwave"),
     quake = withEvent("petrostate", "earthquake");
   const area = townIndex("petrostate");
+  const reach = areaDistance(L, area);
   for (const i of changed(render(quiet, 8), render(quake, 8)))
-    assert.equal(L.area[i], area);
+    assert(reach[i] <= BLEED, "quake stays around its region");
   const storm = withEvent("enclave", "tornado"),
     fire = structuredClone(storm);
   fire.civs.enclave.hazards = [
@@ -715,7 +722,10 @@ test("local tsunami crests wash the targeted coast across varied approach angles
             L.kind[y * MAP_W + x] > 3
           ) {
             land++;
-            assert.equal(L.area[y * MAP_W + x], townIndex(civ));
+            assert(
+              areaDistance(L, townIndex(civ))[y * MAP_W + x] <= BLEED,
+              "local tsunami stays around its coast",
+            );
           }
         }
       }

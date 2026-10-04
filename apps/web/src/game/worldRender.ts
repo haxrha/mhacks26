@@ -18,6 +18,7 @@ import {
   type HazardFrames,
   stormPickups,
 } from "./hazardVisuals";
+import { reaches } from "./effectReach";
 import { spillTarget } from "./engine";
 import { OWNERS, TOWNS } from "./towns";
 import { CIV_IDS, type CivId, type GameState } from "./types";
@@ -407,7 +408,7 @@ export function tsunamiImpact(
       !large &&
       (Math.abs((x - cx) * -dy + (y - cy) * dx) >
         OCEAN.tsunami.localHalfLength - 4 ||
-        (L.kind[i] > 3 && L.area[i] !== area))
+        (L.kind[i] > 3 && !reaches(L, area, i)))
     )
       continue;
     if (L.kind[i] > 3 && !lowland(L.kind[i]) && L.kind[i] !== 12) continue;
@@ -608,7 +609,7 @@ export function renderWorldView(
               )
             : 0;
         const o = (y * width + x) * 4;
-        if (inMap && aftermath > 0 && (large || L.area[i] === area)) {
+        if (inMap && aftermath > 0 && (large || reaches(L, area, i))) {
           if (k === KIND.snow || k === KIND.rock) {
             if (large) {
               const fractured =
@@ -689,7 +690,7 @@ export function renderWorldView(
         // Rivers are inland terrain too: otherwise disconnected white fragments
         // appear far upstream while the actual coastal crest is still offshore.
         if (inMap && k >= 3) {
-          if (!large && L.area[i] !== area) continue;
+          if (!large && !reaches(L, area, i)) continue;
           const reach = large
             ? OCEAN.tsunami.largeReach
             : OCEAN.tsunami.coastalReach;
@@ -714,7 +715,7 @@ export function renderWorldView(
                 nx < MAP_W &&
                 ny < MAP_H &&
                 L.kind[ny * MAP_W + nx] > 3 &&
-                L.area[ny * MAP_W + nx] !== area
+                !reaches(L, area, ny * MAP_W + nx)
               )
                 landFade *= 0.5;
             }
@@ -783,7 +784,7 @@ export function renderWorldView(
         const i = y * MAP_W + x;
         if (
           L.kind[i] === KIND.forest &&
-          (large || L.area[i] === area) &&
+          (large || reaches(L, area, i)) &&
           visualNoise(x, y, state.seed) > (large ? 0.25 : 0.6)
         )
           fragments.push({ x, y, tree: true });

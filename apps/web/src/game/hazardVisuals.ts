@@ -3,6 +3,7 @@ import config from "../../../../src/data/disaster-visuals.json";
 import world from "../../../../src/data/worldmap.json";
 import ocean from "../../../../src/data/ocean.json";
 import { OWNERS, TOWNS } from "./towns";
+import { areasReaching, reaches } from "./effectReach";
 import {
   portRoute,
   fishingTraffic,
@@ -47,7 +48,7 @@ function stormAnchor(
       py >= 0 &&
       px < W &&
       py < H &&
-      (L.area[i] === area || (L.kind[i] <= 2 && L.near[i] === area))
+      (reaches(L, area, i) || (L.kind[i] <= 2 && L.near[i] === area))
     );
   };
   for (let n = 0; n < 12 && !allowed(x, y); n++) {
@@ -143,7 +144,7 @@ function windArrival(
       ) {
         const i = y * W + x;
         if (
-          L.area[i] === area &&
+          reaches(L, area, i, seed) &&
           L.kind[i] > 3 &&
           Math.hypot(x - cx, (y - cy) * 1.3) < radius * 0.8
         )
@@ -209,7 +210,7 @@ export function stormPickups(
   });
   for (let y = 4; y < H; y += 9)
     for (let x = 4; x < W; x += 9)
-      if (L.area[y * W + x] === area && L.kind[y * W + x] === 5)
+      if (reaches(L, area, y * W + x, seed) && L.kind[y * W + x] === 5)
         candidates.push({ id: `tree:${x}:${y}`, kind: "tree", x, y });
   const picked: StormPickup[] = [];
   const radius = hurricane
@@ -360,7 +361,7 @@ export function fireArrivals(
       ];
       if (
         fuel[n] &&
-        L.area[i] === area &&
+        reaches(L, area, i, seed) &&
         patches.some(([px, py, r]) => Math.hypot(x - px, y - py) < r) &&
         visualNoise(gx, gy, seed + 17) < 0.55
       )
@@ -411,77 +412,86 @@ export function hazardPaint(
     const x = i % W,
       y = Math.floor(i / W),
       k = L.kind[i],
-      a = L.area[i];
-    const fx = status[a]?.effects;
-    if (!fx && !dam) continue;
-    const n = visualNoise(Math.floor(x / 5), Math.floor(y / 4), seed);
-    const isDam = dam && y > damY && y < damY + phase * 1.1;
-    if (low(k) && (fx?.has("flood") || isDam)) {
-      const reach =
-        (isDam ? config.flood.damReach : config.flood.bankReach) *
-          (0.7 + 0.3 * Math.sin(frame / 22 + y / 16)) +
-        n * 3;
-      if (river[i] < reach) {
-        const edge = river[i] > reach - 1.8;
-        pixel(
-          over,
-          x,
-          y,
-          edge && (x + y + Math.floor(frame / 3)) % 3 === 0
-            ? P.foam
-            : (x + y * 2 - Math.floor(frame / 2)) % 13 < 2
-              ? P.water
-              : P.muddyWater,
-        );
+      own = L.area[i];
+    const reachers = areasReaching(L, i, status.length, seed);
+    if (!reachers.length) reachers.push(own);
+    for (const a of reachers) {
+      const fx = status[a]?.effects;
+      if (!fx && !dam) continue;
+      const n = visualNoise(Math.floor(x / 5), Math.floor(y / 4), seed);
+      const isDam = dam && y > damY && y < damY + phase * 1.1;
+      if (low(k) && (fx?.has("flood") || isDam)) {
+        const reach =
+          (isDam ? config.flood.damReach : config.flood.bankReach) *
+            (0.7 + 0.3 * Math.sin(frame / 22 + y / 16)) +
+          n * 3;
+        if (river[i] < reach) {
+          const edge = river[i] > reach - 1.8;
+          pixel(
+            over,
+            x,
+            y,
+            edge && (x + y + Math.floor(frame / 3)) % 3 === 0
+              ? P.foam
+              : (x + y * 2 - Math.floor(frame / 2)) % 13 < 2
+                ? P.water
+                : P.muddyWater,
+          );
+        }
       }
-    }
-    if ((fx?.has("sea_rise") || fx?.has("hurricane")) && low(k)) {
-      const reach =
-        4 +
-        config.flood.surgeReach *
-          (fx?.has("hurricane") ? 0.65 : 1) *
-          Math.min(
-            1,
-            ((clocks?.[a]?.sea_rise ?? clocks?.[a]?.hurricane ?? frame) % 144) /
-              60,
-          ) +
-        n * 2;
-      if (L.distSea[i] < reach)
-        pixel(
-          over,
-          x,
-          y,
-          L.distSea[i] > reach - 2 && (x + y - Math.floor(frame / 2)) % 3 === 0
-            ? P.foam
-            : P.water,
-        );
-    }
-    if (fx?.has("drought") && [6, 7, 11].includes(k)) {
-      const [cx, cy] = TOWNS[a].keepTile;
-      let intensity = 0.2;
-      for (const [dx, dy, rx, ry] of [
-        [-18, 9, 26, 14],
-        [15, -15, 18, 12],
-        [12, 23, 24, 10],
-      ]) {
-        const d = ((x - cx - dx) / rx) ** 2 + ((y - cy - dy) / ry) ** 2;
-        intensity = Math.max(intensity, Math.max(0, 1 - d) * (0.85 + n * 0.2));
+      if ((fx?.has("sea_rise") || fx?.has("hurricane")) && low(k)) {
+        const reach =
+          4 +
+          config.flood.surgeReach *
+            (fx?.has("hurricane") ? 0.65 : 1) *
+            Math.min(
+              1,
+              ((clocks?.[a]?.sea_rise ?? clocks?.[a]?.hurricane ?? frame) %
+                144) /
+                60,
+            ) +
+          n * 2;
+        if (L.distSea[i] < reach)
+          pixel(
+            over,
+            x,
+            y,
+            L.distSea[i] > reach - 2 &&
+              (x + y - Math.floor(frame / 2)) % 3 === 0
+              ? P.foam
+              : P.water,
+          );
       }
-      {
-        const base = L.palette[L.base[i]],
-          dry = intensity > 0.65 ? P.soil : P.dry;
-        pixel(
-          under,
-          x,
-          y,
-          base.map((v, c) => v * (1 - intensity) + dry[c] * intensity),
-        );
-        if (
-          intensity > 0.75 &&
-          ((x + Math.floor(y / 6)) % 11 === 0 ||
-            (y + Math.floor(x / 8)) % 9 === 0)
-        )
-          pixel(under, x, y, P.crack);
+      if (fx?.has("drought") && [6, 7, 11].includes(k)) {
+        const [cx, cy] = TOWNS[a].keepTile;
+        let intensity = 0.2;
+        for (const [dx, dy, rx, ry] of [
+          [-18, 9, 26, 14],
+          [15, -15, 18, 12],
+          [12, 23, 24, 10],
+        ]) {
+          const d = ((x - cx - dx) / rx) ** 2 + ((y - cy - dy) / ry) ** 2;
+          intensity = Math.max(
+            intensity,
+            Math.max(0, 1 - d) * (0.85 + n * 0.2),
+          );
+        }
+        {
+          const base = L.palette[L.base[i]],
+            dry = intensity > 0.65 ? P.soil : P.dry;
+          pixel(
+            under,
+            x,
+            y,
+            base.map((v, c) => v * (1 - intensity) + dry[c] * intensity),
+          );
+          if (
+            intensity > 0.75 &&
+            ((x + Math.floor(y / 6)) % 11 === 0 ||
+              (y + Math.floor(x / 8)) % 9 === 0)
+          )
+            pixel(under, x, y, P.crack);
+        }
       }
     }
   }
@@ -495,7 +505,7 @@ export function hazardPaint(
       y >= 0 &&
       x < W &&
       y < H &&
-      L.area[y * W + x] === area &&
+      reaches(L, area, y * W + x, seed) &&
       L.kind[y * W + x] > 3;
     // Flood-borne logs and roof fragments make the current and damage legible.
     if (
@@ -508,7 +518,7 @@ export function hazardPaint(
       for (let i = 0; i < W * H; i++) {
         const owner = L.area[i] === 255 ? L.near[i] : L.area[i];
         if (
-          owner === area &&
+          (owner === area || reaches(L, area, i, seed)) &&
           (L.kind[i] === 3 || over[i * 4 + 3]) &&
           low(L.kind[i])
         )
@@ -532,7 +542,8 @@ export function hazardPaint(
                 py < 0 ||
                 px >= W ||
                 py >= H ||
-                (L.area[j] === 255 ? L.near[j] : L.area[j]) !== area
+                ((L.area[j] === 255 ? L.near[j] : L.area[j]) !== area &&
+                  !reaches(L, area, j, seed))
               )
                 return;
               const colors: Record<string, Color> = {
@@ -639,7 +650,7 @@ export function hazardPaint(
       for (let y = 0; y < H; y++)
         for (let x = 0; x < W; x++) {
           const i = y * W + x;
-          if (L.area[i] !== area || !low(L.kind[i])) continue;
+          if (!reaches(L, area, i, seed) || !low(L.kind[i])) continue;
           const patch = patches[i];
           const affected = scar.type === "mega_tsunami" || patch > 0.45;
           if (!affected) continue;
@@ -983,8 +994,10 @@ export function shakeHazardRegions(
   if (!affected.some(Boolean)) return;
   const copy = out.slice();
   for (let i = 0; i < W * H; i++) {
-    const area = L.area[i],
-      amount = affected[area];
+    let area = L.area[i];
+    if (!affected[area])
+      area = affected.findIndex((v, a) => v > 0 && reaches(L, a, i));
+    const amount = area >= 0 ? affected[area] : 0;
     if (!amount) continue;
     const localFrame =
       clocks?.[area]?.earthquake ?? clocks?.[area]?.small_quake ?? frame;
@@ -994,7 +1007,7 @@ export function shakeHazardRegions(
     const x = (i % W) + dx,
       y = Math.floor(i / W) + dy,
       j = y * W + x;
-    if (x >= 0 && y >= 0 && x < W && y < H && L.area[j] === area)
+    if (x >= 0 && y >= 0 && x < W && y < H && reaches(L, area, j))
       out.set(copy.subarray(j * 4, j * 4 + 4), i * 4);
   }
 }
