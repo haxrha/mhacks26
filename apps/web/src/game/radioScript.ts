@@ -17,7 +17,10 @@ export const CAST: Record<Speaker, { name: string; role: string }> = {
     name: "The Lorax",
     role: "Highland dam keeper who speaks for the trees, grumpy and blunt",
   },
-  moss: { name: "Elder Moss", role: "Verdant grove elder, gentle and wise" },
+  moss: {
+    name: "Shrek",
+    role: "Verdant grove elder, a big green swamp ogre, grumpy but kind-hearted",
+  },
   brask: { name: "Foreman Brask", role: "Forge foreman, gruff and blunt" },
   pell: {
     name: "Tung Tung Tung Sahur",

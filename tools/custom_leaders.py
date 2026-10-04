@@ -30,6 +30,13 @@ FUR_L, FUR, FUR_D = (246, 150, 70, 255), (226, 112, 40, 255), (184, 78, 26, 255)
 STACHE_L, STACHE, STACHE_D = (252, 228, 140, 255), (240, 202, 96, 255), (204, 160, 64, 255)
 IRIS = (96, 150, 64, 255)
 ARM_LINE = (140, 56, 20, 255)
+# Shrek
+OGRE_L, OGRE, OGRE_D = (178, 206, 84, 255), (146, 178, 58, 255), (108, 140, 40, 255)
+BROWN_EYE = (92, 56, 30, 255)
+TUNIC_L, TUNIC, TUNIC_D = (240, 234, 214, 255), (220, 210, 184, 255), (184, 172, 146, 255)
+VEST, VEST_D = (110, 76, 46, 255), (74, 50, 30, 255)
+PANTS, PANTS_D = (140, 104, 48, 255), (112, 80, 36, 255)
+BOOT, BOOT_D = (78, 62, 52, 255), (52, 40, 34, 255)
 
 
 def canvas():
@@ -90,15 +97,17 @@ def draw_lorax(talking=False):
     for x, y in ((8, 33), (13, 31), (18, 38)):
         put(x, y, FUR_L)
 
-    # Arms folded across the chest: dark creases above and below, near forearm over the far one,
-    # little fist poking out on the right.
-    row(24, 8, 20, ARM_LINE)
-    row(25, 7, 19, FUR_L); row(26, 7, 19, FUR)
-    row(27, 9, 21, ARM_LINE)
-    row(28, 9, 21, FUR); row(29, 10, 20, FUR_D)
-    row(30, 10, 19, ARM_LINE)
-    put(20, 25, FUR_L); put(21, 25, FUR_L); put(21, 26, FUR); put(22, 26, FUR)
-    put(6, 28, FUR_D); put(7, 28, FUR)  # far elbow
+    # Furry arms hanging out from the shoulders, little mitten hands at the ends.
+    for i, y in enumerate(range(20, 31)):
+        lx = 3 - i // 4          # 3 px thick, drifting outward as it goes down
+        rx = 23 + i // 4
+        put(lx, y, FUR_L); put(lx + 1, y, FUR_L); put(lx + 2, y, FUR)
+        put(rx, y, FUR); put(rx + 1, y, FUR); put(rx + 2, y, FUR_D)
+    for y in (31, 32, 33):                                   # mitten hands
+        row(y, 0, 3, FUR_L if y < 33 else FUR)
+        row(y, 25, 28, FUR if y < 33 else FUR_D)
+    put(4, 31, FUR_L); put(24, 31, FUR)                      # thumbs
+    row(21, 5, 6, ARM_LINE); row(21, 22, 23, ARM_LINE)       # shoulder creases
 
     # Head: rounded top with tufts of fur.
     for y in range(5, 18):
@@ -143,6 +152,69 @@ def draw_lorax(talking=False):
         put(x, 41, FUR_D); put(x, 42, FUR_D)
     row(43, 8, 12, FUR); row(44, 7, 12, FUR_D)
     row(43, 16, 20, FUR); row(44, 16, 21, FUR_D)
+    return outline(img)
+
+
+def draw_shrek(talking=False):
+    img, put, line, row = canvas()
+
+    # Big green hands raised beside the head, fingers spread.
+    for hx in (0, 23):
+        for y in range(7, 12):
+            row(y, hx + 1, hx + 4, OGRE if y < 10 else OGRE_D)
+        for f in range(4):
+            put(hx + 1 + f, 6 - (f % 2), OGRE_L)  # fingertips
+            put(hx + 1 + f, 5 + (f % 2), OGRE)
+        put(hx if hx == 0 else hx + 5, 9, OGRE)    # thumb
+    # Sleeves from the hands down to the shoulders.
+    line(3, 12, 7, 18, TUNIC, 2)
+    line(25, 12, 21, 18, TUNIC, 2)
+    line(4, 13, 7, 17, TUNIC_D)
+    line(24, 13, 21, 17, TUNIC_D)
+
+    # Torso: cream tunic with a big belly, open brown vest, laces, belt and a ragged hem.
+    for y in range(16, 34):
+        x0, x1 = (8, 20) if y < 24 else (7, 21)
+        for x in range(x0, x1 + 1):
+            put(x, y, TUNIC_L if x <= x0 + 1 else TUNIC_D if x >= x1 - 1 else TUNIC)
+    for y in range(16, 27):
+        for x in (8, 9, 10, 11, 17, 18, 19, 20):
+            if y < 26 or x in (8, 20):
+                put(x, y, VEST if (x + y) % 3 else VEST_D)
+    put(14, 17, VEST_D); put(13, 18, VEST_D); put(15, 18, VEST_D)  # laces
+    row(30, 7, 21, VEST_D)                                         # belt
+    for x in range(7, 22, 2):
+        put(x, 33, CLEAR)                                          # ragged hem
+
+    # Head: round green face with ear stalks, heavy brow, bulb nose and a big open grin.
+    for y in range(4, 16):
+        x0, x1 = (10, 18) if y in (4, 15) else (9, 19)
+        for x in range(x0, x1 + 1):
+            put(x, y, OGRE_L if x <= x0 + 1 else OGRE_D if x >= x1 - 1 else OGRE)
+    put(8, 6, OGRE); put(7, 5, OGRE_L); put(7, 4, OGRE)      # left ear
+    put(20, 6, OGRE); put(21, 5, OGRE_D); put(21, 4, OGRE)   # right ear
+    row(7, 10, 12, OGRE_D); row(7, 16, 18, OGRE_D)           # brow
+    for ex in (11, 16):
+        put(ex, 8, WHITE); put(ex + 1, 8, WHITE)
+        put(ex + 1 if ex == 11 else ex, 8, BROWN_EYE)
+    row(10, 13, 15, OGRE_D); put(14, 9, OGRE); put(14, 11, OGRE_D)  # nose
+    if talking:
+        row(12, 11, 17, MOUTH)
+        row(13, 11, 17, INSIDE); put(12, 13, WHITE); put(16, 13, WHITE)
+        row(14, 12, 16, INSIDE); put(14, 14, TONGUE); put(13, 14, TONGUE)
+        row(15, 12, 16, MOUTH)
+    else:
+        row(12, 11, 17, MOUTH)
+        row(13, 12, 16, WHITE)
+        row(14, 12, 16, INSIDE); put(14, 14, TONGUE)
+
+    # Brown trousers in a wide stance and dark boots.
+    for y in range(34, 41):
+        d = (y - 34) // 3
+        row(y, 8 - d, 11 - d, PANTS); put(11 - d, y, PANTS_D)
+        row(y, 17 + d, 20 + d, PANTS); put(20 + d, y, PANTS_D)
+    row(41, 4, 10, BOOT); row(42, 3, 10, BOOT); row(43, 3, 10, BOOT_D)
+    row(41, 18, 24, BOOT); row(42, 18, 25, BOOT); row(43, 18, 25, BOOT_D)
     return outline(img)
 
 
@@ -217,7 +289,7 @@ def portrait(sprite):
     return port
 
 
-CHARACTERS = {"ostra": draw_lorax, "pell": draw_log}
+CHARACTERS = {"ostra": draw_lorax, "moss": draw_shrek, "pell": draw_log}
 
 if __name__ == "__main__":
     outs = sys.argv[1:] or ["."]

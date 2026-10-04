@@ -22,10 +22,10 @@ export const LEADERS: Record<CivId, Leader> = {
   },
   enclave: {
     id: "moss",
-    name: "Elder Moss",
+    name: "Shrek",
     role: "Grove elder",
     greeting:
-      "I tend the old groves. Our forests drink the rain and breathe out the air everyone shares.",
+      "This is my swamp, and these are my groves. Our forests drink the rain and breathe out the air everyone shares.",
     color: "#7fd65a",
   },
   petrostate: {
