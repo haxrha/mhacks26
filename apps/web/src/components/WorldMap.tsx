@@ -114,47 +114,149 @@ const keep = (civ: CivId) => {
   return [t.keepTile[0] * 4, t.keepTile[1] * 4] as const;
 };
 
+/** One map pixel in SVG units (the terrain is 320x200 pixels drawn at 4x). */
+const CELL = 4;
+
 /**
- * A smooth arrow between two towns: a cubic curve that bows to one side by a fixed share of its
- * length, trimmed so it starts and ends outside the town icons, plus an arrowhead that follows
- * the curve's final direction.
+ * A pixel-art arrow between two towns, drawn on the map's own pixel grid so it matches the
+ * terrain: a curve that bows to the left of travel (so A->B and B->A separate), a 3-pixel shaft
+ * with a light top and dark bottom, a chunky 9-pixel-tall head and a 1-pixel black outline, like the
+ * trade arrow sprites. Returns one SVG path per colour, plus the centre line for the march effect.
  */
-function spillArc(x: number, y: number, tx: number, ty: number, lane: number) {
+function pixelArrow(
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  lane: number,
+) {
   const len = Math.hypot(tx - x, ty - y) || 1;
   const ux = (tx - x) / len,
     uy = (ty - y) / len;
-  // Perpendicular to the left of travel: A->B and B->A bow to opposite sides.
   const nx = uy,
     ny = -ux;
-  const start = 48,
-    end = 66;
-  const sx = x + ux * start,
-    sy = y + uy * start;
-  const ex = tx - ux * end,
-    ey = ty - uy * end;
+  const sx = x + ux * 48,
+    sy = y + uy * 48;
+  const ex = tx - ux * 72,
+    ey = ty - uy * 72;
   const bow = Math.min(150, len * 0.26) * (1 + lane * 0.35);
   const c1x = sx + (ex - sx) * 0.25 + nx * bow,
     c1y = sy + (ey - sy) * 0.25 + ny * bow;
   const c2x = sx + (ex - sx) * 0.75 + nx * bow,
     c2y = sy + (ey - sy) * 0.75 + ny * bow;
-  const d = `M${sx} ${sy} C${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`;
-  // Arrowhead along the curve's end tangent (from the second control point to the end).
-  const tl = Math.hypot(ex - c2x, ey - c2y) || 1;
-  const hx = (ex - c2x) / tl,
-    hy = (ey - c2y) / tl;
-  const size = 26,
-    half = 13;
-  const tipX = ex + hx * size * 0.55,
-    tipY = ey + hy * size * 0.55;
-  const baseX = ex - hx * size * 0.45,
-    baseY = ey - hy * size * 0.45;
-  const b1 = [baseX - hy * half, baseY + hx * half],
-    b2 = [baseX + hy * half, baseY - hx * half];
-  const head = `M${tipX} ${tipY} L${b1[0]} ${b1[1]} L${b2[0]} ${b2[1]}Z`;
-  // The upper half of the head (screen-up) gets the light tone, like the sprites.
-  const up = b1[1] <= b2[1] ? b1 : b2;
-  const headLight = `M${tipX} ${tipY} L${up[0]} ${up[1]} L${baseX} ${baseY}Z`;
-  return { d, head, headLight };
+  const at = (t: number) => {
+    const m = 1 - t;
+    return [
+      (m * m * m * sx +
+        3 * m * m * t * c1x +
+        3 * m * t * t * c2x +
+        t * t * t * ex) /
+        CELL,
+      (m * m * m * sy +
+        3 * m * m * t * c1y +
+        3 * m * t * t * c2y +
+        t * t * t * ey) /
+        CELL,
+    ];
+  };
+  const tangent = (t: number) => {
+    const m = 1 - t;
+    const dx =
+      3 * m * m * (c1x - sx) + 6 * m * t * (c2x - c1x) + 3 * t * t * (ex - c2x);
+    const dy =
+      3 * m * m * (c1y - sy) + 6 * m * t * (c2y - c1y) + 3 * t * t * (ey - c2y);
+    const l = Math.hypot(dx, dy) || 1;
+    return [dx / l, dy / l];
+  };
+  // Normal pointing up the screen, so "top half" means the same thing as in the sprites.
+  const upNormal = (tx_: number, ty_: number) =>
+    -tx_ > 0 || (tx_ === 0 && ty_ > 0) ? [ty_, -tx_] : [-ty_, tx_];
+
+  const cells = new Map<string, boolean>(); // "cx,cy" -> light?
+  const centre: [number, number][] = [];
+  const steps = Math.max(8, Math.ceil(len / 3));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const [px, py] = at(t);
+    const [tx_, ty_] = tangent(t);
+    const [ux_, uy_] = upNormal(tx_, ty_);
+    const mid = `${Math.floor(px)},${Math.floor(py)}`;
+    if (!centre.length || centre[centre.length - 1].join(",") !== mid)
+      centre.push([Math.floor(px), Math.floor(py)]);
+    for (let cy = Math.floor(py) - 2; cy <= Math.floor(py) + 2; cy++)
+      for (let cx = Math.floor(px) - 2; cx <= Math.floor(px) + 2; cx++) {
+        const dx = cx + 0.5 - px,
+          dy = cy + 0.5 - py;
+        const across = dx * ux_ + dy * uy_,
+          along = dx * tx_ + dy * ty_;
+        if (Math.abs(across) <= 1.5 && Math.abs(along) <= 0.75) {
+          const key = `${cx},${cy}`;
+          if (!cells.has(key)) cells.set(key, across > -0.5);
+        }
+      }
+  }
+  // Head: about 6 pixels long and 9 pixels tall, pointing along the curve's end direction.
+  const [hx, hy] = at(1);
+  const [dx, dy] = tangent(1);
+  const [ux_, uy_] = upNormal(dx, dy);
+  const tip = [hx + dx * 4.5, hy + dy * 4.5];
+  const base = [hx - dx * 2, hy - dy * 2];
+  const corners = [
+    tip,
+    [base[0] + ux_ * 4.6, base[1] + uy_ * 4.6],
+    [base[0] - ux_ * 4.6, base[1] - uy_ * 4.6],
+  ];
+  const side = (p: number[], a: number[], b: number[]) =>
+    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  for (let cy = Math.floor(hy) - 8; cy <= Math.floor(hy) + 8; cy++)
+    for (let cx = Math.floor(hx) - 8; cx <= Math.floor(hx) + 8; cx++) {
+      const p = [cx + 0.5, cy + 0.5];
+      const d1 = side(p, corners[0], corners[1]),
+        d2 = side(p, corners[1], corners[2]),
+        d3 = side(p, corners[2], corners[0]);
+      const inside =
+        (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0);
+      if (inside) {
+        const across = (p[0] - base[0]) * ux_ + (p[1] - base[1]) * uy_;
+        cells.set(`${cx},${cy}`, across > -0.25);
+      }
+    }
+  // 1-pixel black outline around everything.
+  const outline = new Set<string>();
+  for (const key of cells.keys()) {
+    const [cx, cy] = key.split(",").map(Number);
+    for (const [ox, oy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const n = `${cx + ox},${cy + oy}`;
+      if (!cells.has(n)) outline.add(n);
+    }
+  }
+  const rect = (key: string) => {
+    const [cx, cy] = key.split(",").map(Number);
+    return `M${cx * CELL} ${cy * CELL}h${CELL}v${CELL}h-${CELL}z`;
+  };
+  const pick = (light: boolean) =>
+    [...cells]
+      .filter(([, l]) => l === light)
+      .map(([k]) => rect(k))
+      .join("");
+  // Every 4th centre-line pixel per phase, for a stepped "marching" glint toward the head.
+  const march = [0, 1, 2, 3].map((phase) =>
+    centre
+      .filter((_, i) => i % 4 === phase && i < centre.length - 2)
+      .map(([cx, cy]) => rect(`${cx},${cy}`))
+      .join(""),
+  );
+  return {
+    outline: [...outline].map(rect).join(""),
+    light: pick(true),
+    dark: pick(false),
+    march,
+  };
 }
 
 export default function WorldMap({
@@ -276,43 +378,28 @@ export default function WorldMap({
               const lane = spills.filter(
                 (o) => o.to === to && o.from < from,
               ).length;
-              const { d, head, headLight } = spillArc(x, y, tx, ty, lane);
+              const px = pixelArrow(x, y, tx, ty, lane);
               const [light, dark] = ARROW_COLORS[to];
               return (
-                <g key={from} className="spill-arrow">
+                <g
+                  key={from}
+                  className="spill-pixel"
+                  shapeRendering="crispEdges"
+                >
                   <title>
                     {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
                   </title>
-                  <path
-                    className="spill-outline spill-draw"
-                    d={d}
-                    pathLength={1}
-                  />
-                  <path
-                    className="spill-line spill-draw"
-                    d={d}
-                    style={{ stroke: dark }}
-                    pathLength={1}
-                  />
-                  <path
-                    className="spill-light spill-draw"
-                    d={d}
-                    style={{ stroke: light }}
-                    pathLength={1}
-                  />
-                  <path className="spill-flow" d={d} />
-                  <g className="spill-tip">
+                  <path d={px.outline} fill="#000" />
+                  <path d={px.dark} fill={dark} />
+                  <path d={px.light} fill={light} />
+                  {px.march.map((d, phase) => (
                     <path
-                      className="spill-head"
-                      d={head}
-                      style={{ fill: dark }}
+                      key={phase}
+                      d={d}
+                      className={`spill-march phase-${phase}`}
+                      fill="#fff6d0"
                     />
-                    <path
-                      className="spill-head-light"
-                      d={headLight}
-                      style={{ fill: light }}
-                    />
-                  </g>
+                  ))}
                 </g>
               );
             })}

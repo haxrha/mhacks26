@@ -4984,132 +4984,51 @@ svg image {
   text-align: center;
   max-width: 92%;
 }
-/* Spill arrows: smooth curves that draw in, then show the flow direction with moving dashes. */
-.spill-arrow path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  pointer-events: none;
-}
-.spill-arrow .spill-shadow {
-  stroke: #1a120a;
-  stroke-width: 12;
-  opacity: 0.55;
-}
-.spill-arrow .spill-line {
-  stroke-width: 6;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: spill-draw 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) forwards;
-}
-.spill-arrow .spill-flow {
-  stroke: #fff1b0;
-  stroke-width: 2.5;
-  stroke-dasharray: 3 17;
-  opacity: 0;
-  animation:
-    spill-fade 0.3s ease-out 0.8s forwards,
-    spill-flow 1.1s linear infinite;
-}
-.spill-arrow .spill-head {
-  fill-opacity: 1;
-  stroke: #1a120a;
-  stroke-width: 3;
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: spill-pop 0.3s ease-out 0.75s forwards;
-}
-.spill-arrow:hover .spill-line {
-  stroke-width: 8;
-}
-@keyframes spill-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-@keyframes spill-flow {
-  to {
-    stroke-dashoffset: -20;
-  }
-}
-@keyframes spill-fade {
-  to {
-    opacity: 0.9;
-  }
-}
-@keyframes spill-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spill-arrow .spill-line {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
-  .spill-arrow .spill-flow {
-    animation: none;
-    opacity: 0.9;
-  }
-  .spill-arrow .spill-head {
-    animation: none;
-    opacity: 1;
-  }
-}
-/* Spill arrows in the receiving kingdom's colours: black outline, dark body, light top stripe. */
-.spill-arrow .spill-outline {
-  stroke: #000;
-  stroke-width: 13;
-}
-.spill-arrow .spill-line {
-  stroke-width: 8;
-}
-.spill-arrow .spill-light {
-  stroke-width: 3.5;
-  transform: translateY(-2px);
-}
-.spill-arrow .spill-draw {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: spill-draw 0.9s cubic-bezier(0.25, 0.8, 0.3, 1) forwards;
-}
-.spill-arrow .spill-flow {
-  stroke: #000;
-  stroke-width: 2;
-}
-.spill-arrow .spill-tip {
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: spill-pop 0.3s ease-out 0.75s forwards;
-}
-.spill-arrow .spill-head {
-  stroke: #000;
-  stroke-width: 3;
-  stroke-linejoin: miter;
-  opacity: 1;
-  animation: none;
-}
-.spill-arrow .spill-head-light {
-  stroke: none;
-}
 .trade-arrow {
   image-rendering: pixelated;
   flex: none;
 }
-@media (prefers-reduced-motion: reduce) {
-  .spill-arrow .spill-draw {
-    animation: none;
-    stroke-dashoffset: 0;
+
+/* Pixel-art spill arrows: pop in with a few hard steps, then a glint marches toward the head. */
+.spill-pixel {
+  pointer-events: none;
+  animation: spill-pixel-in 0.45s steps(3, end) both;
+}
+.spill-march {
+  opacity: 0;
+  animation: spill-march 0.8s steps(1, end) infinite;
+}
+.spill-march.phase-1 {
+  animation-delay: 0.2s;
+}
+.spill-march.phase-2 {
+  animation-delay: 0.4s;
+}
+.spill-march.phase-3 {
+  animation-delay: 0.6s;
+}
+@keyframes spill-pixel-in {
+  from {
+    opacity: 0;
   }
-  .spill-arrow .spill-tip {
-    animation: none;
+  to {
     opacity: 1;
+  }
+}
+@keyframes spill-march {
+  0% {
+    opacity: 0.85;
+  }
+  25% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spill-pixel,
+  .spill-march {
+    animation: none;
+  }
+  .spill-march {
+    opacity: 0;
   }
 }
