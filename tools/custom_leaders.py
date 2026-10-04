@@ -42,6 +42,7 @@ SNOW_L, SNOW, SNOW_D = (252, 253, 255, 255), (228, 236, 246, 255), (182, 198, 22
 COAL = (40, 40, 48, 255)
 TWIG, TWIG_D = (118, 78, 44, 255), (84, 54, 30, 255)
 CARROT, CARROT_D = (244, 126, 44, 255), (204, 88, 26, 255)
+EYE_RING = (92, 98, 118, 255)
 
 
 def canvas():
@@ -280,26 +281,31 @@ def draw_olaf(talking=False):
     for x, y in ((14, 25), (14, 31), (15, 35)):
         row(y, x, x + 1, COAL); put(x, y + 1, COAL)
 
-    # Thin stick eyebrows over two large round black eyes set close together.
-    line(8, 8, 12, 7, TWIG_D)
-    line(16, 7, 20, 8, TWIG_D)
-    for ex in (8, 16):
-        for y in range(9, 13):
-            row(y, ex, ex + 3, COAL)
-        for cx, cy in ((ex, 9), (ex + 3, 9), (ex, 12), (ex + 3, 12)):
-            put(cx, cy, SNOW)                     # round off the corners
-        put(ex + 1, 10, WHITE)                    # glint
+    # Thin stick eyebrows sitting clearly above the eyes, with snow above and below them.
+    row(7, 10, 12, TWIG_D)
+    row(7, 16, 18, TWIG_D)
 
-    # Long, slightly curved carrot nose sticking out from between the eyes.
-    row(12, 13, 18, CARROT); put(19, 13, CARROT); put(20, 13, CARROT_D)
-    row(13, 14, 18, CARROT_D)
+    # Two large round white eyes, each with a thin grey ring and a small black pupil centred
+    # inside. Every eye keeps at least one pixel of snow between it and the head outline.
+    for ex in (8, 16):
+        for y in range(9, 14):
+            for x in range(ex, ex + 5):
+                if x in (ex, ex + 4) and y in (9, 13):
+                    continue  # rounded corners
+                edge = x in (ex, ex + 4) or y in (9, 13)
+                put(x, y, EYE_RING if edge else WHITE)
+        put(ex + 2, 11, COAL)  # pupil
+
+    # Long, slightly curved carrot nose sticking out from between the eyes (same shape, below them).
+    row(14, 13, 18, CARROT); put(19, 15, CARROT); put(20, 15, CARROT_D)
+    row(15, 14, 18, CARROT_D)
 
     # Huge open mouth with one big rectangular tooth on the top gumline.
-    bottom = 20 if talking else 19
-    row(15, 10, 18, MOUTH)
-    for y in range(16, bottom):
-        row(y, 10 if y < 18 else 11, 18 if y < 18 else 17, INSIDE)
-    row(16, 13, 15, WHITE); row(17, 13, 15, WHITE)
+    bottom = 21 if talking else 20
+    row(16, 10, 18, MOUTH)
+    for y in range(17, bottom):
+        row(y, 10 if y < 19 else 11, 18 if y < 19 else 17, INSIDE)
+    row(17, 13, 15, WHITE); row(18, 13, 15, WHITE)
     row(bottom - 1, 13, 15, TONGUE)
     row(bottom, 12, 16, MOUTH)
     return outline(img)
