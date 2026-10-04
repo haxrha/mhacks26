@@ -353,10 +353,11 @@ dam_x = int(round(river_x(DAM_Y)))
 protect[DAM_Y - 6:DAM_Y + 4, dam_x - 9:dam_x + 10] = True
 highland_land = land & (civ == 0)
 # The rocky range only runs along the top-right coast (right of the lake); the west stays pasture.
-range_land = highland_land & (xx >= 172 + (n_b - 0.5) * 18)
+range_land = highland_land
+west = xx[0] < 172 + (n_b[0] - 0.5) * 18   # per column: the slim north-west strip
 land_top = np.array([np.argmax(land[:, x]) if land[:, x].any() else H for x in range(W)], float)
 land_top = np.convolve(np.pad(land_top, 7, mode="edge"), np.ones(15) / 15, mode="valid")
-row_back = land_top + 19                    # base line of the back (large) row
+row_back = land_top + np.where(west, 11, 19)   # base line of the back row (shallower in the west)
 BASE = {"large": row_back, "medium": row_back + 5, "small": row_back + 8}    # rows overlap a little
 front = (row_back + 8).astype(int)   # follows the coastline; range_land keeps it in Highland
 
@@ -519,6 +520,23 @@ if hy:
         for j in range(5):
             img[hy + 1 + j, hx_ - 4 + i * 4] = P["plank"]
     img[hy + 1, hx_ - 4:hx_ + 5] = P["plank"]
+BEACHED = ["..m...", ".OPPPO", "OPpppP", ".OOOO."]
+beached = 0
+for tx, ty in [(118, 176), (40, 150), (292, 126), (158, 184), (70, 172)]:
+    if beached >= 3: break
+    best = None
+    for y in range(max(2, ty - 14), min(H - 5, ty + 14)):
+        for x in range(max(2, tx - 14), min(W - 8, tx + 14)):
+            box = (slice(y, y + 4), slice(x, x + 6))
+            if not land[box].all() or occupied[box].any() or water[box].any(): continue
+            if d_sea[y + 3, x + 2] > 1: continue                 # right at the water's edge
+            d = (x - tx) ** 2 + (y - ty) ** 2
+            if best is None or d < best[0]: best = (d, x, y)
+    if best:
+        _, x, y = best
+        blit(BEACHED, {"m": "plank", "O": "ink", "P": "plank", "p": "soil"}, x, y)
+        beached += 1
+print("beached boats:", beached)
 for (bx, by) in [(186, 192), (224, 190), (120, 193), (300, 150)]:
     if not land[by, bx]:
         blit([".w.", "ww.", "PPP"], {"w": "white", "P": "plank"}, bx, by - 2, mark=False, dyn="boat")
