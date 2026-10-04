@@ -50,6 +50,10 @@ const C = {
   sludgeD: rgb("#4e4520"),
   smoke: rgb("#c9c9c9"),
   smokeD: rgb("#6b6b72"),
+  sand: rgb("#efdca8"),
+  sandD: rgb("#e3cd93"),
+  dune: rgb("#ecd79a"),
+  scrub: rgb("#b7b56a"),
 };
 const FLAG: Record<string, RGB> = {
   highland: rgb("#a07ad6"),
@@ -57,6 +61,33 @@ const FLAG: Record<string, RGB> = {
   forge: rgb("#f08a3c"),
   tidehaven: rgb("#46d6d0"),
 };
+// Territory is shown by a faint per-civ wash over the land (borders are no longer baked into the map).
+const TERRITORY: Record<string, { tint: RGB; strength: number }> = {
+  highland: { tint: rgb("#a07ad6"), strength: 0.1 },
+  verdant: { tint: rgb("#7fd65a"), strength: 0.1 },
+  forge: { tint: rgb("#f08a3c"), strength: 0.12 },
+  tidehaven: { tint: rgb("#46d6d0"), strength: 0.1 }, // Plus a coastal desert band (desertAmount).
+};
+/** Harborkeep's land reads as desert: greenery turns to sand and dune, rock to sandstone. */
+function desertPixel(c: RGB, k: number, h: number): RGB {
+  if (k === KIND.forest) return mix(C.scrub, C.sandD, h < 128 ? 0.4 : 0.7);
+  if (k === KIND.grass || k === KIND.pasture || k === KIND.field || k === KIND.marsh)
+    return h < 60 ? C.dune : h < 150 ? C.sand : C.sandD;
+  if (k === KIND.rock) return mix(c, C.sand, 0.4);
+  if (k === KIND.beach) return c;
+  return mix(c, C.sand, 0.3);
+}
+// The desert is only a coastal strip along Harborkeep's south, with an organic, curved edge
+// that fades into the grassland rather than cutting a straight line across the territory.
+const DESERT_EDGE = 170;
+function desertAmount(x: number, y: number, h: number): number {
+  const edge =
+    DESERT_EDGE +
+    Math.sin(x * 0.08) * 7 +
+    Math.sin(x * 0.19 + 1) * 3 +
+    (h / 255 - 0.5) * 7;
+  return Math.max(0, Math.min(1, (y - edge) / 9));
+}
 
 export interface WorldLayers {
   base: Uint8Array;
@@ -477,6 +508,25 @@ function terrainPixel(
   if (k === KIND.deep || k === KIND.sea)
     c = seaPixel(x, y, frame, climate, k === KIND.sea);
 
+  // Territory wash over soft ground (not snow, rock, rivers or structures): a faint per-civ tint,
+  // and a full desert for Harborkeep. Snow peaks keep their colour so melting still reads.
+  const soil =
+    k === KIND.grass ||
+    k === KIND.pasture ||
+    k === KIND.field ||
+    k === KIND.forest ||
+    k === KIND.marsh ||
+    k === KIND.beach;
+  if (a !== NONE && soil) {
+    const civName = TOWNS[a].civ;
+    const terr = TERRITORY[civName];
+    if (terr && terr.strength > 0) c = mix(c, terr.tint, terr.strength);
+    if (civName === "tidehaven") {
+      const amt = desertAmount(x, y, h);
+      if (amt > 0) c = mix(c, desertPixel(c, k, h), amt);
+    }
+  }
+
   // Global state: melting snow, rising seas, ocean health.
   if (k === KIND.snow && climate > meltThreshold(y, h))
     c = h & 1 ? C.rock : C.rockD;
@@ -655,7 +705,10 @@ function blit(
   x0: number,
   y0: number,
   skip?: (ch: string, i: number, j: number) => boolean,
+  topColor?: RGB,
 ) {
+  // The first filled pixel in each column is the building's top edge (its roof).
+  const topped = topColor ? new Uint8Array(rows[0]?.length ?? 0) : undefined;
   rows.forEach((row, j) => {
     for (let i = 0; i < row.length; i++) {
       const ch = row[i];
@@ -665,8 +718,12 @@ function blit(
       const x = x0 + i,
         y = y0 + j;
       if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
-      const c = typeof v === "string" ? rgb(v) : v,
-        o = (y * MAP_W + x) * 4;
+      let c = typeof v === "string" ? rgb(v) : v;
+      if (topped && !topped[i]) {
+        topped[i] = 1;
+        c = topColor!;
+      }
+      const o = (y * MAP_W + x) * 4;
       out[o] = c[0];
       out[o + 1] = c[1];
       out[o + 2] = c[2];
@@ -752,7 +809,8 @@ export function renderWorld(
       const x = slot[0] + Math.floor((7 - sw) / 2),
         y = slot[1] + 7 - sh;
       const rows = id === "windmill" && frame & 1 ? WINDMILL_SPIN : sprite.rows;
-      blit(out, rows, sprite.pal, x, y);
+      // Roofs fly the town's colour so you can read ownership at a glance.
+      blit(out, rows, sprite.pal, x, y, undefined, FLAG[town.civ]);
       if (id === "kiln") puff(out, x + 3, y - 1, frame + n);
     });
     blit(out, k.rows, { ...k.pal, F: FLAG[town.civ] }, k.x, k.y);

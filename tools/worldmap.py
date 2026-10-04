@@ -120,8 +120,18 @@ for y, x in zip(*np.nonzero(waves)):
     img[y, x:x + 2] = P["wave"]
 
 def put(mask, col): img[mask] = P[col]
+# Biome boundaries flow organically like real coastlines/treelines: the terrain masks below use
+# noise-perturbed, wavy edges that interlace across territories. Ownership (`civ`) keeps its
+# clean borders -- only the look of the land bleeds, not who owns it.
+north = 66 + (n_a - 0.5) * 26 + (n_b - 0.5) * 10 + 4 * np.sin(xx / 13.0)
+south = 146 + (n_c - 0.5) * 28 + (n_a - 0.5) * 10 + 4 * np.sin(xx / 11.0 + 2)
+river_seam = rx + (n_b - 0.5) * 16 + 3 * np.sin(yy / 9.0)
+hl = land & (yy < north)
+td = land & (yy >= south)
+mid = land & ~hl & ~td
+vd = mid & (xx < river_seam)
+fg = mid & (xx >= river_seam)
 # Highland: rock & snow up top, pasture below
-hl = civ == 0
 put(hl, "pasture")
 put(hl & (rnd < 0.18), "grass")
 put(hl & (yy < 44 + (n_a - 0.5) * 16), "rock")
@@ -129,7 +139,6 @@ put(hl & (yy < 44 + (n_a - 0.5) * 16) & (rnd < 0.25), "rock_d")
 put(hl & (yy < 24 + (n_b - 0.5) * 14), "snow")
 put(hl & (yy < 24 + (n_b - 0.5) * 14) & (rnd < 0.2), "snow_d")
 # Verdant: forest, clearings, marsh
-vd = civ == 1
 put(vd, "forest_d")
 put(vd & (rnd < 0.3), "tree_d")
 clear_v = vd & (n_c > 0.64)
@@ -137,10 +146,11 @@ put(clear_v, "grass"); put(clear_v & (rnd < 0.2), "grass_l")
 marsh_v = vd & (n_b > 0.74)
 put(marsh_v, "marsh"); put(marsh_v & (rnd < 0.05), "shallow")
 # Forge: plains
-fg = civ == 2
 put(fg, "grass"); put(fg & (rnd < 0.2), "grass_l"); put(fg & (n_a > 0.68), "grass_d")
+# Riparian treeline: Verdant's forest scatters a little way onto the Forge bank near the river.
+fringe = fg & (xx < river_seam + 7 + (n_c - 0.5) * 8) & (rnd < 0.5)
+put(fringe, "forest_d"); put(fringe & (rnd < 0.15), "tree_d")
 # Tidehaven: grass + marsh
-td = civ == 3
 put(td, "grass_l"); put(td & (rnd < 0.2), "grass")
 marsh_t = td & (n_c > 0.66)
 put(marsh_t, "marsh"); put(marsh_t & (rnd < 0.05), "shallow")
@@ -383,8 +393,10 @@ for y in range(H):
 kind[(kind == KINDS.index("structure")) & (civ == 0) & (yy > 44)] = KINDS.index("pasture")
 
 # ---------- borders ----------
+# Territory is now shown by a per-civ wash in the live renderer (worldRender.ts), not baked lines.
+DRAW_BORDERS = False
 OUT_COLOR = {0: "highland", 1: "verdant", 2: "forge", 3: "tidehaven"}
-for y in range(H):
+for y in range(H) if DRAW_BORDERS else ():
     for x in range(W):
         if not land[y, x] or water[y, x]: continue
         c = civ[y, x]
