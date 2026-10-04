@@ -42,7 +42,6 @@ SNOW_L, SNOW, SNOW_D = (252, 253, 255, 255), (228, 236, 246, 255), (182, 198, 22
 COAL = (40, 40, 48, 255)
 TWIG, TWIG_D = (118, 78, 44, 255), (84, 54, 30, 255)
 CARROT, CARROT_D = (244, 126, 44, 255), (204, 88, 26, 255)
-EYE_RING = (92, 98, 118, 255)
 
 
 def canvas():
@@ -285,15 +284,14 @@ def draw_olaf(talking=False):
     row(7, 10, 12, TWIG_D)
     row(7, 16, 18, TWIG_D)
 
-    # Two large round white eyes, each with a thin grey ring and a small black pupil centred
-    # inside. Every eye keeps at least one pixel of snow between it and the head outline.
+    # Two large round white eyes with a small black pupil centred inside, no ring around them.
+    # Every eye keeps at least one pixel of snow between it and the head outline.
     for ex in (8, 16):
         for y in range(9, 14):
             for x in range(ex, ex + 5):
                 if x in (ex, ex + 4) and y in (9, 13):
                     continue  # rounded corners
-                edge = x in (ex, ex + 4) or y in (9, 13)
-                put(x, y, EYE_RING if edge else WHITE)
+                put(x, y, WHITE)
         put(ex + 2, 11, COAL)  # pupil
 
     # Long, slightly curved carrot nose sticking out from between the eyes (same shape, below them).
