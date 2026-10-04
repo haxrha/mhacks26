@@ -63,6 +63,8 @@ export interface Civ {
   ready: boolean;
   /** Questions already asked, so they don't repeat. */
   asked: string[];
+  /** This town's last few events (newest last), so the next draw avoids repeating them. */
+  recent?: EventId[];
   /** What happened to this town this cycle, for the narrator. */
   report: string[];
 }

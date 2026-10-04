@@ -136,6 +136,7 @@ export function createGame(
         ready: false,
         asked: [],
         report: [],
+        recent: [],
       } satisfies Civ,
     ]),
   ) as unknown as Record<CivId, Civ>;
@@ -159,13 +160,23 @@ export function createGame(
 }
 
 /** Each town draws this cycle's event, weighted by its geography, the climate and its neighbors. */
+/** Events a town remembers when drawing the next one, and how strongly recent ones are avoided. */
+const RECENT_MEMORY = 3;
+const RECENT_PENALTY = 0.35;
+/** Below 1 flattens geography so rarer local hazards still turn up. */
+const REGION_EXPONENT = 0.6;
+
 export function rollEvents(s: GameState) {
   for (const c of CIV_IDS) {
-    const options = (Object.keys(EVENTS) as EventId[]).flatMap((id) => {
+    const recent = s.civs[c].recent ?? [];
+    const previous = s.events[c]?.type;
+    const all = (Object.keys(EVENTS) as EventId[]).flatMap((id) => {
       const e = EVENTS[id];
       if (e.chainFrom?.length) return [];
-      let w = e.regions[c] ?? 0;
-      if (!w) return [];
+      const base = e.regions[c] ?? 0;
+      if (!base) return [];
+      let w = base ** REGION_EXPONENT;
+      if (recent.includes(id)) w *= RECENT_PENALTY;
       if (e.climateDriven) w *= 1 + s.climate / 1.5;
       const senders = e.carrier === "wind" ? upwind(c) : upstream(c);
       const count = (x: CivId) =>
@@ -173,6 +184,9 @@ export function rollEvents(s: GameState) {
       if (e.cause) w *= 1 + 0.5 * senders.reduce((n, x) => n + count(x), 0);
       return [{ id, w }];
     });
+    // Never the same event two decades running (unless it's the only one this town can get).
+    const fresh = all.filter((o) => o.id !== previous);
+    const options = fresh.length ? fresh : all;
     const total = options.reduce((n, o) => n + o.w, 0);
     let roll = random(s) * total;
     const pick = options.find((o) => (roll -= o.w) < 0) ?? options[0];
@@ -206,6 +220,7 @@ export function rollEvents(s: GameState) {
           )[0]
       : undefined;
     s.events[c] = { type: pickedId, cause, loss };
+    s.civs[c].recent = [...recent, pickedId].slice(-RECENT_MEMORY);
   }
 }
 

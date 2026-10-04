@@ -54,6 +54,8 @@ import WorldMap from "./WorldMap";
 import WorldStage from "./WorldStage";
 import ResourceIcon from "./ResourceIcon";
 
+/** A fresh 32-bit world seed. The engine stays deterministic: every roll comes from this seed. */
+const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] || 1;
 const SAVE_KEY = "earthshare-v2";
 
 function Costs({ cost }: { cost: Partial<Stock> }) {
@@ -77,7 +79,7 @@ export default function Game() {
     [resume, setResume] = useState<GameState | null>(null),
     [choice, setChoice] = useState<CivId>("heartland"),
     [mode, setMode] = useState<"solo" | "hotseat">("solo"),
-    [seed, setSeed] = useState("260926");
+    [seed, setSeed] = useState("");
   const [toast, setToast] = useState(""),
     [help, setHelp] = useState(false),
     [inspect, setInspect] = useState<CivId>(),
@@ -155,7 +157,7 @@ export default function Game() {
   }
   function start(civ: CivId = choice) {
     world.disconnect();
-    setState(createGame(civ, mode, Number(seed) || 260926));
+    setState(createGame(civ, mode, Number(seed) || newSeed()));
     setHeard(undefined);
     setInspect(undefined);
   }
@@ -219,9 +221,14 @@ export default function Game() {
               <input
                 type="number"
                 value={seed}
+                placeholder="random"
                 onChange={(e) => setSeed(e.target.value)}
               />
             </label>
+            <small className="seed-hint">
+              Leave blank for a new world each time; type a number to replay
+              one.
+            </small>
             <div className="setup-footer">
               {loaded && resume && (
                 <button onClick={() => setState(resume)}>
@@ -273,7 +280,7 @@ export default function Game() {
                   void world.connect(
                     id,
                     choice,
-                    Number(seed) || 260926,
+                    Number(seed) || newSeed(),
                     mode === "solo",
                   );
                 }}
