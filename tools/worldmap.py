@@ -30,6 +30,19 @@ P = {k: hx(v) for k, v in dict(
     white="#f4f4ec", metal="#6b6b72", metal_d="#4a4a52", smoke="#c9c9c9", navy="#2a3b6e", navy_l="#4a63a8",
     plank="#8a5a32", red="#c8402c", gold="#f5c542",
     highland="#a07ad6", verdant="#7fd65a", forge="#f08a3c", tidehaven="#46d6d0",
+    # northern range (lit from the top-left)
+    mt_light="#9a907e", mt_shadow="#5a5348", mt_ridge="#b8ad97", mt_line="#3e3830", mt_floor="#776e60",
+    mt_snow="#f4f4ec", mt_snow_d="#c6d4e0", foothill="#8c7d4b", foothill_d="#6f6239", ice="#bfe4f2",
+    pine="#3d7a2e", pine_d="#24501b",
+    # river (section 1 polish)
+    river_deep="#2a78ad", river_edge="#7cc9ee", bank="#5d7a3a", dam_l="#a0a0a0", dam_d="#5a5a58",
+    spill="#e8f6fb", wet_sand="#c9b06a",
+    # farms (section 3 polish)
+    hedge="#2f5a26", wheat_r="#b39432", crop_l="#7cbf4a", crop_r="#5a9a34", soil_r="#6e4a28",
+    roof="#b5432f", roof_d="#8a2f22", wall="#efe2bc",
+    # section 4 polish: marsh, grass tufts, flowers
+    marsh2="#4d7a5f", reed="#8aa050", pool="#3a8bbd", tuft_d="#4d8732", tuft_l="#74b04a",
+    flower_w="#f6efdc", flower_y="#f5c542", flower_p="#e07a9a",
 ).items()}
 CIVS = ["highland", "verdant", "forge", "tidehaven"]
 
@@ -59,7 +72,7 @@ def river_x(y): return 160 + 12 * math.sin(y / 16) + 5 * math.sin(y / 6.5 + 1)
 
 water = np.zeros((H, W), bool)
 lake_c = (river_x(46), 45)
-lake = (((xx - lake_c[0]) / 14.0) ** 2 + ((yy - lake_c[1]) / 7.5) ** 2 + (n_b - 0.5) * 0.5) < 1
+lake = (((xx - lake_c[0]) / 14.0) ** 2 + ((yy - lake_c[1]) / 7.5) ** 2 + (n_land - 0.5) * 0.2) < 1
 water |= lake & land
 DAM_Y = 54
 def paint_line(pts, width):
@@ -69,19 +82,28 @@ def paint_line(pts, width):
         for xi in range(x0, x1):
             yi = int(round(y))
             if 0 <= xi < W and 0 <= yi < H: water[yi, xi] = True
+def river_w(y):
+    if y >= 168: return 3
+    if y >= 140: return 6
+    if y >= 92: return 4
+    return 2
 for y in np.arange(DAM_Y - 2, H, 0.5):                       # main river
     x = river_x(y)
     if y > 120 and not land[int(y), int(x)]:
         break
-    paint_line([(x, y)], 2 if y < 100 else 3)
+    paint_line([(x, y)], river_w(y))
 for k in (-1, 1):                                            # delta branches
     for y in np.arange(168, 192, 0.5):
         paint_line([(river_x(y) + k * (y - 168) * 1.1, y)], 2)
-for (sx, sy) in [(118, 14), (206, 16)]:                      # glacier streams into the lake
-    for t in np.linspace(0, 1, 160):
+ice = np.zeros((H, W), bool)
+for (sx, sy) in [(118, 14), (206, 16)]:                      # glacier ice channels into the reservoir
+    for t in np.linspace(0, 1, 220):
         x = sx + (lake_c[0] - sx) * t + 3 * math.sin(t * 9)
         y = sy + (lake_c[1] - sy) * t
-        paint_line([(x, y)], 1)
+        paint_line([(x, y)], 2)
+        for xi in range(int(math.floor(x - 0.5)), int(math.floor(x + 1.5))):
+            yi = int(round(y))
+            if 0 <= xi < W and 0 <= yi < H: ice[yi, xi] = True
 tx_end = river_x(118)
 for t in np.linspace(0, 1, 300):                             # Verdant tributary
     x = 52 + (tx_end - 52) * t
@@ -107,7 +129,7 @@ def dist_from(mask, maxd):
         dist[nxt & ~cur] = i; cur = nxt
     return dist
 d_land = dist_from(land, 14)
-d_sea = dist_from(~land, 4)
+d_sea = dist_from(~land, 6)
 
 # ---------- base paint ----------
 img = np.zeros((H, W, 3), np.uint8)
@@ -120,38 +142,157 @@ for y, x in zip(*np.nonzero(waves)):
     img[y, x:x + 2] = P["wave"]
 
 def put(mask, col): img[mask] = P[col]
+
+# ---------- farms: irregular clusters of 2-4 fields sharing hedges, plus a farmhouse ----------
+FIELD_TONES = {"wheat": ("wheat", "wheat_r"), "crop": ("crop_l", "crop_r"), "soil": ("soil", "soil_r")}
+def paint_field(x, y, w, h, kind, dirn):
+    """Rows of two tones; `dirn` is h (rows), v (columns) or d (diagonal furrows)."""
+    a, b = FIELD_TONES[kind]
+    for j in range(h):
+        for i in range(w):
+            dark = (j % 2) if dirn == "h" else (i % 2) if dirn == "v" else ((i + j) % 3 == 0)
+            img[y + j, x + i] = P[b if dark else a]
+
+FARMHOUSE = [".OOO.", "ORRrO", "OWWWO", "OWdWO", "OOOOO"]
+FARM_PAL = {"O": "ink", "R": "roof", "r": "roof_d", "W": "wall", "d": "door"}
+HAY = [".OO.", "OHhO", ".OO."]
+HAY_PAL = {"O": "ink", "H": "wheat", "h": "wheat_r"}
+
+def farm_layout(frng):
+    """2-4 fields as (dx, dy, w, h), packed side by side or stacked with 1px hedges, staggered."""
+    n = int(frng.integers(2, 5))
+    fields = [(0, 0, int(frng.integers(6, 10)), int(frng.integers(5, 8)))]
+    for k in range(1, n):
+        px, py, pw, ph = fields[k - 1] if k != 2 or n < 4 else fields[0]
+        if k % 2 == 1:   # to the right, sharing the hedge column, slightly staggered
+            fields.append((px + pw + 1, py + int(frng.integers(-2, 3)), int(frng.integers(5, 9)), int(frng.integers(5, 8))))
+        else:            # below, sharing the hedge row
+            fields.append((px + int(frng.integers(-2, 3)), py + ph + 1, int(frng.integers(6, 10)), int(frng.integers(4, 6))))
+    return fields
+
+def farm_fits(cells, region):
+    for (x, y) in cells:
+        if not (0 <= x < W and 0 <= y < H): return False
+        if not land[y, x] or water[y, x] or occupied[y, x] or civ[y, x] != region: return False
+        if d_sea[y, x] <= 5: return False
+    return True
+
+def farm_cluster(region, near, frng, extras=True):
+    """Find a spot near `near`, paint the fields, hedges, farmhouse and hay; return the bounding box."""
+    fields = farm_layout(frng)
+    kinds = ["wheat", "crop", "soil"]
+    for r in range(0, 30):
+        for _ in range(8):
+            ox = near[0] + int(frng.integers(-r - 1, r + 2))
+            oy = near[1] + int(frng.integers(-r // 2 - 1, r // 2 + 2))
+            rects = [(ox + dx, oy + dy, w, h) for (dx, dy, w, h) in fields]
+            x0 = min(x for x, _, _, _ in rects) - 1; y0 = min(y for _, y, _, _ in rects) - 1
+            x1 = max(x + w for x, _, w, _ in rects); y1 = max(y + h for _, y, _, h in rects)
+            hx, hy = (x1 + 1, y0 + 1) if frng.random() < 0.5 else (x0 - 6, y0 + 1)   # farmhouse side
+            cells = {(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)}
+            cells |= {(hx + i, hy + j) for i in range(5) for j in range(5)}
+            if not farm_fits(cells, region): continue
+            hedge = set()
+            for (x, y, w, h) in rects:
+                hedge |= {(x + i, y + j) for i in range(-1, w + 1) for j in range(-1, h + 1)}
+            for (x, y) in hedge: img[y, x] = P["hedge"]
+            for (x, y, w, h) in rects:
+                paint_field(x, y, w, h, kinds[int(frng.integers(0, 3))], "hvd"[int(frng.integers(0, 3))])
+            blit(FARMHOUSE, FARM_PAL, hx, hy)
+            if extras:
+                for k in range(int(frng.integers(1, 3))):
+                    bx, by = (hx + int(frng.integers(-1, 3)), hy + 6 + k * 3)
+                    if farm_fits({(bx + i, by + j) for i in range(4) for j in range(3)}, region):
+                        blit(HAY, HAY_PAL, bx, by)
+            for (x, y) in cells: occupied[y, x] = True
+            FARMS.append((x0 - 1, y0 - 1, x1 - x0 + 3, y1 - y0 + 3))
+            return True
+    return False
+# Biome boundaries flow organically. Every seam feathers with the SAME system: ordered (Bayer)
+# dithering over a fixed band, keyed to distance from the seam, so transitions are coherent
+# gradients rather than per-pixel noise. Each tile is painted a single palette colour (no blends),
+# and ownership (`civ`) keeps its clean borders -- only the look of the land bleeds, not who owns it.
+BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], np.float32) / 16.0
+bayer = BAYER[yy % 4, xx % 4]
+BAND = 3.0   # tiles over which one biome dithers into the next
+def across(coord, edge, band=BAND):
+    """0 on the near side of `edge`, 1 on the far side, ramping across `band` tiles."""
+    return np.clip((coord - edge) / band + 0.5, 0.0, 1.0)
+north = 66 + (n_a - 0.5) * 26 + (n_b - 0.5) * 10 + 4 * np.sin(xx / 13.0)
+south = 146 + (n_c - 0.5) * 28 + (n_a - 0.5) * 10 + 4 * np.sin(xx / 11.0 + 2)
+river_seam = rx + (n_b - 0.5) * 16 + 3 * np.sin(yy / 9.0)
+hl = land & (across(yy, north, band=14.0) <= bayer)   # wide, soft seam into the lowlands
+td = land & (across(yy, south) > bayer)
+mid = land & ~hl & ~td
+vd = mid & (across(xx, river_seam) <= bayer)
+fg = mid & (across(xx, river_seam) > bayer)
 # Highland: rock & snow up top, pasture below
-hl = civ == 0
 put(hl, "pasture")
-put(hl & (rnd < 0.18), "grass")
-put(hl & (yy < 44 + (n_a - 0.5) * 16), "rock")
-put(hl & (yy < 44 + (n_a - 0.5) * 16) & (rnd < 0.25), "rock_d")
-put(hl & (yy < 24 + (n_b - 0.5) * 14), "snow")
-put(hl & (yy < 24 + (n_b - 0.5) * 14) & (rnd < 0.2), "snow_d")
+# Pasture fades toward the lowland grass over the last ~16 tiles, so there is no visible line.
+fade = np.clip((yy - (north - 18)) / 18.0, 0.0, 1.0)
+put(hl & (rnd < 0.18 + 0.7 * fade), "grass")
 # Verdant: forest, clearings, marsh
-vd = civ == 1
 put(vd, "forest_d")
 put(vd & (rnd < 0.3), "tree_d")
 clear_v = vd & (n_c > 0.64)
 put(clear_v, "grass"); put(clear_v & (rnd < 0.2), "grass_l")
 marsh_v = vd & (n_b > 0.74)
-put(marsh_v, "marsh"); put(marsh_v & (rnd < 0.05), "shallow")
+put(marsh_v, "marsh2"); put(marsh_v & (rnd < 0.18), "reed")
+pools_marsh_v = marsh_v & (rnd > 0.985)
+pools_marsh_v = pools_marsh_v | np.roll(pools_marsh_v, 1, axis=1)        # 2px pools
+put(pools_marsh_v & marsh_v, "pool")
+forest_body = vd & ~clear_v & ~marsh_v
+forest_rim = forest_body & (dist_from(~forest_body, 3) <= 2)
+put(forest_rim, "grass"); put(forest_rim & (rnd < 0.2), "grass_l")
 # Forge: plains
-fg = civ == 2
 put(fg, "grass"); put(fg & (rnd < 0.2), "grass_l"); put(fg & (n_a > 0.68), "grass_d")
-# Tidehaven: grass + marsh
-td = civ == 3
+# Riparian treeline: Verdant's forest feathers east onto the Forge bank, fading with the same dither.
+fringe = fg & (np.clip((river_seam + 7 - xx) / 7.0, 0, 1) > bayer)
+put(fringe, "forest_d"); put(fringe & (rnd < 0.15), "tree_d")
+# Tidehaven: grass + marsh, with a desert shore
 put(td, "grass_l"); put(td & (rnd < 0.2), "grass")
 marsh_t = td & (n_c > 0.66)
-put(marsh_t, "marsh"); put(marsh_t & (rnd < 0.05), "shallow")
+put(marsh_t, "marsh2"); put(marsh_t & (rnd < 0.18), "reed")
+pools_marsh_t = marsh_t & (rnd > 0.985)
+pools_marsh_t = pools_marsh_t | np.roll(pools_marsh_t, 1, axis=1)        # 2px pools
+put(pools_marsh_t & marsh_t, "pool")
+# Harborkeep's southern shore is desert: a sand band between the beach and the grass, dithered inland.
+desert_edge = 170 + (n_c - 0.5) * 14 + 4 * np.sin(xx / 12.0)
+sand_t = td & (across(yy, desert_edge, 5.0) > bayer)
+put(sand_t, "sand"); put(sand_t & (rnd < 0.3), "sand_d")
 # beaches
-beach = land & (d_sea <= 2) & ~(hl & (yy < 40))
+beach_w = 3 + np.floor(n_c * 2.99).astype(int)          # 3-5px of sand along the coast
+beach = land & (d_sea <= beach_w) & ~(hl & (yy < 40))
 put(beach, "sand"); put(beach & (rnd < 0.2), "sand_d")
-put(land & (d_sea <= 1) & hl & (yy < 40), "rock_d")
-# water on land
-put(water_land, "river")
-put(water_land & (rnd < 0.08), "foam")
-put(lake & land & (((xx - lake_c[0]) / 9.0) ** 2 + ((yy - lake_c[1]) / 4.0) ** 2 < 1), "shallow")
+put(beach & (d_sea == 1), "wet_sand")                     # darker wet line next to the foam
+# water on land: body, deep centre, lit top-left edge, and a 1px darker bank outside
+ice &= ~lake                       # glacier channels stop at the reservoir's edge
+wl = water_land & ~ice
+lk = wl & lake
+d_in = dist_from(~wl, 4)
+put(wl, "river")
+put(wl & ~lk & (d_in >= 2), "river_deep")                       # river: centre channel
+put(lk & (d_in >= 3), "river_deep")                              # lake: deep middle
+lit = wl & (~np.roll(wl, 1, axis=1) | ~np.roll(wl, 1, axis=0))  # left or top neighbour is dry
+put(wl & ~lk & lit, "river_edge")
+put(lk & (d_in == 1), "river_edge")                              # lake: lighter rim all round
+put(ice & land & ~lake, "ice")
+near_wl = np.zeros_like(wl)
+near_wl[1:, :] |= wl[:-1, :]; near_wl[:-1, :] |= wl[1:, :]; near_wl[:, 1:] |= wl[:, :-1]; near_wl[:, :-1] |= wl[:, 1:]
+sandy = (img == P["sand"]).all(2) | (img == P["sand_d"]).all(2)
+bank = land & ~water & ~ice & near_wl & ~sandy & (d_sea > 1)
+put(bank, "bank")
+
+grassy = np.zeros((H, W), bool)
+for g in ("grass", "grass_l", "grass_d", "pasture", "meadow"):
+    grassy |= (img == P[g]).all(2)
+grassy &= land & ~water
+put(grassy & (n_b > 0.58) & (rnd < 0.28), "tuft_d")
+put(grassy & (n_a < 0.42) & (rnd > 0.72), "tuft_l")
+flowers = grassy & (rnd > 0.9965)
+put(flowers & ((xx + yy) % 3 == 0), "flower_w")
+put(flowers & ((xx + yy) % 3 == 1), "flower_y")
+put(flowers & ((xx + yy) % 3 == 2), "flower_p")
 
 occupied = water.copy() | ~land       # sprite placement blocker
 
@@ -239,6 +380,8 @@ def nearest_spot(cx, cy, w, h, region):
     raise RuntimeError(f"no spot near {cx},{cy}")
 
 castles = []
+FARMS = []   # (x, y, w, h) boxes baked into the map that building plots must avoid
+TOWN_LAND = np.zeros((H, W), bool)   # what the mountains must leave alone: clearing, keep, farm
 for (pid, name, c, cap, (cx, cy)) in PROV:
     rows = castle_rows(cap)
     w, h = len(rows[0]), len(rows)
@@ -248,42 +391,189 @@ for (pid, name, c, cap, (cx, cy)) in PROV:
     occupied[y0 - 3:y0 + h + 6, x0 - 3:x0 + w + 5] = True     # keep clear around castles + label
     # a grass clearing for the town to grow into: no trees or mountains, meadow underfoot
     kcx, kcy = x0 + 1 + w // 2, y0 + 1 + h // 2
-    clearing = (((xx - kcx) / TOWN_R[0]) ** 2 + ((yy - kcy) / TOWN_R[1]) ** 2 < 1) & (civ == c) & ~water
-    img[clearing] = P["grass"]
-    img[clearing & (rnd < 0.25)] = P["grass_l"]
-    img[clearing & (rnd > 0.93)] = P["meadow"]
+    # Organic edge: a noisy oval whose rim dithers into the surrounding terrain (no hard box).
+    r = ((xx - kcx) / TOWN_R[0]) ** 2 + ((yy - kcy) / TOWN_R[1]) ** 2 + (n_c - 0.5) * 0.45
+    rim = np.clip((r - 0.7) / 0.3, 0, 1)
+    clearing = (r < 1) & (rnd >= rim) & (civ == c) & ~water
+    if c == 0:
+        # Highland: an alpine pasture with rocks poking through, so it sits in the mountains.
+        img[clearing] = P["pasture"]
+        img[clearing & (rnd < 0.2)] = P["grass"]
+        img[clearing & (rnd > 0.95)] = P["rock"]
+    else:
+        img[clearing] = P["grass"]
+        img[clearing & (rnd < 0.25)] = P["grass_l"]
+        img[clearing & (rnd > 0.93)] = P["meadow"]
     occupied |= clearing
+    TOWN_LAND[clearing] = True
+    TOWN_LAND[y0:y0 + h + 2, x0:x0 + w + 2] = True
+    if c == 0:
+        # A fenced wheat farm at the edge of Frostpeak's pasture (kept out of the building plots).
+        fx, fy = kcx - 21, kcy - 4
+        img[fy:fy + 6, fx:fx + 9] = P["hedge"]
+        paint_field(fx + 1, fy + 1, 3, 4, "wheat", "h")
+        paint_field(fx + 5, fy + 1, 3, 4, "crop", "v")
+        FARMS.append((fx - 1, fy - 1, 11, 8))
+        TOWN_LAND[fy - 1:fy + 7, fx - 1:fx + 10] = True
 
 # one area per civilization, owned by its town
 prov = np.where(civ >= 0, civ, -1)
 
 # ---------- landmarks & scenery ----------
-MOUNT = {"L": "rock_l", "R": "rock", "D": "rock_d", "S": "snow", "s": "snow_d", "O": "ink"}
-def mountain_rows(w):
-    h = w // 2 + 2; rows = []
-    for j in range(h):
-        half = int(round((j + 0.5) * (w / 2) / h)); row = ""
-        for i in range(w):
-            off = i - w // 2
-            if abs(off) > half: row += "."; continue
-            edge = abs(off) == half or j == h - 1
-            snowy = j < h * 0.42
-            if edge: row += "O"
-            elif off <= 0: row += "S" if snowy else ("L" if (i + j) % 5 else "R")
-            else: row += "s" if snowy else ("D" if (i + j) % 4 == 0 else "R")
-        rows.append(row)
-    return rows
+# ---------- the northern range ----------
+# One connected range lit from the top-left: back row of large peaks, then medium, then small, each row
+# overlapping the one behind by ~40%, drawn back to front. A rock floor fills the gaps, foothills run
+# along the front and dither into the grass, and a light-blue ice channel stays clear down to the reservoir.
+mrng = np.random.default_rng(2027)
+SIZES = {"large": 20, "medium": 14, "small": 10}   # a slim coastal range; green pasture below
 
-spots = []
-for _ in range(900):
-    w = int(rng.choice([9, 11, 13, 15, 17, 19]))
-    x, y = int(rng.integers(6, W - 26)), int(rng.integers(6, 46))
-    spots.append((y, x, w))
-for (y, x, w) in sorted(spots):
-    rows = mountain_rows(w); h = len(rows)
-    if y + h > 58: continue
-    if free(x, y, w, h, 0) and not occupied[max(0, y - 1):y + h, x:x + w].any():
-        blit(rows, MOUNT, x, y)
+def peak_sprite(hgt, seed):
+    """Return (mask, colour-name grid, spine column) for one peak ~1.6x as wide as tall."""
+    r = np.random.default_rng(seed)
+    wid = int(round(hgt * 1.6)) | 1
+    apex = wid // 2 + int(r.integers(-1, 2))
+    mask = np.zeros((hgt, wid), bool)
+    left_n = right_n = 0
+    for j in range(hgt):
+        t = (j + 1) / hgt
+        if j % 3 == 0:                                   # uneven ridgelines: 1-2px notches
+            left_n = int(r.choice([0, 0, 1, 2])); right_n = int(r.choice([0, 0, 1, 2]))
+        lo = int(round(apex - t * apex)) + (left_n if 1 < j < hgt - 2 else 0)
+        hi = int(round(apex + t * (wid - 1 - apex))) - (right_n if 1 < j < hgt - 2 else 0)
+        mask[j, max(0, lo):min(wid, hi + 1)] = True
+    snowy = hgt >= 20
+    snow_line = [int(hgt * 0.3) + int(r.integers(0, 3)) for _ in range(wid)]   # jagged 2-3px edge
+    grid = np.full((hgt, wid), "", object)
+    for j in range(hgt):
+        for i in range(wid):
+            if not mask[j, i]: continue
+            lit = i < apex
+            if i == apex and j < hgt * 0.85: c = "mt_ridge"          # highlight down the spine
+            else: c = "mt_light" if lit else "mt_shadow"
+            if snowy and j < snow_line[i]: c = "mt_snow" if lit or i == apex else "mt_snow_d"
+            grid[j, i] = c
+    # 2-3 small cracks on the shadow side
+    shade = [(j, i) for j in range(int(hgt * 0.4), hgt - 1) for i in range(apex + 2, wid) if mask[j, i]
+             and mask[j, i - 1] and i + 1 < wid and mask[j, i + 1]]
+    for k in r.choice(len(shade), size=min(len(shade), int(r.integers(2, 4))), replace=False):
+        j, i = shade[k]
+        grid[j, i] = "mt_line"
+        if j + 1 < hgt and mask[j + 1, i]: grid[j + 1, i] = "mt_line"
+    return mask, grid
+
+# where the range may go: highland land that isn't the town, water, ice or the dam
+protect = (occupied & (civ != 0)) | TOWN_LAND
+protect |= dist_from(ice | lake | water, 2) <= 2
+dam_x = int(round(river_x(DAM_Y)))
+protect[DAM_Y - 6:DAM_Y + 4, dam_x - 9:dam_x + 10] = True
+highland_land = land & (civ == 0)
+# The rocky range only runs along the top-right coast (right of the lake); the west stays pasture.
+range_land = highland_land
+west = xx[0] < 172 + (n_b[0] - 0.5) * 18   # per column: the slim north-west strip
+land_top = np.array([np.argmax(land[:, x]) if land[:, x].any() else H for x in range(W)], float)
+land_top = np.convolve(np.pad(land_top, 7, mode="edge"), np.ones(15) / 15, mode="valid")
+row_back = land_top + np.where(west, 11, 19)   # base line of the back row (shallower in the west)
+BASE = {"large": row_back, "medium": row_back + 5, "small": row_back + 8}    # rows overlap a little
+front = (row_back + 8).astype(int)   # follows the coastline; range_land keeps it in Highland
+
+# rock floor across the whole range so there are no empty patches between peaks
+floor = range_land & (yy <= front[None, :] + 1) & ~protect
+put(floor, "mt_floor")
+put(floor & (rnd < 0.11), "mt_shadow")              # pebbles
+put(floor & (np.roll(rnd, 1, axis=1) < 0.04), "mt_shadow")   # a few 2px pebbles
+
+# foothills: a 6-10px band below the front row, dithered 2px into the grass
+fh_len = (3 + 3 * vnoise(10)).astype(int)
+foot = np.zeros((H, W), bool)
+for x in range(W):
+    for y in range(front[x] + 2, min(H, front[x] + 2 + fh_len[0, x])):
+        foot[y, x] = True
+foot &= range_land & ~protect
+edge = foot & ~np.roll(foot, -2, axis=0)            # bottom 2 rows of the band
+foot_fill = foot & ~(edge & (((xx + yy) & 1) == 1))   # checker blend into grass
+put(foot_fill, "foothill")
+put(foot_fill & ((xx // 5 + yy // 3) % 3 == 0) & (xx % 5 >= 3), "foothill_d")   # bump shading
+occupied |= floor | foot
+
+# peaks: back to front, seeded spacing, +-3px jitter, never two same-size peaks in a perfect line
+union = np.zeros((H, W), bool)
+placed_peaks = 0
+
+def fits(mask, x, top, avoid_union=False):
+    hgt, wid = mask.shape
+    if top < 2 or top + hgt > H or x < 0 or x + wid > W: return False
+    box = (slice(top, top + hgt), slice(x, x + wid))
+    if not (range_land[box] | ~mask).all(): return False
+    base_row = top + hgt - 1
+    base_cols = [x + i for i in range(wid) if mask[hgt - 1, i]]
+    if not all(floor[base_row, c] or floor[base_row - 1, c] for c in base_cols): return False
+    if (protect[box] & mask).any(): return False
+    if avoid_union and (union[box] & mask).any(): return False
+    return True
+
+def stamp(mask, grid, x, top):
+    global placed_peaks
+    hgt, wid = mask.shape
+    for j2 in range(hgt):
+        for i2 in range(wid):
+            if mask[j2, i2]:
+                img[top + j2, x + i2] = P[grid[j2, i2]]
+                union[top + j2, x + i2] = True
+    placed_peaks += 1
+
+for row in ("large", "medium", "small"):
+    hgt = SIZES[row]
+    wid = int(round(hgt * 1.6)) | 1
+    x = int(mrng.integers(0, wid // 2))
+    last_y = None
+    while x < W - 4:
+        mask, grid = peak_sprite(hgt, int(mrng.integers(0, 1 << 30)))
+        want = int(BASE[row][min(W - 1, x + wid // 2)] + mrng.integers(-3, 4))
+        done = False
+        for dy in (0, -2, 2, -4, 4, -6, 6, -8, 8):
+            base_y = want + dy
+            if last_y is not None and base_y == last_y: continue      # no perfect lines
+            if fits(mask, x, base_y - hgt + 1):
+                stamp(mask, grid, x, base_y - hgt + 1)
+                last_y, done = base_y, True
+                break
+        x += int(wid * mrng.uniform(1.0, 1.7)) if done else int(mrng.integers(4, 9))   # spaced out
+
+# fill pass: cover the remaining open rock with peaks that sit on bare floor (no overlap, so order holds)
+for row in ("small",):
+    hgt = SIZES[row]
+    cands = [(int(x), int(y)) for y in range(0, H, 3) for x in range(0, W, 3)]
+    mrng.shuffle(cands)
+    for (x, y) in cands[: len(cands) // 3]:   # only a light sprinkle of extra peaks
+        if not floor[min(H - 1, y), min(W - 1, x)] or union[min(H - 1, y), min(W - 1, x)]: continue
+        mask, grid = peak_sprite(hgt, int(mrng.integers(0, 1 << 30)))
+        top = y - hgt + 1
+        if fits(mask, x - mask.shape[1] // 2, top, avoid_union=True):
+            stamp(mask, grid, x - mask.shape[1] // 2, top)
+# 1px dark-rock outline on the outer silhouette only (sides and top, not along the base)
+outline = ~union & (np.roll(union, 1, axis=1) | np.roll(union, -1, axis=1) | np.roll(union, -1, axis=0)) & land
+img[outline] = P["mt_line"]
+occupied |= union | outline
+
+# life: pines on the foothills, and 1-2 mine entrances with plank frames on the lower slopes
+PINE = (["..g..", ".gGg.", ".ggG.", "ggGGG", ".ggG.", "gggGG", "..t.."], {"g": "pine", "G": "pine_d", "t": "trunk"})
+pines = 0
+for _ in range(400):
+    x, y = int(mrng.integers(4, W - 9)), int(mrng.integers(30, 60))
+    near_foot = foot[min(H - 1, y + 6), x + 2] or (front[x + 2] + 2 <= y + 6 <= front[x + 2] + 16 and highland_land[min(H - 1, y + 6), x + 2])
+    if near_foot and not union[y:y + 7, x:x + 5].any() and not protect[y:y + 7, x:x + 5].any():
+        blit(PINE[0], PINE[1], x, y); pines += 1
+    if pines >= 9: break
+MINE_FRAME = [".PPP.", "PdddP", "PdddP", "PdddP"]
+mines = 0
+for _ in range(800):
+    x, y = int(mrng.integers(10, W - 10)), int(mrng.integers(30, 60))
+    spot = (slice(y, y + 4), slice(x, x + 5))
+    if union[spot].all() and (yy[spot] >= front[x] - 6).all() and not protect[spot].any():
+        blit(MINE_FRAME, {"P": "plank", "d": "ink"}, x, y); mines += 1
+        x_used = x
+    if mines >= 2: break
+print("range:", placed_peaks, "peaks,", pines, "pines,", mines, "mines")
 
 TREE = (["..g..", ".ggg.", "gggGG", ".gGG.", "..t.."], {"g": "tree", "G": "forest", "t": "trunk"})
 TREE_L = ([".g.", "ggG", ".t."], {"g": "grass_l", "G": "forest", "t": "trunk"})
@@ -293,11 +583,10 @@ def scatter(rows_pal, region, n, cond=None):
         x, y = int(rng.integers(0, W - w)), int(rng.integers(0, H - h))
         if cond is not None and not cond[y + h // 2, x + w // 2]: continue
         if free(x, y, w, h, region): blit(rows, pal, x, y, mark=False); occupied[y + 2:y + h - 1, x + 1:x + w - 1] = True
-scatter(TREE, 1, 9000, cond=~clear_v & ~marsh_v)
-scatter(TREE_L, 1, 300, cond=clear_v)
-scatter(TREE_L, 0, 250, cond=(yy > 44))
-scatter(TREE_L, 2, 220)
-scatter(TREE_L, 3, 120, cond=~marsh_t)
+scatter(TREE, 1, 9000, cond=~clear_v & ~marsh_v & ~beach)
+scatter(TREE_L, 1, 300, cond=clear_v & ~beach)
+scatter(TREE_L, 2, 220, cond=~beach)
+scatter(TREE_L, 3, 120, cond=~marsh_t & ~beach)
 
 def place(rows, pal, region, near, tries=400, dyn=None):
     w, h = len(rows[0]), len(rows)
@@ -308,33 +597,16 @@ def place(rows, pal, region, near, tries=400, dyn=None):
 
 # dam across the lake outlet
 dxc = int(round(river_x(DAM_Y)))
-blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMfMfMfMfMO", "OOOOOOOOOOO"],
-     {"O": "ink", "L": "stone_l", "M": "stone_m", "f": "foam"}, dxc - 5, DAM_Y - 2, dyn="dam")
-# mines (Highland)
-MINE = ["OOOO", "OddO", "OddO", "pOOp"]
-for near in [(40, 46), (74, 42), (262, 44)]:
-    place(MINE, {"O": "rock_d", "d": "ink", "p": "plank"}, 0, near)
-# sheep
-for _ in range(40):
-    x, y = int(rng.integers(20, 300)), int(rng.integers(46, 64))
-    if free(x, y, 2, 1, 0): blit(["wO"], {"w": "white", "O": "ink"}, x, y, mark=False)
-# farm plots (Verdant west fields + Forge fields + Tidehaven)
-def field(region, near, w, h, kind):
-    rows = []
-    for j in range(h):
-        if kind == "wheat": rows.append(("W" if j % 2 == 0 else "w") * w)
-        elif kind == "soil": rows.append(("S" if j % 2 == 0 else "s") * w)
-        else: rows.append(("C" if j % 2 == 0 else "g") * w)
-    rows = ["O" * (w + 2)] + ["O" + r + "O" for r in rows] + ["O" * (w + 2)]
-    return place(rows, {"O": "soil_d", "W": "wheat", "w": "wheat_d", "S": "soil", "s": "soil_d",
-                        "C": "crop", "g": "grass_d"}, region, near, tries=200)
-for near in [(60, 128), (72, 136), (100, 96)]:
-    field(1, near, int(rng.integers(6, 10)), int(rng.integers(4, 6)), str(rng.choice(["wheat", "soil", "crop"])))
-for _ in range(16):
-    field(2, (int(rng.integers(180, 290)), int(rng.integers(72, 142))), int(rng.integers(6, 12)),
-          int(rng.integers(4, 7)), str(rng.choice(["wheat", "wheat", "soil", "crop"])))
-for near in [(150, 156), (240, 170)]:
-    field(3, near, 7, 4, "crop")
+blit(["OOOOOOOOOOO", "OLLLLLLLLLO", "OMMMsssMMMO", "OOOOsssOOOO"],
+     {"O": "ink", "L": "dam_l", "M": "dam_d", "s": "spill"}, dxc - 5, DAM_Y - 2, dyn="dam")
+# farm clusters: Verdant west, Forge plains, Tidehaven
+frng = np.random.default_rng(4242)
+for near in [(60, 128), (100, 96)]:
+    farm_cluster(1, near, frng)
+for near in [(196, 84), (262, 86), (210, 126), (272, 128), (240, 100)]:
+    farm_cluster(2, near, frng)
+for near in [(150, 156), (240, 166)]:
+    farm_cluster(3, near, frng)
 # windmill (Verdant)
 place(["x.x", ".x.", "x.x", ".B.", ".B.", "BBB"], {"x": "white", "B": "plank"}, 1, (100, 92))
 # (Kilns, mines, windmills and the rest are built by players and drawn by the game around each town.)
@@ -354,6 +626,23 @@ if hy:
         for j in range(5):
             img[hy + 1 + j, hx_ - 4 + i * 4] = P["plank"]
     img[hy + 1, hx_ - 4:hx_ + 5] = P["plank"]
+BEACHED = ["..m...", ".OPPPO", "OPpppP", ".OOOO."]
+beached = 0
+for tx, ty in [(118, 176), (40, 150), (292, 126), (158, 184), (70, 172)]:
+    if beached >= 3: break
+    best = None
+    for y in range(max(2, ty - 14), min(H - 5, ty + 14)):
+        for x in range(max(2, tx - 14), min(W - 8, tx + 14)):
+            box = (slice(y, y + 4), slice(x, x + 6))
+            if not land[box].all() or occupied[box].any() or water[box].any(): continue
+            if d_sea[y + 3, x + 2] > 1: continue                 # right at the water's edge
+            d = (x - tx) ** 2 + (y - ty) ** 2
+            if best is None or d < best[0]: best = (d, x, y)
+    if best:
+        _, x, y = best
+        blit(BEACHED, {"m": "plank", "O": "ink", "P": "plank", "p": "soil"}, x, y)
+        beached += 1
+print("beached boats:", beached)
 for (bx, by) in [(186, 192), (224, 190), (120, 193), (300, 150)]:
     if not land[by, bx]:
         blit([".w.", "ww.", "PPP"], {"w": "white", "P": "plank"}, bx, by - 2, mark=False, dyn="boat")
@@ -364,11 +653,16 @@ KINDS = ["deep", "sea", "shallow", "water", "marsh", "forest", "grass", "pasture
 COLOR_KIND = {}
 for name, kname in [("forest", "forest"), ("forest_d", "forest"), ("tree", "forest"), ("tree_d", "forest"),
                     ("trunk", "forest"), ("grass", "grass"), ("grass_l", "grass"), ("grass_d", "grass"),
-                    ("meadow", "grass"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
+                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("hedge", "grass"), ("marsh2", "marsh"), ("reed", "marsh"), ("pool", "marsh"),
+                    ("tuft_d", "grass"), ("tuft_l", "grass"), ("flower_w", "grass"), ("flower_y", "grass"),
+                    ("flower_p", "grass"),
+                    ("wheat_r", "field"), ("crop_l", "field"), ("crop_r", "field"), ("soil_r", "field"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
                     ("rock_l", "rock"), ("rock_d", "rock"), ("snow", "snow"), ("snow_d", "snow"), ("sand", "beach"),
                     ("sand_d", "beach"), ("marsh", "marsh"), ("shallow", "marsh"), ("wheat", "field"),
                     ("wheat_d", "field"), ("soil", "field"), ("soil_d", "field"), ("sludge", "sludge"),
-                    ("sludge_d", "sludge")]:
+                    ("sludge_d", "sludge"), ("mt_light", "rock"), ("mt_shadow", "rock"), ("mt_ridge", "rock"),
+                    ("mt_line", "rock"), ("mt_floor", "rock"), ("foothill", "rock"), ("foothill_d", "rock"),
+                    ("mt_snow", "snow"), ("mt_snow_d", "snow"), ("pine", "forest"), ("pine_d", "forest")]:
     COLOR_KIND[tuple(int(v) for v in P[name])] = KINDS.index(kname)
 kind = np.full((H, W), KINDS.index("structure"), np.uint8)
 for y in range(H):
@@ -383,8 +677,10 @@ for y in range(H):
 kind[(kind == KINDS.index("structure")) & (civ == 0) & (yy > 44)] = KINDS.index("pasture")
 
 # ---------- borders ----------
+# Territory is now shown by a per-civ wash in the live renderer (worldRender.ts), not baked lines.
+DRAW_BORDERS = False
 OUT_COLOR = {0: "highland", 1: "verdant", 2: "forge", 3: "tidehaven"}
-for y in range(H):
+for y in range(H) if DRAW_BORDERS else ():
     for x in range(W):
         if not land[y, x] or water[y, x]: continue
         c = civ[y, x]
@@ -453,6 +749,8 @@ def town_slots(k, ci, n=44):
     taken = np.zeros((H, W), bool)
     taken[k["y0"] - 1:k["y0"] + k["h"] + 1, k["x0"] - 1:k["x0"] + k["w"] + 1] = True
     taken[k["y0"] + k["h"]:k["y0"] + k["h"] + 8, k["cx"] - 16:k["cx"] + 16] = True   # nameplate
+    for fx, fy, fw, fh in FARMS:
+        taken[fy:fy + fh, fx:fx + fw] = True
     kcx, kcy = k["x0"] + k["w"] / 2, k["y0"] + k["h"] / 2
     cands = []
     for y in range(max(0, int(kcy) - 34), min(H - SLOT_H, int(kcy) + 34)):

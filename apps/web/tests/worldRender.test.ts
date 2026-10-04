@@ -19,6 +19,7 @@ import {
   renderSwells,
   seaPixel,
   portRoute,
+  fishingTraffic,
   tradeTraffic,
   tsunamiDirection,
   tsunamiHeading,
@@ -768,7 +769,7 @@ test("catastrophic flow sweeps moored boats far inland and removes the original 
     started: 1,
     loss: {},
   };
-  const [x, y] = OCEAN.ports.archipelago;
+  const [x, y] = portRoute("archipelago")[0];
   const impact = tsunamiImpact(state, x, y + 2, 140);
   assert(impact?.large);
   assert(impact.distance > 60);
@@ -836,4 +837,70 @@ test("the dead world stays inundated after the final wave without restarting or 
     if (L.kind[i] > 3 && overlay[i * 4 + 3] === 255) ruinedLand++;
   assert(ruinedLand > 15000);
   assert.equal(state.phase, "ended");
+});
+
+test("merged map docks touch shoreline and the working harbour fleet sails on connected water", () => {
+  const L = worldLayers();
+  for (const civ of CIV_IDS) {
+    const [x, y] = portRoute(civ)[0];
+    assert(L.kind[y * MAP_W + x] <= 3);
+    assert(
+      [
+        [x - 1, y],
+        [x + 1, y],
+        [x, y - 1],
+        [x, y + 1],
+      ].some(
+        ([xx, yy]) =>
+          xx >= 0 &&
+          yy >= 0 &&
+          xx < MAP_W &&
+          yy < MAP_H &&
+          L.kind[yy * MAP_W + xx] > 3,
+      ),
+    );
+  }
+  const starts = fishingTraffic(0);
+  assert.equal(starts.length, 3);
+  assert.notDeepEqual(starts, fishingTraffic(40));
+  for (let frame = 0; frame < 150; frame++) {
+    for (const boat of fishingTraffic(frame)) {
+      const bob = ((frame + Number(boat.id.split(":")[1])) >> 1) & 1;
+      const center = (boat.y + 3 - bob) * MAP_W + boat.x + 1;
+      assert(L.kind[center] <= 3, "fishing boat route crossed land");
+    }
+  }
+});
+
+test("storms collect the new moving fishing fleet and shoreline moorings", () => {
+  const L = worldLayers();
+  const state = withEvent("archipelago", "hurricane");
+  const area = townIndex("archipelago");
+  const [x, y] = portRoute("archipelago")[0];
+  let mooring = false,
+    fishing = false;
+  for (let seed = 0; seed < 30; seed++) {
+    const picks = stormPickups(
+      L,
+      area,
+      areaStatus(state)[area],
+      384,
+      seed,
+      true,
+    );
+    for (const p of picks) {
+      if (p.id === `port:${area}`) {
+        mooring = true;
+        assert.equal(p.x, x);
+        assert.equal(p.y, y + 2);
+      }
+      if (p.id.startsWith("fishing:")) {
+        fishing = true;
+        const boat = fishingTraffic(p.caught).find((b) => b.id === p.id)!;
+        assert.equal(p.x, boat.x);
+        assert.equal(p.y, boat.y);
+      }
+    }
+  }
+  assert(mooring && fishing);
 });

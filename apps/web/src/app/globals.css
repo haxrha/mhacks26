@@ -5208,3 +5208,337 @@ svg image {
     font-size: 18px;
   }
 }
+/* Long leader names (e.g. TUNG TUNG TUNG SAHUR) wrap at a smaller size. */
+.ls-column strong.ls-long {
+  font-size: clamp(11px, min(1.3vw, 2.4vh), 18px);
+  line-height: 1.3;
+  text-align: center;
+  max-width: 92%;
+}
+.trade-arrow {
+  image-rendering: pixelated;
+  flex: none;
+}
+
+/* Pixel-art spill arrows: pop in with a few hard steps, then a glint marches toward the head. */
+.spill-pixel {
+  pointer-events: none;
+  animation: spill-pixel-in 0.45s steps(3, end) both;
+}
+.spill-march {
+  opacity: 0;
+  animation: spill-march 0.8s steps(1, end) infinite;
+}
+.spill-march.phase-1 {
+  animation-delay: 0.2s;
+}
+.spill-march.phase-2 {
+  animation-delay: 0.4s;
+}
+.spill-march.phase-3 {
+  animation-delay: 0.6s;
+}
+@keyframes spill-pixel-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes spill-march {
+  0% {
+    opacity: 0.85;
+  }
+  25% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spill-pixel,
+  .spill-march {
+    animation: none;
+  }
+  .spill-march {
+    opacity: 0;
+  }
+}
+/* Options window: title bar with a close button, dim backdrop, tidy two-column layout. */
+.ls-options-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: #1a0a0ecc;
+}
+.ls-options {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 0;
+  width: min(900px, calc(100vw - 32px));
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  max-height: calc(100dvh - 32px);
+}
+.ls-options-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 18px;
+  background: #8a5a32;
+  border-bottom: 4px solid #1a120a;
+}
+.ls-options-bar h2 {
+  margin: 0;
+  font-family: "Press Start 2P", monospace;
+  font-size: 13px;
+  color: #fff1c9;
+  text-shadow: 2px 2px #1a120a;
+}
+.ls-options-close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font:
+    18px/1 "Press Start 2P",
+    monospace;
+  color: #fff1c9;
+  background: #aa3f30;
+  border: 3px solid #1a120a;
+  box-shadow: 3px 3px #1a120a;
+  cursor: pointer;
+}
+.ls-options-close:hover,
+.ls-options-close:focus-visible {
+  background: #c8503c;
+  outline: 3px solid #fff1c9;
+}
+.ls-options-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow: auto;
+}
+.ls-option-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+.ls-option-group > b {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 3px solid #c9a46a;
+  font-size: 11px;
+}
+.ls-option-group p {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.25;
+}
+.ls-option-group .segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.ls-option-group .segmented button {
+  width: 100%;
+  min-height: 52px;
+  line-height: 1.1;
+}
+.ls-option-group label,
+.ls-option-group .seed-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+}
+.ls-option-group input[type="number"],
+.ls-option-group input[aria-label="Room code"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 22px;
+  letter-spacing: 2px;
+}
+.ls-option-group .setup-footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+}
+.ls-option-group .setup-footer button {
+  width: 100%;
+  min-height: 46px;
+}
+.ls-option-group .import-label {
+  position: relative;
+  justify-content: center;
+  min-height: 46px;
+  padding: 6px 12px;
+  border: 3px dashed #8a5a32;
+  cursor: pointer;
+}
+.ls-option-group .import-label:hover {
+  background: #f7d9a0;
+}
+.ls-option-group .import-label input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ls-option-group [role="status"] {
+  padding: 8px 10px;
+  background: #e8cf95;
+  border-left: 5px solid #8a5a32;
+  font-size: 20px;
+}
+@media (max-width: 760px) {
+  .ls-options-body,
+  .ls-option-group .setup-footer {
+    grid-template-columns: 1fr;
+  }
+}
+/* Both option boxes start on the same line and match heights (overrides the old landing margins). */
+.ls-options-body > .ls-option-group {
+  margin: 0;
+  align-self: stretch;
+}
+.ls-options-body {
+  align-items: stretch;
+}
+
+/* ---------- multiplayer waiting room ---------- */
+.lobby {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--green);
+}
+.lobby-card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 5px solid var(--dark);
+  box-shadow: 8px 8px #0004;
+  padding: 30px 28px;
+}
+.lobby-card h1 {
+  margin: 10px 0 8px;
+  font-size: 22px;
+}
+.lobby-card > p {
+  margin: 0 0 20px;
+  font-size: 15px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.lobby-code {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--lime);
+  border: 3px solid var(--line);
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+.lobby-code-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+}
+.lobby-code b {
+  font-size: 30px;
+  letter-spacing: 7px;
+  color: var(--ink);
+  margin-right: auto;
+}
+.lobby-seats {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lobby-seats li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  background: var(--white);
+}
+.lobby-seats li[data-mine="true"] {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+.lobby-seats li[data-taken="false"] {
+  opacity: 0.65;
+}
+.lobby-chip {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ink);
+  flex: none;
+}
+.lobby-seats li div {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.lobby-seats li b {
+  font-size: 13px;
+}
+.lobby-seats li small {
+  font-size: 14px;
+  color: var(--muted);
+}
+.lobby-tag {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.lobby-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.lobby-count {
+  font-size: 13px;
+  color: var(--muted);
+  margin-right: auto;
+}
+.lobby-waiting {
+  font-size: 13px;
+  color: var(--ink);
+}
+.lobby .ghost {
+  background: transparent;
+  border: 2px solid var(--line);
+  color: var(--muted);
+  padding: 11px 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Decade panel: always fully on-screen, just below the 64px top bar and above every map layer. */
+.world-view .game-header {
+  top: 74px;
+  z-index: 9;
+  max-width: min(95%, 720px);
+}

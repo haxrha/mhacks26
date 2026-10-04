@@ -3,7 +3,7 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import type { HazardFrames } from "@/game/hazardVisuals";
 import { CIVS, EVENTS } from "@/game/content";
 import { spillTarget } from "@/game/engine";
-import { OWNERS, TOWNS, townOf } from "@/game/towns";
+import { OWNERS, TOWNS, townOf, ARROW_COLORS } from "@/game/towns";
 import { CIV_IDS, type CivId, type GameState } from "@/game/types";
 import {
   OCEAN,
@@ -21,11 +21,15 @@ function LiveTerrain({
   state,
   svg,
   previewFrame,
+  scale: cssScale,
 }: {
   state: GameState;
+  scale: number;
   svg: RefObject<SVGSVGElement | null>;
   previewFrame?: number;
 }) {
+  const scaleRef = useRef(cssScale);
+  scaleRef.current = cssScale;
   const canvas = useRef<HTMLCanvasElement>(null);
   const hazardCanvas = useRef<HTMLCanvasElement>(null);
   const latest = useRef(state);
@@ -56,10 +60,23 @@ function LiveTerrain({
       const shell = shellEl.getBoundingClientRect();
       const map = mapEl.getBoundingClientRect();
       // The SVG viewBox and canvas share the same native 4px art grid.
-      const scale = Math.min(map.width / 320, map.height / 200);
+      const scale = scaleRef.current;
       if (!Number.isFinite(scale) || scale <= 0) return false;
-      const width = Math.max(1, Math.ceil(shell.width / scale));
-      const height = Math.max(1, Math.ceil(shell.height / scale));
+      const originX = Math.ceil((map.left - shell.left) / scale);
+      const originY = Math.ceil((map.top - shell.top) / scale);
+      const offX = map.left - shell.left - originX * scale;
+      const offY = map.top - shell.top - originY * scale;
+      const width = Math.max(1, Math.ceil((shell.width - offX) / scale));
+      const height = Math.max(1, Math.ceil((shell.height - offY) / scale));
+      for (const layer of [el, hazardCanvas.current]) {
+        if (!layer) continue;
+        Object.assign(layer.style, {
+          left: `${offX}px`,
+          top: `${offY}px`,
+          width: `${width * scale}px`,
+          height: `${height * scale}px`,
+        });
+      }
       if (!image || image.width !== width || image.height !== height) {
         image = ctx.createImageData(width, height);
         hazardImage = hazardCtx.createImageData(width, height);
@@ -73,12 +90,8 @@ function LiveTerrain({
       view = {
         width,
         height,
-        originX: Math.round(
-          (map.left - shell.left + (map.width - 320 * scale) / 2) / scale,
-        ),
-        originY: Math.round(
-          (map.top - shell.top + (map.height - 200 * scale) / 2) / scale,
-        ),
+        originX,
+        originY,
         clip: {
           left: 0,
           top: 0,
@@ -209,6 +222,151 @@ const keep = (civ: CivId) => {
   return [t.keepTile[0] * 4, t.keepTile[1] * 4] as const;
 };
 
+/** One map pixel in SVG units (the terrain is 320x200 pixels drawn at 4x). */
+const CELL = 4;
+
+/**
+ * A pixel-art arrow between two towns, drawn on the map's own pixel grid so it matches the
+ * terrain: a curve that bows to the left of travel (so A->B and B->A separate), a 3-pixel shaft
+ * with a light top and dark bottom, a chunky 9-pixel-tall head and a 1-pixel black outline, like the
+ * trade arrow sprites. Returns one SVG path per colour, plus the centre line for the march effect.
+ */
+function pixelArrow(
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  lane: number,
+) {
+  const len = Math.hypot(tx - x, ty - y) || 1;
+  const ux = (tx - x) / len,
+    uy = (ty - y) / len;
+  const nx = uy,
+    ny = -ux;
+  const sx = x + ux * 48,
+    sy = y + uy * 48;
+  const ex = tx - ux * 72,
+    ey = ty - uy * 72;
+  const bow = Math.min(150, len * 0.26) * (1 + lane * 0.35);
+  const c1x = sx + (ex - sx) * 0.25 + nx * bow,
+    c1y = sy + (ey - sy) * 0.25 + ny * bow;
+  const c2x = sx + (ex - sx) * 0.75 + nx * bow,
+    c2y = sy + (ey - sy) * 0.75 + ny * bow;
+  const at = (t: number) => {
+    const m = 1 - t;
+    return [
+      (m * m * m * sx +
+        3 * m * m * t * c1x +
+        3 * m * t * t * c2x +
+        t * t * t * ex) /
+        CELL,
+      (m * m * m * sy +
+        3 * m * m * t * c1y +
+        3 * m * t * t * c2y +
+        t * t * t * ey) /
+        CELL,
+    ];
+  };
+  const tangent = (t: number) => {
+    const m = 1 - t;
+    const dx =
+      3 * m * m * (c1x - sx) + 6 * m * t * (c2x - c1x) + 3 * t * t * (ex - c2x);
+    const dy =
+      3 * m * m * (c1y - sy) + 6 * m * t * (c2y - c1y) + 3 * t * t * (ey - c2y);
+    const l = Math.hypot(dx, dy) || 1;
+    return [dx / l, dy / l];
+  };
+  // Normal pointing up the screen, so "top half" means the same thing as in the sprites.
+  const upNormal = (tx_: number, ty_: number) =>
+    -tx_ > 0 || (tx_ === 0 && ty_ > 0) ? [ty_, -tx_] : [-ty_, tx_];
+
+  const cells = new Map<string, boolean>(); // "cx,cy" -> light?
+  const centre: [number, number][] = [];
+  const steps = Math.max(8, Math.ceil(len / 3));
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const [px, py] = at(t);
+    const [tx_, ty_] = tangent(t);
+    const [ux_, uy_] = upNormal(tx_, ty_);
+    const mid = `${Math.floor(px)},${Math.floor(py)}`;
+    if (!centre.length || centre[centre.length - 1].join(",") !== mid)
+      centre.push([Math.floor(px), Math.floor(py)]);
+    for (let cy = Math.floor(py) - 2; cy <= Math.floor(py) + 2; cy++)
+      for (let cx = Math.floor(px) - 2; cx <= Math.floor(px) + 2; cx++) {
+        const dx = cx + 0.5 - px,
+          dy = cy + 0.5 - py;
+        const across = dx * ux_ + dy * uy_,
+          along = dx * tx_ + dy * ty_;
+        if (Math.abs(across) <= 1.5 && Math.abs(along) <= 0.75) {
+          const key = `${cx},${cy}`;
+          if (!cells.has(key)) cells.set(key, across > -0.5);
+        }
+      }
+  }
+  // Head: about 6 pixels long and 9 pixels tall, pointing along the curve's end direction.
+  const [hx, hy] = at(1);
+  const [dx, dy] = tangent(1);
+  const [ux_, uy_] = upNormal(dx, dy);
+  const tip = [hx + dx * 4.5, hy + dy * 4.5];
+  const base = [hx - dx * 2, hy - dy * 2];
+  const corners = [
+    tip,
+    [base[0] + ux_ * 4.6, base[1] + uy_ * 4.6],
+    [base[0] - ux_ * 4.6, base[1] - uy_ * 4.6],
+  ];
+  const side = (p: number[], a: number[], b: number[]) =>
+    (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  for (let cy = Math.floor(hy) - 8; cy <= Math.floor(hy) + 8; cy++)
+    for (let cx = Math.floor(hx) - 8; cx <= Math.floor(hx) + 8; cx++) {
+      const p = [cx + 0.5, cy + 0.5];
+      const d1 = side(p, corners[0], corners[1]),
+        d2 = side(p, corners[1], corners[2]),
+        d3 = side(p, corners[2], corners[0]);
+      const inside =
+        (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0);
+      if (inside) {
+        const across = (p[0] - base[0]) * ux_ + (p[1] - base[1]) * uy_;
+        cells.set(`${cx},${cy}`, across > -0.25);
+      }
+    }
+  // 1-pixel black outline around everything.
+  const outline = new Set<string>();
+  for (const key of cells.keys()) {
+    const [cx, cy] = key.split(",").map(Number);
+    for (const [ox, oy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const n = `${cx + ox},${cy + oy}`;
+      if (!cells.has(n)) outline.add(n);
+    }
+  }
+  const rect = (key: string) => {
+    const [cx, cy] = key.split(",").map(Number);
+    return `M${cx * CELL} ${cy * CELL}h${CELL}v${CELL}h-${CELL}z`;
+  };
+  const pick = (light: boolean) =>
+    [...cells]
+      .filter(([, l]) => l === light)
+      .map(([k]) => rect(k))
+      .join("");
+  // Every 4th centre-line pixel per phase, for a stepped "marching" glint toward the head.
+  const march = [0, 1, 2, 3].map((phase) =>
+    centre
+      .filter((_, i) => i % 4 === phase && i < centre.length - 2)
+      .map(([cx, cy]) => rect(`${cx},${cy}`))
+      .join(""),
+  );
+  return {
+    outline: [...outline].map(rect).join(""),
+    light: pick(true),
+    dark: pick(false),
+    march,
+  };
+}
+
 export default function WorldMap({
   state,
   selected,
@@ -225,7 +383,8 @@ export default function WorldMap({
   previewFrame?: number;
   showEventMarkers?: boolean;
 }) {
-  const [zoom, setZoom] = useState(initialZoom);
+  const [zoomStep, setZoomStep] = useState(0);
+  const [fit, setFit] = useState({ device: 3, dpr: 1, width: 0, height: 0 });
   const svg = useRef<SVGSVGElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const drag = useRef<{
@@ -237,10 +396,30 @@ export default function WorldMap({
   } | null>(null);
   const suppressClick = useRef(false);
   useEffect(() => {
-    const el = viewport.current!;
-    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-    el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
-  }, [zoom]);
+    const el = viewport.current;
+    if (!el) return;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const device = Math.max(
+        1,
+        Math.floor(Math.min((width * dpr) / 320, (height * dpr) / 200)),
+      );
+      setFit({ device, dpr, width, height });
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => observer.disconnect();
+  }, []);
+  const baseDevice = Math.max(1, Math.round(fit.device * initialZoom));
+  const scale = Math.max(1, baseDevice + zoomStep) / fit.dpr;
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    el.scrollLeft = Math.max(0, (el.scrollWidth - el.clientWidth) / 2);
+    el.scrollTop = Math.max(0, (el.scrollHeight - el.clientHeight) / 2);
+  }, [scale]);
 
   // Cheap choices push damage onto a neighbor: draw that as an arrow between towns.
   const spills =
@@ -257,6 +436,7 @@ export default function WorldMap({
         key={state.seed}
         state={state}
         svg={svg}
+        scale={scale}
         previewFrame={previewFrame}
       />
       <div
@@ -323,46 +503,16 @@ export default function WorldMap({
           className="world-map"
           viewBox="0 0 1280 800"
           style={{
-            width: `calc((100% - var(--camera-side)) * ${zoom})`,
-            height: `calc((100% - var(--camera-reserve)) * ${zoom})`,
+            width: 320 * scale,
+            height: 200 * scale,
+            marginLeft: Math.max(0, (fit.width - 320 * scale) / 2),
+            marginTop: Math.max(0, (fit.height - 200 * scale) / 2),
             marginBottom: "var(--camera-reserve)",
             marginRight: "var(--camera-side)",
           }}
           role="group"
           aria-label="The valley: select a town to inspect it"
         >
-          <defs>
-            <marker
-              id="flow-tip"
-              markerWidth="8"
-              markerHeight="8"
-              refX="7"
-              refY="4"
-              orient="auto"
-            >
-              <path d="M0 0 L8 4 L0 8Z" fill="#fff1b0" />
-            </marker>
-          </defs>
-          {spills.map(({ from, to, e }, i) => {
-            const [x, y] = keep(from),
-              [tx, ty] = keep(to);
-            return (
-              <g key={from}>
-                <path
-                  className="province-flow"
-                  d={`M${x} ${y} Q${(x + tx) / 2 + 40 + i * 20} ${(y + ty) / 2 - 60} ${tx} ${ty}`}
-                  fill="none"
-                  stroke={e.color}
-                  strokeWidth="7"
-                  strokeDasharray="14 9"
-                  markerEnd="url(#flow-tip)"
-                />
-                <title>
-                  {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
-                </title>
-              </g>
-            );
-          })}
           {TOWNS.map((town) => {
             const civ = OWNERS[town.civ];
             const [x, y] = keep(civ);
@@ -440,22 +590,50 @@ export default function WorldMap({
               </g>
             );
           })}
+          {spills.map(({ from, to, e }) => {
+            const [x, y] = keep(from),
+              [tx, ty] = keep(to);
+            // Arrows sharing a destination take separate lanes so they don't overlap.
+            const lane = spills.filter(
+              (o) => o.to === to && o.from < from,
+            ).length;
+            const px = pixelArrow(x, y, tx, ty, lane);
+            const [light, dark] = ARROW_COLORS[to];
+            return (
+              <g key={from} className="spill-pixel" shapeRendering="crispEdges">
+                <title>
+                  {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
+                </title>
+                <path d={px.outline} fill="#000" />
+                <path d={px.dark} fill={dark} />
+                <path d={px.light} fill={light} />
+                {px.march.map((d, phase) => (
+                  <path
+                    key={phase}
+                    d={d}
+                    className={`spill-march phase-${phase}`}
+                    fill="#fff6d0"
+                  />
+                ))}
+              </g>
+            );
+          })}
         </svg>
       </div>
       <div className="map-controls">
         <button
           aria-label="Zoom out"
-          onClick={() => setZoom(Math.max(0.8, zoom - 0.2))}
+          onClick={() => setZoomStep(Math.max(1 - baseDevice, zoomStep - 1))}
         >
           −
         </button>
         <button
           aria-label="Zoom in"
-          onClick={() => setZoom(Math.min(2, zoom + 0.2))}
+          onClick={() => setZoomStep(Math.min(4, zoomStep + 1))}
         >
           +
         </button>
-        <button onClick={() => setZoom(initialZoom)}>Reset</button>
+        <button onClick={() => setZoomStep(0)}>Reset</button>
       </div>
       {state.phase !== "ended" &&
         CIV_IDS.some((c) =>

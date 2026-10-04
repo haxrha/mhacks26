@@ -14,34 +14,34 @@ export interface Leader {
 export const LEADERS: Record<CivId, Leader> = {
   heartland: {
     id: "ostra",
-    name: "Warden Ostra",
+    name: "The Lorax",
     role: "Dam keeper",
     greeting:
-      "I keep the Highland Dam. Every drop that reaches the valley passes our gate first.",
+      "I speak for the trees, and I keep the Highland Dam. Every drop that reaches the valley passes my gate first.",
     color: "#a07ad6",
   },
   enclave: {
     id: "moss",
-    name: "Elder Moss",
+    name: "Shrek",
     role: "Grove elder",
     greeting:
-      "I tend the old groves. Our forests drink the rain and breathe out the air everyone shares.",
+      "This is my swamp, and these are my groves. Our forests drink the rain and breathe out the air everyone shares.",
     color: "#7fd65a",
   },
   petrostate: {
     id: "brask",
-    name: "Foreman Brask",
+    name: "Olaf",
     role: "Foreman",
     greeting:
-      "I run the works. Our factories power the valley, and their smoke drifts wherever the wind goes.",
+      "Hi, I'm Olaf, and I like warm hugs! I run the works. Our factories power the valley, but their smoke drifts wherever the wind goes.",
     color: "#f08a3c",
   },
   archipelago: {
     id: "pell",
-    name: "Harbormaster Pell",
+    name: "Tung Tung Tung Sahur",
     role: "Harbormaster",
     greeting:
-      "I watch the harbor. Every river ends at our shore, along with whatever it carries.",
+      "Tung tung tung! I drum the harbor awake. Every river ends at our shore, along with whatever it carries.",
     color: "#46d6d0",
   },
 };

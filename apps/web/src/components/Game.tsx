@@ -53,11 +53,12 @@ import {
   eventLines,
   introLines,
 } from "@/game/leaders";
-import { townOf } from "@/game/towns";
+import { townOf, KINGDOM } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
 import Narrator from "./Narrator";
 import RadioControl from "./RadioControl";
+import RoomLobby from "./RoomLobby";
 import WorldMap from "./WorldMap";
 import WorldStage from "./WorldStage";
 import ResourceIcon from "./ResourceIcon";
@@ -103,6 +104,7 @@ export default function Game() {
     [importError, setImportError] = useState("");
   const world = useWorld(setState);
   const [roomCode, setRoomCode] = useState("");
+  const [hostStarted, setHostStarted] = useState(false);
   const online = !!world.roomId;
 
   useEffect(() => {
@@ -180,6 +182,7 @@ export default function Game() {
     if (state && !online) setResume(state);
     world.disconnect();
     setState(null);
+    setHostStarted(false);
   }
   function exportSave() {
     if (!state) return;
@@ -310,6 +313,26 @@ export default function Game() {
         </LeaderSelect>
         {help && <Help onClose={() => setHelp(false)} />}
       </>
+    );
+
+  // Shared worlds open in a waiting room (round 1's event phase is the only join window) so the
+  // host can gather players before anyone is dropped into play; unclaimed towns fall back to AI.
+  if (
+    online &&
+    state.mode !== "solo" &&
+    state.round === 1 &&
+    state.phase === "event" &&
+    !(world.isHost && hostStarted)
+  )
+    return (
+      <RoomLobby
+        roomId={world.roomId}
+        seats={world.seats}
+        isHost={world.isHost}
+        me={me}
+        onStart={() => setHostStarted(true)}
+        onLeave={backToSetup}
+      />
     );
 
   const civId = me ?? state.player;
@@ -980,7 +1003,13 @@ function BuildPanel({
             </option>
           ))}
         </select>
-        <span>→</span>
+        <img
+          className="trade-arrow"
+          src={`/assets/arrows/${KINGDOM[civ]}-swap.png`}
+          width={32}
+          height={32}
+          alt="for"
+        />
         <ResourceIcon resource={get} size={24} />
         <select
           aria-label="Get"

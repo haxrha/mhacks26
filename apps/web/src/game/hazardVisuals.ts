@@ -3,7 +3,12 @@ import config from "../../../../src/data/disaster-visuals.json";
 import world from "../../../../src/data/worldmap.json";
 import ocean from "../../../../src/data/ocean.json";
 import { OWNERS, TOWNS } from "./towns";
-import type { AreaStatus, WorldLayers } from "./worldRender";
+import {
+  portRoute,
+  fishingTraffic,
+  type AreaStatus,
+  type WorldLayers,
+} from "./worldRender";
 
 export type HazardFrames = Partial<
   Record<number, Partial<Record<string, number>>>
@@ -180,12 +185,12 @@ export function stormPickups(
   const cached = pickupCache.get(key);
   if (cached) return cached.filter((p) => p.caught <= frame);
   const candidates: Omit<StormPickup, "caught">[] = [];
-  const berth = ocean.ports[OWNERS[TOWNS[area].civ]];
+  const berth = portRoute(OWNERS[TOWNS[area].civ])[0];
   candidates.push({
     id: `port:${area}`,
     kind: "boat",
     x: berth[0],
-    y: berth[1],
+    y: berth[1] + 2,
   });
   world.sprites.forEach((sp, n) => {
     if (sp.kind === "boat")
@@ -208,8 +213,18 @@ export function stormPickups(
   const radius = hurricane
     ? config.storm.hurricanePickupRadius
     : config.storm.pickupRadius;
+  const caughtFishing = new Set<string>();
   for (let t = 0; t <= config.storm.period * 2; t += 2) {
     const [x, y] = stormPosition(L, area, t, seed, hurricane);
+    for (const boat of fishingTraffic(t)) {
+      if (
+        !caughtFishing.has(boat.id) &&
+        Math.hypot(boat.x - x, boat.y - y) < radius
+      ) {
+        picked.push({ ...boat, kind: "boat", caught: t });
+        caughtFishing.add(boat.id);
+      }
+    }
     for (let n = candidates.length - 1; n >= 0; n--)
       if (Math.hypot(candidates[n].x - x, candidates[n].y - y) < radius) {
         picked.push({ ...candidates[n], caught: t });

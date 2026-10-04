@@ -38,6 +38,11 @@ const KIND = Object.fromEntries(world.kinds.map((k, i) => [k, i])) as Record<
 const NONE = 255;
 
 const C = {
+  fissure: rgb("#3e2414"),
+  shimmer: rgb("#e8f6fb"),
+  seaShallow: rgb("#3a8bbd"),
+  seaMid: rgb("#2b6fa0"),
+  waveMark: rgb("#21497a"),
   deep: rgb(OCEAN.deep),
   sea: rgb("#21497a"),
   crest: rgb(OCEAN.crest),
@@ -58,6 +63,8 @@ const C = {
   smoke: rgb("#c9c9c9"),
   smokeD: rgb("#6b6b72"),
 };
+// Territory (including Harborkeep's desert shore) is baked into the map's terrain by the generator
+// with ordered dithering, so the renderer paints no translucent washes over the land.
 const FLAG: Record<string, RGB> = {
   highland: rgb("#a07ad6"),
   verdant: rgb("#7fd65a"),
@@ -73,6 +80,8 @@ export interface WorldLayers {
   near: Uint8Array;
   distWater: Uint8Array;
   distSea: Uint8Array;
+  /** For sea tiles: how far out from the shore (1 = touching land). */
+  distLand: Uint8Array;
   hash: Uint8Array;
 }
 
@@ -139,6 +148,7 @@ export function worldLayers(): WorldLayers {
     near: unrle(world.near),
     distWater: distance(kind, (k) => k <= KIND.water),
     distSea: distance(kind, (k) => k <= KIND.shallow),
+    distLand: distance(kind, (k) => k > KIND.shallow),
     hash,
   };
   return cached;
@@ -177,18 +187,55 @@ export function seaPixel(
   y: number,
   frame: number,
   climate = 0,
-  shallow = false,
 ): RGB {
-  const drift = Math.floor(frame / OCEAN.shimmer.framesPerDrift);
-  const step = Math.floor(frame / OCEAN.shimmer.framesPerStep);
-  const anchor = Math.floor((x - drift) / 2) * 2 + y * MAP_W;
-  let h = Math.imul(anchor ^ 0x9e3779b9, 0x85ebca6b);
+  const CELL = 16;
+  const drift = Math.floor(frame / OCEAN.shimmer.framesPerDrift); // one pixel every 4 seconds
+  const wx = x + drift;
+  const cx = Math.floor(wx / CELL),
+    cy = Math.floor(y / CELL);
+  let h = Math.imul((cx * 73856093) ^ (cy * 19349663) ^ 0x9e3779b9, 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-  const noise = (h ^ (h >>> 16)) & 255;
-  let c = shallow ? C.sea : C.deep;
-  if (noise < OCEAN.shimmer.density && ((step + noise) & 3) < 3) c = C.wave;
+  h = (h ^ (h >>> 16)) >>> 0;
+  const ox = 2 + (h % 11),
+    oy = 2 + ((h >>> 8) % 11);
+  const dx = wx - cx * CELL - ox,
+    dy = y - cy * CELL - oy;
+  let c = C.deep;
+  // a small "~": low-high-low over three pixels
+  if (
+    (dx === 0 && dy === 1) ||
+    (dx === 1 && dy === 0) ||
+    (dx === 2 && dy === 1)
+  )
+    c = C.waveMark;
+  // Keep the new wave texture, with the user's moderate one-second sparkle cadence.
+  const sparkle = Math.floor(frame / OCEAN.shimmer.framesPerStep);
+  if (dx === 1 && dy === 0 && ((sparkle + (h >>> 16)) & 3) === 0) c = C.wave;
   const health = 100 - climate * 12;
   if (health < 85) c = mix(c, C.murk, Math.min(0.6, (85 - health) / 100));
+  return c;
+}
+
+/**
+ * Sea colour by distance from shore: foam (1px, broken, rocking 1px every 500ms) → shallow (4px) →
+ * mid (8px) → deep with wave marks. One set of bands, no repeated rings.
+ */
+function oceanPixel(
+  L: WorldLayers,
+  i: number,
+  x: number,
+  y: number,
+  frame: number,
+  climate: number,
+): RGB {
+  const d = L.distLand[i];
+  const phase = Math.floor(frame / 3) % 2; // 3 frames at 6fps = 500ms
+  if (d === 1 + phase && (x * 3 + y * 7) % 9 !== 0) return C.shimmer;
+  let c =
+    d <= 4 ? C.seaShallow : d <= 12 ? C.seaMid : seaPixel(x, y, frame, climate);
+  const health = 100 - climate * 12;
+  if (d <= 12 && health < 85)
+    c = mix(c, C.murk, Math.min(0.6, (85 - health) / 100));
   return c;
 }
 
@@ -210,6 +257,23 @@ export function tradeTraffic(
     }));
 }
 
+/** Moving upstream harbour fleet; shared with the destructive storm collision path. */
+export function fishingTraffic(
+  frame: number,
+): { id: string; x: number; y: number }[] {
+  const route = portRoute("archipelago");
+  return Array.from({ length: 3 }, (_, b) => {
+    const t = (((frame + b * 50) % 150) / 150) * 2;
+    const [x, y] =
+      route[Math.round((1 - Math.abs(t - 1)) * (route.length - 1))];
+    return {
+      id: `fishing:${b}`,
+      x: x - 1,
+      y: y - 3 + (((frame + b) >> 1) & 1),
+    };
+  });
+}
+
 const routes = new Map<CivId, [number, number][]>();
 /** Find a berth and a connected sailing route. Ships never cross land tiles. */
 export function portRoute(civ: CivId): [number, number][] {
@@ -219,8 +283,17 @@ export function portRoute(civ: CivId): [number, number][] {
   const anchor = OCEAN.ports[civ];
   let start = -1,
     closest = Infinity;
+  const touchesLand = (i: number) => {
+    const x = i % MAP_W;
+    return [
+      x > 0 ? i - 1 : -1,
+      x < MAP_W - 1 ? i + 1 : -1,
+      i - MAP_W,
+      i + MAP_W,
+    ].some((j) => j >= 0 && j < L.kind.length && L.kind[j] > KIND.water);
+  };
   for (let i = 0; i < L.kind.length; i++) {
-    if (L.kind[i] > KIND.water) continue;
+    if (L.kind[i] > KIND.water || !touchesLand(i)) continue;
     const d =
       Math.abs((i % MAP_W) - anchor[0]) +
       Math.abs(Math.floor(i / MAP_W) - anchor[1]);
@@ -783,6 +856,7 @@ export function renderWorldView(
       const [x, y] = portRoute(civ)[0];
       boats.push({ x, y: y + 2 });
     }
+    boats.push(...fishingTraffic(frame));
     for (const trip of traffic) {
       const route = portRoute(trip.civ),
         t = trip.frame / OCEAN.trade.frames;
@@ -988,8 +1062,7 @@ function terrainPixel(
     h = L.hash[i],
     a = L.area[i];
   let c: RGB = L.palette[L.base[i]];
-  if (k === KIND.deep || k === KIND.sea)
-    c = seaPixel(x, y, frame, climate, k === KIND.sea);
+  if (isSea(k)) c = oceanPixel(L, i, x, y, frame, climate);
 
   // Global state: melting snow, rising seas, ocean health.
   if (k === KIND.snow && climate > meltThreshold(y, h))
@@ -1008,8 +1081,12 @@ function terrainPixel(
   // Ambient animation: water shimmer and drifting waves.
   const riverStep = Math.floor(frame / OCEAN.shimmer.riverFramesPerStep);
   const seaStep = Math.floor(frame / OCEAN.shimmer.framesPerStep);
-  if (k === KIND.water && (x + y * 3 - riverStep) % 11 === 0 && h < 70)
-    c = C.foam;
+  if (
+    k === KIND.water &&
+    (x * 5 + y - (riverStep % 3) * 2) % 13 === 0 &&
+    h < 120
+  )
+    c = C.shimmer;
   if (
     k === KIND.shallow &&
     h < OCEAN.shimmer.density &&
@@ -1130,7 +1207,10 @@ function blit(
   x0: number,
   y0: number,
   skip?: (ch: string, i: number, j: number) => boolean,
+  topColor?: RGB,
 ) {
+  // The first filled pixel in each column is the building's top edge (its roof).
+  const topped = topColor ? new Uint8Array(rows[0]?.length ?? 0) : undefined;
   rows.forEach((row, j) => {
     for (let i = 0; i < row.length; i++) {
       const ch = row[i];
@@ -1140,8 +1220,12 @@ function blit(
       const x = x0 + i,
         y = y0 + j;
       if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
-      const c = typeof v === "string" ? rgb(v) : v,
-        o = (y * MAP_W + x) * 4;
+      let c = typeof v === "string" ? rgb(v) : v;
+      if (topped && !topped[i]) {
+        topped[i] = 1;
+        c = topColor!;
+      }
+      const o = (y * MAP_W + x) * 4;
       out[o] = c[0];
       out[o + 1] = c[1];
       out[o + 2] = c[2];
@@ -1264,9 +1348,44 @@ export function renderWorld(
       const x = slot[0] + Math.floor((7 - sw) / 2),
         y = slot[1] + 7 - sh;
       const rows = id === "windmill" && frame & 1 ? WINDMILL_SPIN : sprite.rows;
-      blit(out, rows, sprite.pal, x, y);
+      // Roofs fly the town's colour so you can read ownership at a glance.
+      blit(out, rows, sprite.pal, x, y, undefined, FLAG[town.civ]);
       if (id === "kiln") puff(out, x + 3, y - 1, frame + n);
     });
+    // Villagers walk between the keep and the town's plots: tiny 1x3 people that show scale and
+    // life. More of them appear as the town grows.
+    const gateX = k.x + Math.floor(w / 2),
+      gateY = k.y + k.rows.length + 1;
+    const people = Math.min(10, 2 + st.buildings.length);
+    const reach = Math.max(
+      1,
+      Math.min(k.slots.length, st.buildings.length + 4),
+    );
+    for (
+      let i = 0;
+      i < people && !state?.civs[OWNERS[town.civ]].eliminated;
+      i++
+    ) {
+      const slot = k.slots[(i * 5 + a) % reach];
+      if (!slot) continue;
+      const tx = slot[0] + 3,
+        ty = slot[1] + 7;
+      const dist = Math.max(1, Math.round(Math.hypot(tx - gateX, ty - gateY)));
+      const t = (frame + i * 17) % (dist * 2);
+      const along = (t < dist ? t : dist * 2 - t) / dist;
+      const px = Math.round(gateX + (tx - gateX) * along),
+        py = Math.round(gateY + (ty - gateY) * along);
+      if (px < 0 || py < 1 || px >= MAP_W || py >= MAP_H - 1) continue;
+      if (L.kind[py * MAP_W + px] <= KIND.water) continue; // no walking on water
+      const step = (frame + i) & 1;
+      blit(
+        out,
+        ["h", "b", step ? "l" : "."],
+        { h: "#f2c79a", b: i % 3 ? FLAG[town.civ] : "#e8e0c8", l: "#3e2414" },
+        px,
+        py - 1,
+      );
+    }
     const impact =
       state &&
       tsunamiImpact(state, k.x + w / 2, k.y + k.rows.length - 3, frame, clocks);
@@ -1285,7 +1404,8 @@ export function renderWorld(
   // Each town has a berth; cargo sails out and returns after an actual bank exchange.
   for (const civ of CIV_IDS) {
     const [x, y] = portRoute(civ)[0];
-    blit(out, ["PPPP", ".P.P"], { P: "#b07a45" }, x - 1, y);
+    if (!(state && tsunamiImpact(state, x, y, frame, clocks)))
+      drawPier(out, [x, y]);
     const a = TOWNS.findIndex((t) => OWNERS[t.civ] === civ);
     if (
       !lifted.has(`port:${a}`) &&
@@ -1298,6 +1418,21 @@ export function renderWorld(
         x,
         y + 2,
       );
+  }
+  // Upstream working harbour boats share the same force-damage path as cargo.
+  for (const boat of fishingTraffic(frame)) {
+    if (
+      lifted.has(boat.id) ||
+      (state && tsunamiImpact(state, boat.x, boat.y, frame, clocks))
+    )
+      continue;
+    blit(
+      out,
+      [".F.", ".s.", "sss", "BBB"],
+      { F: FLAG.tidehaven, s: "#efe2bc", B: "#8a5a32" },
+      boat.x,
+      boat.y,
+    );
   }
   for (const trip of traffic) {
     const route = portRoute(trip.civ);
@@ -1320,6 +1455,45 @@ export function renderWorld(
     if (paint.over[i * 4 + 3])
       out.set(paint.over.subarray(i * 4, i * 4 + 4), i * 4);
   shakeHazardRegions(out, L, status, frame, clocks);
+}
+
+/**
+ * A wooden pier for a berth: it starts on the neighbouring land tile and runs straight out over the
+ * water (away from the shore) for 3px, two planks wide with a dark edge, so it always touches land.
+ */
+function drawPier(out: Uint8ClampedArray, [bx, by]: [number, number]) {
+  const L = worldLayers();
+  const land = (x: number, y: number) =>
+    x >= 0 &&
+    y >= 0 &&
+    x < MAP_W &&
+    y < MAP_H &&
+    L.kind[y * MAP_W + x] > KIND.water;
+  const dirs: [number, number][] = [
+    [0, -1],
+    [0, 1],
+    [-1, 0],
+    [1, 0],
+  ];
+  const shore = dirs.find(([dx, dy]) => land(bx + dx, by + dy));
+  if (!shore) return;
+  const [ox, oy] = [-shore[0], -shore[1]]; // out toward open water
+  const [px, py] = [-oy, ox]; // across the pier
+  const plank = rgb("#b07a45"),
+    edge = rgb("#6e4a28");
+  for (let k = -1; k < 3; k++) {
+    // k = -1 is the land end; 0..2 run over the water
+    for (let w = 0; w < 2; w++) {
+      const x = bx + ox * k + px * w,
+        y = by + oy * k + py * w;
+      if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
+      const c = w === 1 || k === 2 ? edge : plank;
+      const o = (y * MAP_W + x) * 4;
+      out[o] = c[0];
+      out[o + 1] = c[1];
+      out[o + 2] = c[2];
+    }
+  }
 }
 
 const townOfVisual = (civ: CivId) =>
