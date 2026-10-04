@@ -1,0 +1,25 @@
+{
+  "framesPerFlicker": 8,
+  "framesPerSmokeStep": 6,
+  "emberThreshold": 12,
+  "sootStrength": 0.9,
+  "zones": {
+    "heartland": [
+      [112, 58, 18],
+      [145, 57, 15]
+    ],
+    "enclave": [
+      [94, 70, 24],
+      [56, 111, 18],
+      [95, 136, 16]
+    ],
+    "petrostate": [
+      [235, 87, 18],
+      [275, 131, 15]
+    ],
+    "archipelago": [
+      [190, 158, 16],
+      [229, 161, 14]
+    ]
+  }
+}

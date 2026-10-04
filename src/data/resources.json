@@ -2,26 +2,71 @@
   "sheep": {
     "name": "Sheep",
     "icon": "🐑",
-    "color": "#f4f4ec"
+    "color": "#f4f4ec",
+    "sprite": {
+      "sheet": "/assets/resources_sheet.webp",
+      "x": 672,
+      "y": 32,
+      "width": 128,
+      "height": 128,
+      "sheetWidth": 832,
+      "sheetHeight": 192
+    }
   },
   "wheat": {
     "name": "Wheat",
     "icon": "🌾",
-    "color": "#d9bb4a"
+    "color": "#d9bb4a",
+    "sprite": {
+      "sheet": "/assets/resources_sheet.webp",
+      "x": 192,
+      "y": 32,
+      "width": 128,
+      "height": 128,
+      "sheetWidth": 832,
+      "sheetHeight": 192
+    }
   },
   "wood": {
     "name": "Wood",
     "icon": "🪵",
-    "color": "#b07a45"
+    "color": "#b07a45",
+    "sprite": {
+      "sheet": "/assets/resources_sheet.webp",
+      "x": 512,
+      "y": 32,
+      "width": 128,
+      "height": 128,
+      "sheetWidth": 832,
+      "sheetHeight": 192
+    }
   },
   "brick": {
     "name": "Brick",
     "icon": "🧱",
-    "color": "#d0613f"
+    "color": "#d0613f",
+    "sprite": {
+      "sheet": "/assets/resources_sheet.webp",
+      "x": 32,
+      "y": 32,
+      "width": 128,
+      "height": 128,
+      "sheetWidth": 832,
+      "sheetHeight": 192
+    }
   },
   "ore": {
     "name": "Ore",
     "icon": "⛏",
-    "color": "#a8b0bd"
+    "color": "#a8b0bd",
+    "sprite": {
+      "sheet": "/assets/resources_sheet.webp",
+      "x": 352,
+      "y": 32,
+      "width": 128,
+      "height": 128,
+      "sheetWidth": 832,
+      "sheetHeight": 192
+    }
   }
 }

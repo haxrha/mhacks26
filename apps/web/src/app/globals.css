@@ -4026,6 +4026,21 @@ svg image {
   font-size: 19px;
   color: #6b4a2a;
 }
+.narrator-skip {
+  min-height: 44px;
+  padding: 6px 12px;
+  margin-right: auto;
+  font-family: "VT323", monospace;
+  font-size: 21px;
+  background: #f7d9a0;
+  color: #2a1a0e;
+  border: 3px solid #8a5a32;
+  box-shadow: 3px 3px #1a120a;
+}
+.narrator-skip:hover,
+.narrator-skip:focus-visible {
+  background: #f5c542;
+}
 .narrator-next {
   background: #f7d9a0;
   color: #2a1a0e;
@@ -4797,4 +4812,145 @@ svg image {
 }
 .build-name {
   min-width: 0;
+}
+
+/* A continuous lake, with the island fitted above the advisor's actual height. */
+.world-view .main-area {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+.world-view .main-area,
+.world-view .map-shell.pixel-map {
+  background-color: #16233f;
+  background-image: none;
+}
+.world-view .world-stage {
+  --dialogue-space: 280px;
+  position: absolute;
+  inset: 64px 0 54px;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+}
+.world-stage .map-shell.pixel-map {
+  height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+}
+.world-stage .map-viewport {
+  position: absolute;
+  inset: 8px calc(8px + 5vw) var(--dialogue-space) 8px;
+  height: auto;
+  overflow: auto;
+}
+.world-stage .world-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.sea-warning {
+  position: absolute;
+  right: 14px;
+  top: 96px;
+  max-width: min(320px, 45%);
+  z-index: 3;
+  background: #efe2bc;
+  color: #2a1a0e;
+  border: 3px solid #8a5a32;
+  box-shadow: 4px 4px #1a120a;
+  padding: 8px;
+  font-size: 19px;
+  line-height: 1.1;
+}
+.resource-sprite {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  image-rendering: pixelated;
+  background-repeat: no-repeat;
+}
+.costs > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.world-stage .pixel-map .world-map {
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  border-radius: 0;
+}
+.world-stage .narrator-docked {
+  left: auto;
+  right: 16px;
+  bottom: 16px;
+  width: min(1180px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100% - 88px);
+  overflow: auto;
+  margin: 0;
+}
+.world-stage .map-controls button {
+  min-width: 44px;
+  min-height: 44px;
+}
+@media (max-width: 900px) {
+  .world-stage .map-viewport {
+    right: 8px;
+  }
+  .sea-warning {
+    top: 102px;
+    font-size: 16px;
+    max-width: 43%;
+  }
+  .world-view .world-stage {
+    bottom: 94px;
+  }
+  .world-stage .narrator-docked {
+    right: 10px;
+    bottom: 10px;
+    width: calc(100% - 20px);
+    max-height: 55%;
+  }
+  .world-stage .narrator-text {
+    padding: 8px 10px;
+  }
+  .world-view .civ-bar {
+    bottom: 98px;
+    max-width: calc(100% - 16px);
+  }
+}
+@media (max-width: 600px) {
+  .world-view .sidebar-bottom {
+    display: flex;
+    gap: 4px;
+    width: 100%;
+  }
+  .world-view .sidebar-bottom button {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 4px;
+    gap: 4px;
+    font-size: 16px;
+  }
+  .world-stage .narrator-portrait {
+    width: 68px;
+  }
+  .world-stage .narrator-face {
+    width: 64px;
+    height: 64px;
+  }
+  .world-stage .narrator-portrait figcaption b {
+    font-size: 7px;
+    line-height: 1.5;
+  }
+  .world-stage .narrator-portrait figcaption small {
+    font-size: 15px;
+  }
 }

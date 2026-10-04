@@ -282,6 +282,7 @@ export function applyAction(
   } else if (a.type === "exchange") {
     civ.stock[a.give] -= EXCHANGE_RATE;
     civ.stock[a.get] += 1;
+    recordTrade(s, a.civ, a.give, a.get);
   } else if (a.type === "ready") {
     civ.ready = true;
   }
@@ -289,6 +290,17 @@ export function applyAction(
 }
 
 // ---------- phase transitions ----------
+function recordTrade(s: GameState, civ: CivId, give: Resource, get: Resource) {
+  s.news.push({
+    round: s.round,
+    civ,
+    kind: "trade",
+    give,
+    get,
+    text: `${CIVS[civ].name} shipped ${EXCHANGE_RATE} ${give} for 1 ${get}.`,
+  });
+}
+
 const bots = (s: GameState) => CIV_IDS.filter((c) => !s.humans.includes(c));
 
 /** Fill in AI neighbors and move to the next phase once every person is done. */
@@ -523,6 +535,7 @@ function botBuild(s: GameState, c: CivId) {
       if (need && civ.stock[spare] >= EXCHANGE_RATE + (goal[spare] ?? 0)) {
         civ.stock[spare] -= EXCHANGE_RATE;
         civ.stock[need] += 1;
+        recordTrade(s, c, spare, need);
         id = BUILD_ORDER[c].find((b) => canBuild(civ, b));
       }
     }

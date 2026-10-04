@@ -53,6 +53,42 @@ test("games are deterministic for a seed", () => {
   );
 });
 
+test("tsunami is playable and high-ground refuges protect against later waves", () => {
+  assert(
+    !EVENTS.tsunami.climateDriven,
+    "tectonic tsunami chance does not follow temperature",
+  );
+  const s = rich(answer(atQuiz("tsunami"), false));
+  const result = applyAction(s, { type: "choose", civ: P, option: 1 });
+  assert.equal(result.error, undefined);
+  assert.equal(result.state.phase, "build");
+  assert(result.state.civs[P].buildings.includes("refuge"));
+  assert(BUILDINGS.refuge.protects?.includes("tsunami"));
+  assert(QUESTIONS.filter((q) => q.types.includes("tsunami")).length >= 8);
+});
+
+test("bank exchanges record cargo notices without changing failed actions", () => {
+  let s = rich(answer(atQuiz(), true));
+  s = applyAction(s, { type: "choose", civ: P, option: 2 }).state;
+  const traded = applyAction(s, {
+    type: "exchange",
+    civ: P,
+    give: "wood",
+    get: "brick",
+  });
+  assert.equal(traded.error, undefined);
+  assert.equal(traded.state.news.at(-1)?.kind, "trade");
+  assert.equal(traded.state.news.at(-1)?.civ, P);
+  const bad = applyAction(s, {
+    type: "exchange",
+    civ: P,
+    give: "wood",
+    get: "wood",
+  });
+  assert(bad.error);
+  assert.equal(bad.state, s);
+});
+
 test("one cycle runs event → quiz → choice → build → next decade", () => {
   let s = createGame(P, "solo", 3);
   assert.equal(s.phase, "event");

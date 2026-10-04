@@ -37,6 +37,7 @@ export type EventId =
   | "smog"
   | "spill"
   | "sea_rise"
+  | "tsunami"
   | "heatwave";
 
 /**
@@ -75,6 +76,10 @@ export interface News {
   round: number;
   civ?: CivId;
   text: string;
+  /** Resource exchanges trigger shared, replayable port traffic. */
+  kind?: "trade";
+  give?: Resource;
+  get?: Resource;
 }
 export interface GameState {
   version: 2;

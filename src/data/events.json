@@ -4,10 +4,7 @@
     "icon": "≈",
     "color": "#7bc5e5",
     "carrier": "river",
-    "quizTypes": [
-      "flood",
-      "dam_failure"
-    ],
+    "quizTypes": ["flood", "dam_failure"],
     "regions": {
       "enclave": 3,
       "archipelago": 3,
@@ -49,9 +46,7 @@
     "icon": "☀",
     "color": "#e5c383",
     "carrier": "local",
-    "quizTypes": [
-      "drought"
-    ],
+    "quizTypes": ["drought"],
     "regions": {
       "petrostate": 3,
       "heartland": 2,
@@ -90,9 +85,7 @@
     "icon": "♨",
     "color": "#e49a74",
     "carrier": "wind",
-    "quizTypes": [
-      "wildfire"
-    ],
+    "quizTypes": ["wildfire"],
     "regions": {
       "enclave": 3,
       "heartland": 2,
@@ -127,9 +120,7 @@
     "icon": "◣",
     "color": "#bfa48c",
     "carrier": "river",
-    "quizTypes": [
-      "landslide"
-    ],
+    "quizTypes": ["landslide"],
     "regions": {
       "heartland": 3,
       "enclave": 2
@@ -170,9 +161,7 @@
     "icon": "☁",
     "color": "#b9b694",
     "carrier": "wind",
-    "quizTypes": [
-      "smog"
-    ],
+    "quizTypes": ["smog"],
     "regions": {
       "petrostate": 3,
       "heartland": 2,
@@ -212,9 +201,7 @@
     "icon": "☣",
     "color": "#b3a0c9",
     "carrier": "river",
-    "quizTypes": [
-      "spill"
-    ],
+    "quizTypes": ["spill"],
     "regions": {
       "archipelago": 3,
       "enclave": 2,
@@ -253,11 +240,7 @@
     "icon": "⌇",
     "color": "#84b7c9",
     "carrier": "coast",
-    "quizTypes": [
-      "sea_rise",
-      "hurricane",
-      "tsunami"
-    ],
+    "quizTypes": ["sea_rise", "hurricane", "tsunami"],
     "climateDriven": true,
     "regions": {
       "archipelago": 4,
@@ -298,9 +281,7 @@
     "icon": "♁",
     "color": "#e8ad74",
     "carrier": "local",
-    "quizTypes": [
-      "heatwave"
-    ],
+    "quizTypes": ["heatwave"],
     "climateDriven": true,
     "regions": {
       "petrostate": 2,
@@ -332,5 +313,46 @@
     },
     "lesson": "Trees and light roofs cool cities without burning more fuel.",
     "source": "https://www.epa.gov/heatislands"
+  },
+  "tsunami": {
+    "name": "Tsunami",
+    "icon": "≋",
+    "color": "#9fd6e4",
+    "carrier": "sea",
+    "quizTypes": ["tsunami"],
+    "regions": {
+      "archipelago": 2,
+      "enclave": 1,
+      "petrostate": 1
+    },
+    "loss": {
+      "wheat": 2,
+      "wood": 1,
+      "brick": 2
+    },
+    "tell": "An offshore earthquake has sent a series of waves toward our coast. Move away from the shore and follow the marked route to high ground.",
+    "cheap": {
+      "label": "Close our harbor and divert cargo",
+      "cost": {
+        "brick": 1
+      },
+      "spillTo": "shared",
+      "spill": {
+        "wood": 1,
+        "brick": 1
+      },
+      "effect": "Our stores are saved, but {target} must pay for emergency deliveries while our harbor is shut."
+    },
+    "green": {
+      "label": "Build routes and refuges on high ground",
+      "cost": {
+        "brick": 1,
+        "wood": 1
+      },
+      "build": "refuge",
+      "effect": "Half the damage now, and marked routes and safe storage reduce future losses."
+    },
+    "lesson": "Tsunamis come in several waves. Move inland or uphill and return only when local officials say it is safe. Trees and seawalls cannot guarantee safety.",
+    "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis"
   }
 }

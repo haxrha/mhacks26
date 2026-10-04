@@ -1,0 +1,30 @@
+{
+  "deep": "#16233f",
+  "wave": "#3b6ea8",
+  "foam": "#9fd6e4",
+  "crest": "#ecebe1",
+  "fps": 6,
+  "shimmer": {
+    "framesPerStep": 12,
+    "framesPerDrift": 48,
+    "riverFramesPerStep": 6,
+    "density": 4
+  },
+  "tsunami": {
+    "frames": 72,
+    "sides": ["west", "east", "south"],
+    "width": 9,
+    "coastalReach": 5
+  },
+  "trade": {
+    "frames": 72,
+    "routeLength": 14,
+    "maxBoats": 8
+  },
+  "ports": {
+    "heartland": [158, 46],
+    "enclave": [19, 110],
+    "petrostate": [303, 109],
+    "archipelago": [218, 188]
+  }
+}

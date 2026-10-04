@@ -48,6 +48,8 @@ import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
 import Narrator from "./Narrator";
 import WorldMap from "./WorldMap";
+import WorldStage from "./WorldStage";
+import ResourceIcon from "./ResourceIcon";
 
 const SAVE_KEY = "earthshare-v2";
 
@@ -59,7 +61,7 @@ function Costs({ cost }: { cost: Partial<Stock> }) {
       {entries.map((r) => (
         <span key={r} title={RESOURCE_META[r].name}>
           {cost[r]}
-          {RESOURCE_META[r].icon}
+          <ResourceIcon resource={r} size={20} />
         </span>
       ))}
     </span>
@@ -299,6 +301,12 @@ export default function Game() {
     build: "Build your town",
     ended: "Your legacy",
   };
+  const skipBriefing = () => {
+    setHeard(`${state.seed}:${state.round}`);
+    if (online) {
+      if (world.isHost) void world.advance();
+    } else setState(advance(state));
+  };
   const waiting = (done: boolean) =>
     done && state.phase !== "ended" ? (
       <div className="waiting-banner" role="status">
@@ -355,7 +363,7 @@ export default function Game() {
           </div>
         </header>
 
-        <div className="content-area">
+        <WorldStage>
           {state.phase === "ended" ? (
             <Endgame state={state} onRestart={backToSetup} />
           ) : (
@@ -387,15 +395,18 @@ export default function Game() {
                         : [decadeLine(state.round, state.climate)]),
                       ...eventLines(state, civId),
                     ]}
+                    skipAction={
+                      <button className="narrator-skip" onClick={skipBriefing}>
+                        {online && !world.isHost
+                          ? "Skip briefing"
+                          : "Skip all → Trivia"}
+                      </button>
+                    }
                     actions={
                       <button
                         className="primary"
                         disabled={online && !world.isHost}
-                        onClick={() => {
-                          setHeard(`${state.seed}:${state.round}`);
-                          if (online) void world.advance();
-                          else setState(advance(state));
-                        }}
+                        onClick={skipBriefing}
                       >
                         {online && !world.isHost
                           ? "Waiting for the host"
@@ -463,7 +474,7 @@ export default function Game() {
                 ))}
             </>
           )}
-        </div>
+        </WorldStage>
 
         <div className="civ-bar">
           <div className="civ-identity">
@@ -482,7 +493,7 @@ export default function Game() {
         <div className="resource-strip">
           {RESOURCES.map((r) => (
             <div key={r} className="resource">
-              <span className="resource-icon">{RESOURCE_META[r].icon}</span>
+              <ResourceIcon resource={r} size={36} />
               <div>
                 <small>{RESOURCE_META[r].name}</small>
                 <b>{civ.stock[r]}</b>
@@ -715,6 +726,7 @@ function BuildPanel({
       </div>
       <div className="exchange">
         <span>Bank trade {EXCHANGE_RATE}:1</span>
+        <ResourceIcon resource={give} size={24} />
         <select
           aria-label="Give"
           value={give}
@@ -722,11 +734,12 @@ function BuildPanel({
         >
           {RESOURCES.map((r) => (
             <option key={r} value={r}>
-              {EXCHANGE_RATE} {RESOURCE_META[r].icon} {RESOURCE_META[r].name}
+              {EXCHANGE_RATE} {RESOURCE_META[r].name}
             </option>
           ))}
         </select>
         <span>→</span>
+        <ResourceIcon resource={get} size={24} />
         <select
           aria-label="Get"
           value={get}
@@ -734,7 +747,7 @@ function BuildPanel({
         >
           {RESOURCES.map((r) => (
             <option key={r} value={r}>
-              1 {RESOURCE_META[r].icon} {RESOURCE_META[r].name}
+              1 {RESOURCE_META[r].name}
             </option>
           ))}
         </select>

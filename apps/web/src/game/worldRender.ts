@@ -9,6 +9,8 @@
  * Pure function over a pixel buffer: no DOM, so it is testable in Node.
  */
 import world from "../../../../src/data/worldmap.json";
+import oceanData from "../../../../src/data/ocean.json";
+import fireData from "../../../../src/data/wildfire.json";
 import { EVENTS } from "./content";
 import { spillTarget } from "./engine";
 import { OWNERS, TOWNS } from "./towns";
@@ -16,6 +18,7 @@ import { CIV_IDS, type CivId, type GameState } from "./types";
 
 export const MAP_W = world.w;
 export const MAP_H = world.h;
+export const OCEAN = oceanData;
 type RGB = [number, number, number];
 const rgb = (hex: string): RGB => [
   parseInt(hex.slice(1, 3), 16),
@@ -29,6 +32,9 @@ const KIND = Object.fromEntries(world.kinds.map((k, i) => [k, i])) as Record<
 const NONE = 255;
 
 const C = {
+  deep: rgb(OCEAN.deep),
+  sea: rgb("#21497a"),
+  crest: rgb(OCEAN.crest),
   ink: rgb("#1a120a"),
   rock: rgb("#776e60"),
   rockD: rgb("#5c554a"),
@@ -148,6 +154,194 @@ const mix = (a: RGB, b: RGB, t: number): RGB => [
   a[2] + (b[2] - a[2]) * t,
 ];
 
+/** One world-coordinate texture for the entire sea, including beyond the map bounds. */
+export function seaPixel(
+  x: number,
+  y: number,
+  frame: number,
+  climate = 0,
+  shallow = false,
+): RGB {
+  const drift = Math.floor(frame / OCEAN.shimmer.framesPerDrift);
+  const step = Math.floor(frame / OCEAN.shimmer.framesPerStep);
+  const anchor = Math.floor((x - drift) / 2) * 2 + y * MAP_W;
+  let h = Math.imul(anchor ^ 0x9e3779b9, 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  const noise = (h ^ (h >>> 16)) & 255;
+  let c = shallow ? C.sea : C.deep;
+  if (noise < OCEAN.shimmer.density && ((step + noise) & 3) < 3) c = C.wave;
+  const health = 100 - climate * 12;
+  if (health < 85) c = mix(c, C.murk, Math.min(0.6, (85 - health) / 100));
+  return c;
+}
+
+export interface PortTraffic {
+  civ: CivId;
+  frame: number;
+}
+/** Trade notices are synchronized through the pure reducer and SpacetimeDB state. */
+export function tradeTraffic(
+  state: GameState | undefined,
+  frame: number,
+): PortTraffic[] {
+  return (state?.news ?? [])
+    .filter((n) => n.kind === "trade" && n.round === state?.round && n.civ)
+    .slice(-OCEAN.trade.maxBoats)
+    .map((n, i) => ({
+      civ: n.civ!,
+      frame: (frame + i * 7) % OCEAN.trade.frames,
+    }));
+}
+
+const routes = new Map<CivId, [number, number][]>();
+/** Find a berth and a connected sailing route. Ships never cross land tiles. */
+export function portRoute(civ: CivId): [number, number][] {
+  const cachedRoute = routes.get(civ);
+  if (cachedRoute) return cachedRoute;
+  const L = worldLayers();
+  const anchor = OCEAN.ports[civ];
+  let start = -1,
+    closest = Infinity;
+  for (let i = 0; i < L.kind.length; i++) {
+    if (L.kind[i] > KIND.water) continue;
+    const d =
+      Math.abs((i % MAP_W) - anchor[0]) +
+      Math.abs(Math.floor(i / MAP_W) - anchor[1]);
+    if (d < closest) {
+      start = i;
+      closest = d;
+    }
+  }
+  const parents = new Map<number, number>([[start, -1]]);
+  let frontier = [start],
+    end = start;
+  for (
+    let step = 0;
+    step < OCEAN.trade.routeLength && frontier.length;
+    step++
+  ) {
+    const next: number[] = [];
+    for (const i of frontier) {
+      const x = i % MAP_W;
+      for (const j of [
+        x > 0 ? i - 1 : -1,
+        x < MAP_W - 1 ? i + 1 : -1,
+        i - MAP_W,
+        i + MAP_W,
+      ]) {
+        if (
+          j < 0 ||
+          j >= L.kind.length ||
+          L.kind[j] > KIND.water ||
+          parents.has(j)
+        )
+          continue;
+        parents.set(j, i);
+        next.push(j);
+        end = j;
+      }
+    }
+    frontier = next;
+  }
+  const path: [number, number][] = [];
+  for (let i = end; i >= 0; i = parents.get(i) ?? -1)
+    path.push([i % MAP_W, Math.floor(i / MAP_W)]);
+  path.reverse();
+  routes.set(civ, path);
+  return path;
+}
+
+export function tsunamiDirection(state: GameState): string {
+  return OCEAN.tsunami.sides[
+    ((state.seed >>> 0) + state.round) % OCEAN.tsunami.sides.length
+  ];
+}
+
+export interface WorldView {
+  width: number;
+  height: number;
+  originX: number;
+  originY: number;
+  /** The map's safe area; waves and sea continue behind the surrounding UI. */
+  clip: { left: number; top: number; right: number; bottom: number };
+}
+
+/** Composite the island and extended sea on one pixel grid and one animation clock. */
+export function renderWorldView(
+  state: GameState | undefined,
+  frame: number,
+  out: Uint8ClampedArray,
+  view: WorldView,
+  traffic = tradeTraffic(state, frame),
+) {
+  const { width, height, originX, originY, clip } = view;
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const c = seaPixel(x - originX, y - originY, frame, state?.climate);
+      const o = (y * width + x) * 4;
+      out[o] = c[0];
+      out[o + 1] = c[1];
+      out[o + 2] = c[2];
+      out[o + 3] = 255;
+    }
+  const island = new Uint8ClampedArray(MAP_W * MAP_H * 4);
+  renderWorld(state, frame, island, traffic);
+  for (let y = 0; y < MAP_H; y++)
+    for (let x = 0; x < MAP_W; x++) {
+      const tx = x + originX,
+        ty = y + originY;
+      if (
+        tx < 0 ||
+        ty < 0 ||
+        tx >= width ||
+        ty >= height ||
+        tx < clip.left ||
+        ty < clip.top ||
+        tx >= clip.right ||
+        ty >= clip.bottom
+      )
+        continue;
+      const o = (ty * width + tx) * 4,
+        i = (y * MAP_W + x) * 4;
+      out.set(island.subarray(i, i + 4), o);
+    }
+  const active =
+    state &&
+    state.phase !== "ended" &&
+    areaStatus(state).some((a) => a.effects.has("tsunami"));
+  if (!active) return;
+  const side = tsunamiDirection(state);
+  const alongX = side !== "south",
+    extent = alongX ? width : height;
+  const progress = (frame % OCEAN.tsunami.frames) / (OCEAN.tsunami.frames - 1);
+  const front = Math.floor(-12 + progress * (extent + 24));
+  const L = worldLayers();
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const wx = x - originX,
+        wy = y - originY;
+      const inMap = wx >= 0 && wy >= 0 && wx < MAP_W && wy < MAP_H;
+      const i = wy * MAP_W + wx;
+      // Only the sea and low coastal ground are swept. Inland hills remain readable.
+      if (
+        inMap &&
+        L.kind[i] > KIND.water &&
+        (L.distSea[i] > OCEAN.tsunami.coastalReach || !lowland(L.kind[i]))
+      )
+        continue;
+      const axis =
+        side === "east" ? width - 1 - x : side === "south" ? height - 1 - y : x;
+      const bend = Math.floor((alongX ? y : x) / 9) % 3;
+      const d = front + bend - axis;
+      if (d < 0 || d >= OCEAN.tsunami.width) continue;
+      const c = d < 2 ? C.crest : d < 4 ? C.foam : d < 6 ? C.flood : C.shallow;
+      const o = (y * width + x) * 4;
+      out[o] = c[0];
+      out[o + 1] = c[1];
+      out[o + 2] = c[2];
+    }
+}
+
 export interface AreaStatus {
   effects: Set<string>;
   buildings: string[];
@@ -195,6 +389,87 @@ export function areaStatus(state?: GameState): AreaStatus[] {
 const meltThreshold = (y: number, h: number) =>
   3 - (Math.min(y, 50) / 50) * 2.6 + (h / 255 - 0.5) * 0.4;
 
+const fuel = (kind: number) =>
+  kind === KIND.forest || kind === KIND.grass || kind === KIND.pasture;
+let lastFireKey = "";
+let lastFireMask = new Float32Array(MAP_W * MAP_H);
+
+/** Small, connected burn patches taper through pixel dither. Borders never constrain spread. */
+export function wildfireMask(
+  state?: GameState,
+  status = areaStatus(state),
+): Float32Array {
+  const active = TOWNS.flatMap((t, i) =>
+    status[i].effects.has("wildfire") ? [OWNERS[t.civ]] : [],
+  );
+  const key = `${state?.seed}:${state?.round}:${active.map((c) => `${c}:${state?.civs[c].buildings.includes("firewatch")}`).join("|")}`;
+  if (key === lastFireKey) return lastFireMask;
+  const mask = new Float32Array(MAP_W * MAP_H);
+  const L = worldLayers();
+  for (const civ of active) {
+    const owner = TOWNS.findIndex((t) => OWNERS[t.civ] === civ);
+    const protectedTown = state?.civs[civ].buildings.includes("firewatch");
+    const seed =
+      ((state?.seed ?? 0) ^
+        Math.imul(state?.round ?? 1, 31) ^
+        (owner * 997)) >>>
+      0;
+    for (const [n, zone] of fireData.zones[civ].entries()) {
+      const [ax, ay, size] = zone;
+      const cx = ax + ((seed + n * 13) % 9) - 4;
+      const cy = ay + ((seed + n * 7) % 7) - 3;
+      let start = -1,
+        best = Infinity;
+      for (let i = 0; i < L.kind.length; i++) {
+        if (L.area[i] !== owner || !fuel(L.kind[i])) continue;
+        const d =
+          Math.abs((i % MAP_W) - cx) +
+          Math.abs(Math.floor(i / MAP_W) - cy) +
+          (L.kind[i] === KIND.forest ? 0 : 5);
+        if (d < best) {
+          best = d;
+          start = i;
+        }
+      }
+      if (start < 0) continue;
+      const radius = Math.round(size * (protectedTown ? 0.75 : 1));
+      const seen = new Uint8Array(MAP_W * MAP_H);
+      let frontier = [start];
+      seen[start] = 1;
+      for (let d = 0; d < radius && frontier.length; d++) {
+        const next: number[] = [];
+        for (const i of frontier) {
+          const x = i % MAP_W,
+            y = Math.floor(i / MAP_W);
+          // Coarse noise makes lobes and unburnt islands; fine dither feathers their edges.
+          const block =
+            L.hash[Math.floor(y / 5) * 5 * MAP_W + Math.floor(x / 5) * 5] / 255;
+          const strength = Math.max(
+            0,
+            (1 - d / radius) * (0.55 + block * 0.45),
+          );
+          mask[i] = Math.max(mask[i], strength);
+          for (const j of [
+            x > 0 ? i - 1 : -1,
+            x < MAP_W - 1 ? i + 1 : -1,
+            i - MAP_W,
+            i + MAP_W,
+          ]) {
+            if (j < 0 || j >= L.kind.length || seen[j] || !fuel(L.kind[j]))
+              continue;
+            seen[j] = 1;
+            next.push(j);
+          }
+        }
+        frontier = next;
+      }
+    }
+  }
+  lastFireKey = key;
+  lastFireMask = mask;
+  return mask;
+}
+
 function terrainPixel(
   L: WorldLayers,
   i: number,
@@ -202,6 +477,7 @@ function terrainPixel(
   status: AreaStatus[],
   climate: number,
   ocean: number,
+  fire: Float32Array,
 ): RGB {
   const x = i % MAP_W,
     y = (i / MAP_W) | 0,
@@ -209,6 +485,8 @@ function terrainPixel(
     h = L.hash[i],
     a = L.area[i];
   let c: RGB = L.palette[L.base[i]];
+  if (k === KIND.deep || k === KIND.sea)
+    c = seaPixel(x, y, frame, climate, k === KIND.sea);
 
   // Global state: melting snow, rising seas, ocean health.
   if (k === KIND.snow && climate > meltThreshold(y, h))
@@ -221,12 +499,33 @@ function terrainPixel(
     (k === KIND.beach || (tidehaven && lowland(k)))
   )
     c = h < 40 ? C.flood : C.shallow;
-  if (isSea(k) && ocean < 85)
+  if (k === KIND.shallow && ocean < 85)
     c = mix(c, C.murk, Math.min(0.6, (85 - ocean) / 100));
 
   // Ambient animation: water shimmer and drifting waves.
-  if (k === KIND.water && (x + y * 3 - frame) % 11 === 0 && h < 110) c = C.foam;
-  if (isSea(k) && h < 5 && ((frame + h) & 3) === 0) c = C.wave;
+  const riverStep = Math.floor(frame / OCEAN.shimmer.riverFramesPerStep);
+  const seaStep = Math.floor(frame / OCEAN.shimmer.framesPerStep);
+  if (k === KIND.water && (x + y * 3 - riverStep) % 11 === 0 && h < 70)
+    c = C.foam;
+  if (
+    k === KIND.shallow &&
+    h < OCEAN.shimmer.density &&
+    ((seaStep + h) & 3) === 0
+  )
+    c = C.wave;
+
+  // Apply the terrain-connected mask independently of ownership, including over a border.
+  const strength = fire[i];
+  if (strength > 0 && h / 255 < strength) {
+    c = mix(c, h & 1 ? C.ash : C.ashL, strength * fireData.sootStrength);
+    const flicker = Math.floor(frame / fireData.framesPerFlicker);
+    if (
+      strength > 0.35 &&
+      h < fireData.emberThreshold &&
+      ((flicker + h) & 3) < 3
+    )
+      c = (flicker + h) & 1 ? C.ember : C.emberY;
+  }
 
   // Hazards active in this area (sea tiles take the hazards of the nearest area).
   const owner = a !== NONE ? a : L.near[i];
@@ -255,7 +554,7 @@ function terrainPixel(
     ) {
       c = ((x - y + (frame >> 1)) & 3) === 0 ? C.foam : C.flood;
     } else if (
-      (e === "wildfire" || e === "volcano") &&
+      e === "volcano" &&
       land &&
       (k === KIND.forest || k === KIND.grass || k === KIND.pasture)
     ) {
@@ -356,6 +655,10 @@ const BUILDING_SPRITES: Record<string, Sprite> = {
     rows: [".g..g.", "gggggg", "gGggGg", ".t..t."],
     pal: { g: "#6fae48", G: "#3d7a2e", t: "#5a3a1e" },
   },
+  refuge: {
+    rows: ["..RRR..", ".RRRRR.", "RRRRRRR", ".WWWWW.", ".WWdWW."],
+    pal: { R: "#f5c542", W: "#efe2bc", d: "#3e2414" },
+  },
 };
 const WINDMILL_SPIN = [".x.", "xxx", ".x.", ".B.", ".B.", "BBB"];
 
@@ -403,14 +706,16 @@ export function renderWorld(
   state: GameState | undefined,
   frame: number,
   out: Uint8ClampedArray,
+  traffic: PortTraffic[] = tradeTraffic(state, frame),
 ) {
   const L = worldLayers();
   const status = areaStatus(state);
+  const fire = wildfireMask(state, status);
   const climate = state?.climate ?? 0;
   // Warmer seas are murkier seas.
   const ocean = 100 - climate * 12;
   for (let i = 0; i < MAP_W * MAP_H; i++) {
-    const c = terrainPixel(L, i, frame, status, climate, ocean);
+    const c = terrainPixel(L, i, frame, status, climate, ocean, fire);
     out[i * 4] = c[0];
     out[i * 4 + 1] = c[1];
     out[i * 4 + 2] = c[2];
@@ -467,8 +772,39 @@ export function renderWorld(
     });
     blit(out, k.rows, { ...k.pal, F: FLAG[town.civ] }, k.x, k.y);
     if (st.damaged > 0) {
-      puff(out, k.x + 2, k.y + 2, frame, true);
-      puff(out, k.x + w - 3, k.y + 3, frame + 3, true);
+      const fireOnly = st.effects.size === 1 && st.effects.has("wildfire");
+      const smokeFrame = fireOnly
+        ? Math.floor(frame / fireData.framesPerSmokeStep)
+        : frame;
+      // A distant woodland fire does not automatically set every castle smoking.
+      if (!fireOnly || fire[(k.y + 3) * MAP_W + k.x + 2] > 0.3) {
+        puff(out, k.x + 2, k.y + 2, smokeFrame, true);
+        puff(out, k.x + w - 3, k.y + 3, smokeFrame + 3, true);
+      }
     }
   });
+  // Each town has a berth; cargo sails out and returns after an actual bank exchange.
+  for (const civ of CIV_IDS) {
+    const [x, y] = portRoute(civ)[0];
+    blit(out, ["PPPP", ".P.P"], { P: "#b07a45" }, x - 1, y);
+  }
+  for (const trip of traffic) {
+    const route = portRoute(trip.civ);
+    const t = trip.frame / OCEAN.trade.frames;
+    const index = Math.min(
+      route.length - 1,
+      Math.floor((1 - Math.abs(t * 2 - 1)) * route.length),
+    );
+    const [x, y] = route[index];
+    blit(
+      out,
+      ["..F..", "..FF.", "..F..", "BBBBB", ".BBB."],
+      { F: FLAG[townOfVisual(trip.civ)], B: "#b07a45" },
+      x - 2,
+      y - 4 + ((frame >> 1) & 1),
+    );
+  }
 }
+
+const townOfVisual = (civ: CivId) =>
+  TOWNS.find((t) => OWNERS[t.civ] === civ)!.civ;

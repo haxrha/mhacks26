@@ -1,44 +1,111 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { CIVS, EVENTS } from "@/game/content";
 import { spillTarget } from "@/game/engine";
 import { OWNERS, TOWNS, townOf } from "@/game/towns";
 import { CIV_IDS, type CivId, type GameState } from "@/game/types";
-import { MAP_H, MAP_W, renderWorld } from "@/game/worldRender";
+import {
+  OCEAN,
+  renderWorldView,
+  tsunamiDirection,
+  type WorldView,
+  type PortTraffic,
+} from "@/game/worldRender";
 
-const FPS = 6;
+const FPS = OCEAN.fps;
 
 /** The terrain is drawn live from map data, so events, towns and climate show on the land itself. */
-function LiveTerrain({ state }: { state: GameState }) {
+function LiveTerrain({
+  state,
+  svg,
+}: {
+  state: GameState;
+  svg: RefObject<SVGSVGElement | null>;
+}) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const latest = useRef(state);
   latest.current = state;
   useEffect(() => {
     const ctx = canvas.current?.getContext("2d");
     if (!ctx) return;
-    const image = ctx.createImageData(MAP_W, MAP_H);
+    const el = canvas.current!;
+    let image: ImageData;
+    let view: WorldView;
     let frame = 0;
-    const draw = () => {
-      renderWorld(latest.current, frame++, image.data);
-      ctx.putImageData(image, 0, 0);
-    };
-    draw();
     const still = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    const trips = new Map<number, { civ: CivId; start: number }>();
+    const measure = () => {
+      const shell = el.parentElement!.getBoundingClientRect();
+      const map = svg.current!.getBoundingClientRect();
+      const viewport = svg.current!.parentElement!.getBoundingClientRect();
+      // The SVG viewBox and canvas share the same native 4px art grid.
+      const scale = Math.min(map.width / 310, map.height / 193.75);
+      if (scale <= 0) return;
+      const width = Math.max(1, Math.ceil(shell.width / scale));
+      const height = Math.max(1, Math.ceil(shell.height / scale));
+      el.width = width;
+      el.height = height;
+      image = ctx.createImageData(width, height);
+      view = {
+        width,
+        height,
+        originX: Math.round(
+          (map.left - shell.left + (map.width - 310 * scale) / 2) / scale,
+        ),
+        originY: Math.round(
+          (map.top - shell.top + (map.height - 193.75 * scale) / 2) / scale,
+        ),
+        clip: {
+          left: (viewport.left - shell.left) / scale,
+          top: (viewport.top - shell.top) / scale,
+          right: (viewport.right - shell.left) / scale,
+          bottom: (viewport.bottom - shell.top) / scale,
+        },
+      };
+    };
+    const draw = () => {
+      if (!view) measure();
+      if (!view) return;
+      const s = latest.current;
+      s.news.forEach((n, i) => {
+        if (n.kind === "trade" && n.civ && n.round === s.round && !trips.has(i))
+          trips.set(i, { civ: n.civ, start: frame });
+      });
+      const traffic: PortTraffic[] = [...trips.values()]
+        .flatMap((t) => {
+          const age = frame - t.start;
+          return age < OCEAN.trade.frames ? [{ civ: t.civ, frame: age }] : [];
+        })
+        .slice(-OCEAN.trade.maxBoats);
+      renderWorldView(s, still ? 24 : frame, image.data, view, traffic);
+      ctx.putImageData(image, 0, 0);
+      frame++;
+    };
+    measure();
+    draw();
+    const resize = new ResizeObserver(measure);
+    resize.observe(el.parentElement!);
+    resize.observe(svg.current!);
+    resize.observe(svg.current!.parentElement!);
+    const scroll = () => measure();
+    svg.current!.parentElement!.addEventListener("scroll", scroll);
     const timer = window.setInterval(draw, still ? 1000 : 1000 / FPS);
-    return () => window.clearInterval(timer);
-  }, []);
+    return () => {
+      window.clearInterval(timer);
+      resize.disconnect();
+      svg.current?.parentElement?.removeEventListener("scroll", scroll);
+    };
+  }, [svg]);
   return (
-    <foreignObject x="0" y="0" width="1280" height="800">
-      <canvas
-        ref={canvas}
-        className="world-canvas"
-        width={MAP_W}
-        height={MAP_H}
-        aria-hidden="true"
-      />
-    </foreignObject>
+    <canvas
+      ref={canvas}
+      className="world-canvas"
+      width={320}
+      height={200}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -57,6 +124,7 @@ export default function WorldMap({
   onSelect: (civ: CivId) => void;
 }) {
   const [zoom, setZoom] = useState(1);
+  const svg = useRef<SVGSVGElement>(null);
   const [arrows, setArrows] = useState(true);
   // Cheap choices push damage onto a neighbor: draw that as an arrow between towns.
   const spills =
@@ -69,15 +137,20 @@ export default function WorldMap({
       : [];
   return (
     <div className="map-shell pixel-map">
+      <LiveTerrain
+        key={`${state.seed}:${state.round}`}
+        state={state}
+        svg={svg}
+      />
       <div className="map-viewport">
         <svg
+          ref={svg}
           className="world-map"
-          viewBox="0 0 1280 800"
+          viewBox="0 0 1240 775"
           style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}
           role="group"
           aria-label="The valley: select a town to inspect it"
         >
-          <LiveTerrain state={state} />
           <defs>
             <marker
               id="flow-tip"
@@ -205,6 +278,13 @@ export default function WorldMap({
           Spill arrows
         </button>
       </div>
+      {state.phase !== "ended" &&
+        CIV_IDS.some((c) => state.events[c].type === "tsunami") && (
+          <div className="sea-warning" role="status">
+            ≋ TSUNAMI FROM THE {tsunamiDirection(state).toUpperCase()} · GO
+            INLAND / UPHILL
+          </div>
+        )}
     </div>
   );
 }

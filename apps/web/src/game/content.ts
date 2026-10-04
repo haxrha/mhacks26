@@ -15,7 +15,20 @@ export const stock = (values: Partial<Stock> = {}): Stock => ({
 
 export const RESOURCE_META = resourceData as Record<
   Resource,
-  { name: string; icon: string; color: string }
+  {
+    name: string;
+    icon: string;
+    color: string;
+    sprite: {
+      sheet: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      sheetWidth: number;
+      sheetHeight: number;
+    };
+  }
 >;
 
 export const CIVS = civData as Record<

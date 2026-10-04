@@ -6,6 +6,8 @@ Four towns share one river valley. Every decade each town is hit by an event (a 
 
 Modes: offline solo with AI neighbors, four-player hot-seat, and live SpacetimeDB rooms with AI filling unclaimed towns. The map is drawn live from `src/data/worldmap.json`; see `AGENTS.md` §0 for the full design.
 
+The whole sea and island now share one animated pixel canvas. Tsunamis arrive from a seeded west, east or south direction, flood low coastal ground, and teach evacuation to high ground through eight simple questions. High-ground refuges reduce later losses. Resource icons use the supplied `assets/resources_sheet.webp`. Human and AI bank trades dispatch short cargo-boat trips along connected water near each town's berth. Ocean colors, timing and port anchors live in `src/data/ocean.json`.
+
 ## Run locally on Windows
 
 Install Node.js 24 and [SpacetimeDB 2.10.2](https://spacetimedb.com/install). This workspace also has an ignored portable CLI under `.tools/spacetime/`.

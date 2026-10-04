@@ -1,1267 +1,1155 @@
 [
   {
     "id": "flood-1",
-    "types": [
-      "flood",
-      "dam_failure"
-    ],
+    "types": ["flood", "dam_failure"],
     "difficulty": 1,
-    "prompt": "Which landscape can store floodwater?",
-    "options": [
-      "Wetlands",
-      "Parking lots",
-      "Bare concrete",
-      "Drained marshes"
-    ],
+    "prompt": "What natural area soaks up extra floodwater?",
+    "options": ["Wetlands", "Parking lots", "Concrete roads", "Bare rock"],
     "correct": 0,
-    "explanation": "Wetlands temporarily retain water, moderating flood peaks.",
+    "explanation": "Wetlands hold extra water like a sponge.",
     "source": "https://www.epa.gov/wetlands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "flood-2",
-    "types": [
-      "flood",
-      "dam_failure"
-    ],
+    "types": ["flood", "dam_failure"],
     "difficulty": 1,
-    "prompt": "Why does paving land increase runoff?",
+    "prompt": "Why does rain run off a paved road?",
     "options": [
-      "Pavement creates rain",
-      "Rivers stop flowing",
-      "Clouds become heavier",
-      "Less water infiltrates the ground"
+      "Roads make more rain",
+      "Rain turns into smoke",
+      "Roads stop gravity",
+      "Water cannot soak through it easily"
     ],
     "correct": 3,
-    "explanation": "Impervious surfaces send more rainfall into drainage systems.",
+    "explanation": "Soil can soak up rain. Pavement sends more of it into drains and rivers.",
     "source": "https://www.epa.gov/wetlands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "flood-3",
-    "types": [
-      "flood",
-      "dam_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "What direction does river floodwater generally move?",
+    "types": ["flood", "dam_failure"],
+    "difficulty": 1,
+    "prompt": "Which way does river water flow?",
     "options": [
+      "Only uphill",
       "Only west",
-      "Against gravity",
-      "Downstream",
-      "Only uphill"
+      "Downhill toward the sea",
+      "Toward the clouds"
     ],
     "correct": 2,
-    "explanation": "River networks connect upstream actions to downstream impacts.",
+    "explanation": "Water flows downhill, so upstream choices can affect towns below.",
     "source": "https://www.epa.gov/wetlands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "flood-4",
-    "types": [
-      "flood",
-      "dam_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "Who should coordinate flood management?",
+    "types": ["flood", "dam_failure"],
+    "difficulty": 1,
+    "prompt": "Who should work together to reduce river floods?",
     "options": [
-      "Only electricity traders",
-      "Communities across the river basin",
-      "Only the upstream city",
-      "Only coastal tourists"
+      "Only tourists",
+      "Towns along the river",
+      "Only one shop",
+      "Nobody"
     ],
     "correct": 1,
-    "explanation": "A river basin connects communities, so local defenses can affect neighbors.",
+    "explanation": "Towns share a river, so their flood plans should work together.",
     "source": "https://www.epa.gov/wetlands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "dam_failure-1",
-    "types": [
-      "dam_failure"
-    ],
+    "types": ["dam_failure"],
     "difficulty": 1,
-    "prompt": "What hazard can follow a dam failure?",
+    "prompt": "What can happen if a dam breaks?",
     "options": [
-      "A downstream flood wave",
-      "An upstream solar flare",
-      "An ocean cooling event",
-      "A permanent end to flooding"
+      "A flood below the dam",
+      "The river turns to ice",
+      "Rain stops forever",
+      "Mountains float away"
     ],
     "correct": 0,
-    "explanation": "Stored reservoir water may be released rapidly downstream.",
+    "explanation": "A broken dam can send stored water rushing downstream.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "dam_failure-2",
-    "types": [
-      "dam_failure"
-    ],
+    "types": ["dam_failure"],
     "difficulty": 1,
-    "prompt": "Why assess faults before building a dam?",
+    "prompt": "Why should a dam be built to handle earthquakes?",
     "options": [
-      "Faults produce unlimited water",
-      "Faults prevent rainfall",
-      "Earthquakes only affect oceans",
-      "Shaking can damage structures"
+      "Shaking makes free water",
+      "Earthquakes stop all rain",
+      "Dams cannot be damaged",
+      "Shaking can damage it"
     ],
     "correct": 3,
-    "explanation": "Seismic exposure is part of infrastructure risk.",
+    "explanation": "Earthquake shaking can damage a dam and put towns below it at risk.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "dam_failure-3",
-    "types": [
-      "dam_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "What is a cascading disaster?",
+    "types": ["dam_failure"],
+    "difficulty": 1,
+    "prompt": "A dam breaks and then floods a town. What happened?",
     "options": [
-      "A disaster with no consequences",
-      "A price rise without disruption",
-      "One failure triggers another hazard",
-      "A hazard disappears at a border"
+      "The danger vanished",
+      "The river disappeared",
+      "One disaster caused another",
+      "The town made the dam stronger"
     ],
     "correct": 2,
-    "explanation": "Interconnected systems can turn initial damage into secondary hazards.",
+    "explanation": "One failure can lead to another problem. That is why backup plans matter.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "dam_failure-4",
-    "types": [
-      "dam_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "Which approach addresses downstream dam risk?",
+    "types": ["dam_failure"],
+    "difficulty": 1,
+    "prompt": "Who needs a warning if a dam may break?",
     "options": [
-      "Assuming concrete cannot fail",
-      "Planning with downstream communities",
-      "Ignoring the floodplain",
-      "Removing all warning systems"
+      "Only people far from the river",
+      "People living downstream",
+      "Only holiday visitors",
+      "Nobody needs a warning"
     ],
     "correct": 1,
-    "explanation": "Risk planning includes people and infrastructure downstream of reservoirs.",
+    "explanation": "People below the dam need warnings and a plan to leave safely.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "hurricane-1",
-    "types": [
-      "hurricane"
-    ],
+    "types": ["hurricane"],
     "difficulty": 1,
-    "prompt": "What drives storm surge?",
+    "prompt": "What can push seawater onto land during a hurricane?",
     "options": [
-      "Storm winds pushing water toward shore",
-      "Ordinary river evaporation",
-      "Solar panel output",
-      "Daily traffic"
+      "Strong storm winds",
+      "Solar panels",
+      "Road traffic",
+      "Falling leaves"
     ],
     "correct": 0,
-    "explanation": "Storm winds pile ocean water against the coast.",
+    "explanation": "Strong winds can push seawater toward the shore and cause flooding.",
     "source": "https://www.nhc.noaa.gov/surge/",
     "sourceLabel": "NOAA"
   },
   {
     "id": "hurricane-2",
-    "types": [
-      "hurricane"
-    ],
+    "types": ["hurricane"],
     "difficulty": 1,
-    "prompt": "Does hurricane wind category fully describe surge risk?",
+    "prompt": "What danger can a hurricane bring besides strong wind?",
     "options": [
-      "Yes, it describes every coastal impact",
-      "Only the storm name matters",
-      "Surge is unrelated to the coast",
-      "No, several storm and coastal factors matter"
+      "An eclipse",
+      "A mountain turning to glass",
+      "A river flowing into space",
+      "Coastal flooding"
     ],
     "correct": 3,
-    "explanation": "Storm size, track and coastal shape also affect surge.",
+    "explanation": "Hurricanes can also bring heavy rain and flooding along the coast.",
     "source": "https://www.nhc.noaa.gov/surge/",
     "sourceLabel": "NOAA"
   },
   {
     "id": "hurricane-3",
-    "types": [
-      "hurricane"
-    ],
-    "difficulty": 2,
-    "prompt": "Why can flooding persist after strong winds pass?",
+    "types": ["hurricane"],
+    "difficulty": 1,
+    "prompt": "Can floodwater stay after hurricane winds calm down?",
     "options": [
-      "Concrete absorbs all seawater",
-      "Wind categories eliminate rainfall",
-      "Rain and surge still affect water levels",
-      "Water instantly vanishes with wind"
+      "No, it vanishes at once",
+      "Only if roads turn to ice",
+      "Yes, water takes time to drain",
+      "No, wind removes all water"
     ],
     "correct": 2,
-    "explanation": "Hurricanes can bring multiple interacting water hazards.",
+    "explanation": "Rain and seawater can keep an area flooded after the wind eases.",
     "source": "https://www.nhc.noaa.gov/surge/",
     "sourceLabel": "NOAA"
   },
   {
     "id": "hurricane-4",
-    "types": [
-      "hurricane"
-    ],
-    "difficulty": 2,
-    "prompt": "Which infrastructure helps during storm outages?",
+    "types": ["hurricane"],
+    "difficulty": 1,
+    "prompt": "What helps keep power on when a storm damages the grid?",
     "options": [
-      "Removing emergency shelters",
-      "Distributed backup power",
-      "One unprotected power source",
-      "More fossil exports alone"
+      "Removing every battery",
+      "Backup power",
+      "Cutting all power lines",
+      "Hiding the warnings"
     ],
     "correct": 1,
-    "explanation": "Diversifying power and backup systems supports essential services.",
+    "explanation": "Backup power helps important services keep running after a storm.",
     "source": "https://www.nhc.noaa.gov/surge/",
     "sourceLabel": "NOAA"
   },
   {
     "id": "earthquake-1",
-    "types": [
-      "earthquake"
-    ],
+    "types": ["earthquake"],
     "difficulty": 1,
-    "prompt": "What commonly causes earthquakes?",
+    "prompt": "What usually causes an earthquake?",
     "options": [
-      "Sudden slip along a fault",
-      "Seasonal leaf fall",
-      "Normal ocean tides alone",
-      "Solar electricity production"
+      "Rocks suddenly moving along a crack underground",
+      "Leaves falling",
+      "Solar panels turning on",
+      "A sunny afternoon"
     ],
     "correct": 0,
-    "explanation": "Stress release on faults produces seismic waves.",
+    "explanation": "Sudden movement along a fault, a crack in the earth, makes the ground shake.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "earthquake-2",
-    "types": [
-      "earthquake"
-    ],
+    "types": ["earthquake"],
     "difficulty": 1,
-    "prompt": "Does warming directly drive tectonic earthquake frequency in this game?",
+    "prompt": "Is an earthquake the same thing as a heatwave?",
     "options": [
-      "Yes, every degree doubles quakes",
-      "Only solar farms cause quakes",
-      "Quakes are a kind of hurricane",
-      "No, tectonic risk is modeled separately"
+      "Yes, both are hot weather",
+      "Yes, both are strong wind",
+      "Yes, both are smoke",
+      "No, it is the ground shaking"
     ],
     "correct": 3,
-    "explanation": "Climate and tectonic hazards have different physical mechanisms.",
+    "explanation": "Earthquakes come from movement in the earth. Heatwaves are very hot weather.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "earthquake-3",
-    "types": [
-      "earthquake"
-    ],
-    "difficulty": 2,
-    "prompt": "Which investment reduces structural quake risk?",
+    "types": ["earthquake"],
+    "difficulty": 1,
+    "prompt": "What helps a building survive earthquake shaking?",
     "options": [
-      "Removing building inspections",
-      "Building only on steep loose slopes",
-      "Seismic engineering",
-      "More unreinforced walls"
+      "Removing its supports",
+      "Ignoring cracks",
+      "Designing it to resist shaking",
+      "Making its walls weaker"
     ],
     "correct": 2,
-    "explanation": "Earthquake-resistant design reduces structural vulnerability.",
+    "explanation": "Buildings designed for earthquakes are better able to handle shaking.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "earthquake-4",
-    "types": [
-      "earthquake"
-    ],
-    "difficulty": 2,
-    "prompt": "What secondary hazard can an offshore earthquake trigger?",
-    "options": [
-      "An instant forest",
-      "A tsunami",
-      "A solar eclipse",
-      "A permanent drought everywhere"
-    ],
+    "types": ["earthquake"],
+    "difficulty": 1,
+    "prompt": "What big wave can an undersea earthquake cause?",
+    "options": ["A rainbow", "A tsunami", "A heatwave", "A dust cloud"],
     "correct": 1,
-    "explanation": "Seafloor displacement can move the overlying ocean water.",
+    "explanation": "An undersea earthquake can move seawater and start a tsunami.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "tsunami-1",
-    "types": [
-      "tsunami"
-    ],
+    "types": ["tsunami"],
     "difficulty": 1,
-    "prompt": "What usually generates a tsunami?",
+    "prompt": "What can start a tsunami?",
     "options": [
-      "Sudden ocean displacement",
-      "An ordinary afternoon breeze",
-      "Daily beach traffic",
-      "A small change in air pollution"
+      "An undersea earthquake moving water",
+      "An ordinary breeze",
+      "People walking on a beach",
+      "Turning on a streetlight"
     ],
     "correct": 0,
-    "explanation": "Large undersea earthquakes are a common source of ocean displacement.",
+    "explanation": "A sudden movement of a large amount of seawater can start a tsunami.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
     "sourceLabel": "NOAA"
   },
   {
     "id": "tsunami-2",
-    "types": [
-      "tsunami"
-    ],
+    "types": ["tsunami"],
     "difficulty": 1,
-    "prompt": "After a natural tsunami warning, where should people go?",
+    "prompt": "Where should people go after a tsunami warning?",
     "options": [
-      "To the shoreline to watch",
-      "Onto a low beach",
-      "To collect exposed fish",
-      "High ground or inland"
+      "To the beach to watch",
+      "To collect fish at the shore",
+      "Into the water",
+      "High ground or farther inland"
     ],
     "correct": 3,
-    "explanation": "Follow evacuation routes away from coastal inundation.",
+    "explanation": "Move to high ground or inland, away from the waves.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
     "sourceLabel": "NOAA"
   },
   {
     "id": "tsunami-3",
-    "types": [
-      "tsunami"
-    ],
-    "difficulty": 2,
-    "prompt": "Is the first tsunami wave always the largest?",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "After one tsunami wave, could more waves arrive?",
     "options": [
-      "Only at night",
-      "Only near cities",
-      "No",
-      "Yes, always"
+      "No, there is only ever one",
+      "Only if people swim",
+      "Yes, more waves can follow",
+      "No, the danger is always over"
     ],
     "correct": 2,
-    "explanation": "Danger can continue through multiple waves.",
+    "explanation": "A tsunami can bring several waves. Later ones can be larger.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
     "sourceLabel": "NOAA"
   },
   {
     "id": "tsunami-4",
-    "types": [
-      "tsunami"
-    ],
-    "difficulty": 2,
-    "prompt": "What distinguishes a tsunami from wind waves?",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "Can a tsunami travel across an ocean?",
     "options": [
-      "It is always visible in deep water",
-      "It moves the entire water column",
-      "It cannot cross an ocean",
-      "It only happens during hurricanes"
+      "No, it stays at one beach",
+      "Yes, it can travel a long way",
+      "Only if boats pull it",
+      "No, it only travels on roads"
     ],
     "correct": 1,
-    "explanation": "Tsunamis have very long wavelengths and can cross ocean basins.",
+    "explanation": "Tsunamis can cross oceans and reach distant coasts.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
     "sourceLabel": "NOAA"
   },
   {
     "id": "volcano-1",
-    "types": [
-      "volcano"
-    ],
+    "types": ["volcano"],
     "difficulty": 1,
-    "prompt": "What carries volcanic ash far from an eruption?",
-    "options": [
-      "Wind",
-      "Trade prices",
-      "Only river fish",
-      "Solar cables"
-    ],
+    "prompt": "What can carry volcanic ash to another town?",
+    "options": ["Wind", "Shop prices", "Electric cables", "Fish"],
     "correct": 0,
-    "explanation": "Ash clouds can move downwind into distant communities.",
+    "explanation": "Wind can carry ash far from a volcano.",
     "source": "https://volcanoes.usgs.gov/volcanic_ash/",
     "sourceLabel": "USGS"
   },
   {
     "id": "volcano-2",
-    "types": [
-      "volcano"
-    ],
+    "types": ["volcano"],
     "difficulty": 1,
-    "prompt": "Why can ash disrupt machines?",
+    "prompt": "Why should machines be protected from volcanic ash?",
     "options": [
-      "Ash is a clean lubricant",
-      "Ash repairs moving parts",
-      "Ash makes all engines stronger",
-      "Abrasive particles damage equipment"
+      "Ash repairs engines",
+      "Ash is a safe engine oil",
+      "Ash makes every machine stronger",
+      "Ash can damage their parts"
     ],
     "correct": 3,
-    "explanation": "Volcanic ash is abrasive and can harm machinery.",
+    "explanation": "Ash is gritty and can damage moving parts.",
     "source": "https://volcanoes.usgs.gov/volcanic_ash/",
     "sourceLabel": "USGS"
   },
   {
     "id": "volcano-3",
-    "types": [
-      "volcano"
-    ],
-    "difficulty": 2,
-    "prompt": "Which resource may need protection from ash?",
+    "types": ["volcano"],
+    "difficulty": 1,
+    "prompt": "What should be kept clean during an ash fall?",
     "options": [
-      "Only offshore shipping taxes",
-      "Only market currency",
-      "Drinking-water supplies",
-      "Only gold reserves"
+      "Only price signs",
+      "Only coins",
+      "Drinking water",
+      "Only shipping fees"
     ],
     "correct": 2,
-    "explanation": "Ash fallout can affect water collection and treatment.",
+    "explanation": "Ash can dirty water supplies, so drinking water needs protection.",
     "source": "https://volcanoes.usgs.gov/volcanic_ash/",
     "sourceLabel": "USGS"
   },
   {
     "id": "volcano-4",
-    "types": [
-      "volcano"
-    ],
-    "difficulty": 2,
-    "prompt": "Why monitor an active volcano?",
+    "types": ["volcano"],
+    "difficulty": 1,
+    "prompt": "Why keep an eye on an active volcano?",
     "options": [
-      "To turn ash into rain instantly",
-      "To inform warnings and preparedness",
-      "To guarantee eruptions stop",
-      "To eliminate tectonic forces"
+      "To stop every eruption forever",
+      "To warn people about danger",
+      "To turn ash into rain",
+      "To make the mountain disappear"
     ],
     "correct": 1,
-    "explanation": "Monitoring helps assess changing activity, but does not eliminate hazards.",
+    "explanation": "Monitoring helps people receive warnings and prepare.",
     "source": "https://volcanoes.usgs.gov/volcanic_ash/",
     "sourceLabel": "USGS"
   },
   {
     "id": "drought-1",
-    "types": [
-      "drought"
-    ],
+    "types": ["drought"],
     "difficulty": 1,
-    "prompt": "What defines drought?",
+    "prompt": "What is a drought?",
     "options": [
-      "A shortage of water relative to needs",
-      "Any sunny afternoon",
-      "A single cold morning",
-      "Only a lack of ocean waves"
+      "Not enough water for a long time",
+      "One sunny afternoon",
+      "One cold morning",
+      "A windy beach"
     ],
     "correct": 0,
-    "explanation": "Drought depends on water availability, duration and local demands.",
+    "explanation": "Drought happens when water is too scarce for people and nature.",
     "source": "https://www.drought.gov/what-is-drought",
     "sourceLabel": "NOAA"
   },
   {
     "id": "drought-2",
-    "types": [
-      "drought"
-    ],
+    "types": ["drought"],
     "difficulty": 1,
-    "prompt": "Why can drought affect food prices?",
+    "prompt": "Why can food cost more during a drought?",
     "options": [
-      "Crops do not need water",
-      "Scarcity always makes food free",
-      "Prices are physically fixed",
-      "Reduced harvests constrain supply"
+      "Crops never need water",
+      "Food becomes unlimited",
+      "Sunshine makes all food free",
+      "Less water can mean fewer crops"
     ],
     "correct": 3,
-    "explanation": "Agricultural disruption can spread through markets.",
+    "explanation": "Smaller harvests mean less food to sell, which can raise prices.",
     "source": "https://www.drought.gov/what-is-drought",
     "sourceLabel": "NOAA"
   },
   {
     "id": "drought-3",
-    "types": [
-      "drought"
-    ],
-    "difficulty": 2,
-    "prompt": "Which farming method targets water near roots?",
+    "types": ["drought"],
+    "difficulty": 1,
+    "prompt": "What saves water when watering crops?",
     "options": [
-      "Paving fields",
-      "Removing all soil cover",
-      "Drip irrigation",
-      "Uncontrolled field flooding"
+      "Paving the field",
+      "Leaving taps running",
+      "Dripping water near the roots",
+      "Flooding roads"
     ],
     "correct": 2,
-    "explanation": "Targeted irrigation can reduce unnecessary water use.",
+    "explanation": "Drip watering sends water close to plant roots with less waste.",
     "source": "https://www.drought.gov/what-is-drought",
     "sourceLabel": "NOAA"
   },
   {
     "id": "drought-4",
-    "types": [
-      "drought"
-    ],
-    "difficulty": 2,
-    "prompt": "Why manage a shared aquifer cooperatively?",
+    "types": ["drought"],
+    "difficulty": 1,
+    "prompt": "Why should neighbors share underground water carefully?",
     "options": [
-      "Pumping never changes water levels",
-      "One user’s pumping can reduce others’ supply",
-      "Aquifers refill instantly",
-      "Groundwater respects political borders"
+      "Water refills instantly",
+      "Using too much leaves less for others",
+      "Borders block underground water",
+      "Pumping creates endless water"
     ],
     "correct": 1,
-    "explanation": "Groundwater users may draw from connected stores.",
+    "explanation": "Neighbors can draw from the same underground supply.",
     "source": "https://www.drought.gov/what-is-drought",
     "sourceLabel": "NOAA"
   },
   {
     "id": "heatwave-1",
-    "types": [
-      "heatwave"
-    ],
+    "types": ["heatwave"],
     "difficulty": 1,
-    "prompt": "Which strategy can cool an urban heat island?",
+    "prompt": "What helps make a hot town cooler?",
     "options": [
-      "Trees and reflective roofs",
-      "More dark exposed pavement",
-      "Removing shade",
-      "Adding unshaded asphalt"
+      "More shade trees",
+      "More dark pavement",
+      "Removing all shade",
+      "Covering parks with asphalt"
     ],
     "correct": 0,
-    "explanation": "Shade, vegetation and reflective surfaces reduce urban heat.",
+    "explanation": "Trees give shade and help cool the air.",
     "source": "https://www.epa.gov/heatislands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "heatwave-2",
-    "types": [
-      "heatwave"
-    ],
+    "types": ["heatwave"],
     "difficulty": 1,
-    "prompt": "Why can heat strain electricity grids?",
+    "prompt": "Why do people often use more electricity during a heatwave?",
     "options": [
-      "Cooling uses no energy",
-      "Heat guarantees lower demand",
-      "Every building produces free power",
-      "Cooling demand increases"
+      "Heat makes free electricity",
+      "Cooling needs no power",
+      "Every wire becomes a battery",
+      "They use fans and air conditioners"
     ],
     "correct": 3,
-    "explanation": "Air conditioning demand can rise during hot weather.",
+    "explanation": "More cooling can put extra demand on the power grid.",
     "source": "https://www.epa.gov/heatislands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "heatwave-3",
-    "types": [
-      "heatwave"
-    ],
-    "difficulty": 2,
-    "prompt": "What is an urban heat island?",
+    "types": ["heatwave"],
+    "difficulty": 1,
+    "prompt": "Why can a city feel hotter than nearby countryside?",
     "options": [
-      "A city with no buildings",
-      "Only a tropical ocean current",
-      "An urban area hotter than nearby surroundings",
-      "A floating volcanic island"
+      "Cities have no buildings",
+      "Cities float on lava",
+      "Roads and buildings hold heat",
+      "Trees make all streets hotter"
     ],
     "correct": 2,
-    "explanation": "Built surfaces and reduced vegetation influence local temperatures.",
+    "explanation": "Built surfaces can hold heat, while plants help cool the surroundings.",
     "source": "https://www.epa.gov/heatislands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "heatwave-4",
-    "types": [
-      "heatwave"
-    ],
-    "difficulty": 2,
-    "prompt": "What helps protect people during extreme heat?",
+    "types": ["heatwave"],
+    "difficulty": 1,
+    "prompt": "What helps people during very hot weather?",
     "options": [
-      "Adding dark roofs everywhere",
-      "Accessible cooling and drinking water",
-      "Closing all shaded spaces",
-      "Removing public water access"
+      "Closing every shaded space",
+      "Cool places and drinking water",
+      "Removing water taps",
+      "Adding black roofs everywhere"
     ],
     "correct": 1,
-    "explanation": "Heat adaptation combines physical cooling with access to essential services.",
+    "explanation": "Access to cooling and drinking water helps people cope with extreme heat.",
     "source": "https://www.epa.gov/heatislands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "wildfire-1",
-    "types": [
-      "wildfire"
-    ],
+    "types": ["wildfire"],
     "difficulty": 1,
-    "prompt": "Can wildfire smoke affect distant communities?",
+    "prompt": "Can wildfire smoke reach another town?",
     "options": [
-      "Yes, winds transport it",
-      "No, smoke stops at borders",
-      "Only if they share a currency",
-      "Only below sea level"
+      "Yes, wind can carry it",
+      "No, borders stop smoke",
+      "Only if towns use the same money",
+      "Only if smoke travels uphill"
     ],
     "correct": 0,
-    "explanation": "Airborne smoke can spread well beyond the burned area.",
+    "explanation": "Wind can carry wildfire smoke far from the fire.",
     "source": "https://www.epa.gov/wildfire-smoke-course",
     "sourceLabel": "US EPA"
   },
   {
     "id": "wildfire-2",
-    "types": [
-      "wildfire"
-    ],
+    "types": ["wildfire"],
     "difficulty": 1,
-    "prompt": "Which smoke component is a major health concern?",
+    "prompt": "Why can wildfire smoke be harmful to breathe?",
     "options": [
-      "Pure drinking water",
-      "Clean oxygen alone",
-      "Ordinary table salt alone",
-      "Fine particulate matter"
+      "It is clean drinking water",
+      "It is only fresh air",
+      "It is harmless steam",
+      "It contains tiny harmful particles"
     ],
     "correct": 3,
-    "explanation": "Small particles can enter the respiratory system.",
+    "explanation": "Tiny particles in smoke can get into the lungs.",
     "source": "https://www.epa.gov/wildfire-smoke-course",
     "sourceLabel": "US EPA"
   },
   {
     "id": "wildfire-3",
-    "types": [
-      "wildfire"
-    ],
-    "difficulty": 2,
-    "prompt": "Why use air-quality information during fires?",
+    "types": ["wildfire"],
+    "difficulty": 1,
+    "prompt": "Why check air-quality reports during a wildfire?",
     "options": [
-      "To stop wind permanently",
-      "To measure only food prices",
-      "To guide exposure-reduction decisions",
-      "To predict every ignition exactly"
+      "To find food prices",
+      "To stop the wind",
+      "To know when the air is unhealthy",
+      "To count trees exactly"
     ],
     "correct": 2,
-    "explanation": "Air-quality guidance supports decisions about indoor air and outdoor activity.",
+    "explanation": "Air-quality reports help people reduce the smoke they breathe.",
     "source": "https://www.epa.gov/wildfire-smoke-course",
     "sourceLabel": "US EPA"
   },
   {
     "id": "wildfire-4",
-    "types": [
-      "wildfire"
-    ],
-    "difficulty": 2,
-    "prompt": "Which action can improve indoor air during smoke?",
+    "types": ["wildfire"],
+    "difficulty": 1,
+    "prompt": "What can help clean smoky air indoors?",
     "options": [
-      "Removing all air filters",
-      "Appropriate filtration",
-      "Opening every window during heavy smoke",
-      "Burning extra fuel indoors"
+      "Burning more fuel indoors",
+      "An air filter",
+      "Removing every filter",
+      "Opening windows into heavy smoke"
     ],
     "correct": 1,
-    "explanation": "Filtration can reduce indoor particle concentrations.",
+    "explanation": "Suitable air filters can remove smoke particles from indoor air.",
     "source": "https://www.epa.gov/wildfire-smoke-course",
     "sourceLabel": "US EPA"
   },
   {
     "id": "spill-1",
-    "types": [
-      "spill"
-    ],
+    "types": ["spill"],
     "difficulty": 1,
-    "prompt": "How can spilled oil affect another coast?",
+    "prompt": "How can spilled oil reach another coast?",
     "options": [
-      "Ocean currents transport it",
+      "Water currents carry it",
       "Oil never moves",
-      "It follows national borders",
-      "It only travels uphill"
+      "Oil follows borders",
+      "Oil only goes uphill"
     ],
     "correct": 0,
-    "explanation": "Winds and currents influence the spread of oil on water.",
+    "explanation": "Currents can carry spilled oil to other places.",
     "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills",
     "sourceLabel": "NOAA"
   },
   {
     "id": "spill-2",
-    "types": [
-      "spill"
-    ],
+    "types": ["spill"],
     "difficulty": 1,
-    "prompt": "Which livelihoods can a spill disrupt?",
+    "prompt": "Which job can an oil spill hurt?",
     "options": [
-      "Only inland software jobs",
       "Only mountain mining",
-      "None outside the producer",
-      "Fishing and coastal tourism"
+      "Only making computer keyboards",
+      "No jobs at all",
+      "Fishing"
     ],
     "correct": 3,
-    "explanation": "Coastal ecosystems and the economies relying on them can be harmed.",
+    "explanation": "Oil spills can harm fish and disrupt coastal jobs.",
     "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills",
     "sourceLabel": "NOAA"
   },
   {
     "id": "spill-3",
-    "types": [
-      "spill"
-    ],
-    "difficulty": 2,
-    "prompt": "Does a producer’s profit include every spill cost?",
+    "types": ["spill"],
+    "difficulty": 1,
+    "prompt": "Can an oil spill hurt a neighboring town?",
     "options": [
-      "Only when prices are low",
-      "Spills cannot affect neighbors",
-      "No, costs can fall on other communities",
-      "Yes, neighbors are always reimbursed instantly"
+      "No, borders block oil",
+      "No, only the owner is affected",
+      "Yes, the damage can spread",
+      "No, oil cannot move"
     ],
     "correct": 2,
-    "explanation": "Environmental externalities shift costs beyond the original decision-maker.",
+    "explanation": "The town that profits from oil may pass some harm to its neighbors.",
     "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills",
     "sourceLabel": "NOAA"
   },
   {
     "id": "spill-4",
-    "types": [
-      "spill"
-    ],
-    "difficulty": 2,
-    "prompt": "Why is spill prevention valuable?",
+    "types": ["spill"],
+    "difficulty": 1,
+    "prompt": "Why is preventing an oil spill better than cleaning it up?",
     "options": [
-      "Cleanup creates unlimited fish",
-      "Cleanup cannot always reverse all harm",
       "Oil is harmless to wildlife",
-      "Currents stop during cleanup"
+      "Cleanup may not undo all the harm",
+      "Cleanup creates unlimited fish",
+      "Water stops moving during cleanup"
     ],
     "correct": 1,
-    "explanation": "Response reduces damage, but prevention avoids exposure in the first place.",
+    "explanation": "Some damage to wildlife and habitats remains even after cleanup.",
     "source": "https://response.restoration.noaa.gov/oil-and-chemical-spills/oil-spills",
     "sourceLabel": "NOAA"
   },
   {
     "id": "smog-1",
-    "types": [
-      "smog"
-    ],
+    "types": ["smog"],
     "difficulty": 1,
-    "prompt": "Which emissions contribute to acid rain?",
+    "prompt": "What can create pollution that leads to acid rain?",
     "options": [
-      "Sulfur dioxide and nitrogen oxides",
-      "Only water vapor",
-      "Only pure oxygen",
-      "Only sea salt"
+      "Burning fossil fuels",
+      "Planting trees",
+      "Collecting rainwater",
+      "Turning a wind turbine"
     ],
     "correct": 0,
-    "explanation": "These gases react in the atmosphere to form acidic compounds.",
+    "explanation": "Burning fossil fuels releases gases that can make rain more acidic.",
     "source": "https://www.epa.gov/acidrain/what-acid-rain",
     "sourceLabel": "US EPA"
   },
   {
     "id": "smog-2",
-    "types": [
-      "smog"
-    ],
+    "types": ["smog"],
     "difficulty": 1,
-    "prompt": "Can acid deposition cross borders?",
+    "prompt": "Can air pollution reach a neighboring town?",
     "options": [
-      "No, borders block molecules",
-      "Only if rivers reverse",
-      "Only during earthquakes",
-      "Yes, pollutants travel in air currents"
+      "No, borders block it",
+      "Only if rivers flow backward",
+      "Only during an earthquake",
+      "Yes, wind carries it"
     ],
     "correct": 3,
-    "explanation": "Winds transport pollutants far from their sources.",
+    "explanation": "Wind can carry pollution across town and national borders.",
     "source": "https://www.epa.gov/acidrain/what-acid-rain",
     "sourceLabel": "US EPA"
   },
   {
     "id": "smog-3",
-    "types": [
-      "smog"
-    ],
-    "difficulty": 2,
-    "prompt": "Does acid deposition happen only as rain?",
+    "types": ["smog"],
+    "difficulty": 1,
+    "prompt": "Can pollution reach the ground without rain?",
     "options": [
-      "It only occurs as hail",
-      "It only occurs underwater",
-      "No, dry deposition also occurs",
-      "Yes, only liquid drops count"
+      "No, it always needs rain",
+      "Only if oceans disappear",
+      "Yes, particles can settle on the ground",
+      "No, it stays in the sky forever"
     ],
     "correct": 2,
-    "explanation": "Acidic gases and particles can settle without precipitation.",
+    "explanation": "Pollution can settle as dry particles as well as fall with rain.",
     "source": "https://www.epa.gov/acidrain/what-acid-rain",
     "sourceLabel": "US EPA"
   },
   {
     "id": "smog-4",
-    "types": [
-      "smog"
-    ],
-    "difficulty": 2,
-    "prompt": "Which pH indicates stronger acidity?",
+    "types": ["smog"],
+    "difficulty": 1,
+    "prompt": "What can acid rain damage?",
     "options": [
-      "pH measures wind speed",
-      "A lower pH",
-      "A higher pH",
-      "Every pH is identical"
+      "Only clouds",
+      "Trees and lakes",
+      "Only empty space",
+      "Nothing at all"
     ],
     "correct": 1,
-    "explanation": "Lower pH values indicate more acidic conditions.",
+    "explanation": "Acid rain can harm forests and life in lakes.",
     "source": "https://www.epa.gov/acidrain/what-acid-rain",
     "sourceLabel": "US EPA"
   },
   {
     "id": "sea_rise-1",
-    "types": [
-      "sea_rise"
-    ],
+    "types": ["sea_rise"],
     "difficulty": 1,
-    "prompt": "What contributes to global sea-level rise?",
+    "prompt": "What helps raise sea levels as Earth warms?",
     "options": [
-      "Warming water expands and land ice melts",
-      "Only melting floating ice",
-      "Only daily tides",
-      "Only rainfall on deserts"
+      "Melting land ice adds water",
+      "Daily tides stop forever",
+      "Roads turn into rivers",
+      "Desert sand becomes water"
     ],
     "correct": 0,
-    "explanation": "Thermal expansion and land-ice loss are major contributors.",
+    "explanation": "Melting ice on land adds water to the ocean. Warm water also expands.",
     "source": "https://oceanservice.noaa.gov/facts/sealevel.html",
     "sourceLabel": "NOAA"
   },
   {
     "id": "sea_rise-2",
-    "types": [
-      "sea_rise"
-    ],
+    "types": ["sea_rise"],
     "difficulty": 1,
-    "prompt": "Can local sea-level change differ from the global average?",
+    "prompt": "Does sea level rise by exactly the same amount everywhere?",
     "options": [
-      "No, every shore is identical",
-      "Only on artificial islands",
-      "Only when trade stops",
-      "Yes, land motion and regional processes matter"
+      "Yes, every coast is identical",
+      "Only shops can change sea level",
+      "Only towns with roads have tides",
+      "No, changes can differ by coast"
     ],
     "correct": 3,
-    "explanation": "Relative sea level depends on both ocean change and land elevation changes.",
+    "explanation": "Sea-level changes vary because land and ocean conditions vary.",
     "source": "https://oceanservice.noaa.gov/facts/sealevel.html",
     "sourceLabel": "NOAA"
   },
   {
     "id": "sea_rise-3",
-    "types": [
-      "sea_rise"
-    ],
-    "difficulty": 2,
-    "prompt": "How can rising seas affect freshwater?",
+    "types": ["sea_rise"],
+    "difficulty": 1,
+    "prompt": "What can rising seas do to coastal drinking water?",
     "options": [
-      "Aquifers are always sealed",
-      "Salt disappears at the shore",
-      "Saltwater can intrude into coastal supplies",
-      "All seawater becomes fresh"
+      "Make all seawater fresh",
+      "Remove all salt from the sea",
+      "Make some supplies salty",
+      "Seal every well shut"
     ],
     "correct": 2,
-    "explanation": "Coastal freshwater systems can be vulnerable to saltwater intrusion.",
+    "explanation": "Seawater can move into freshwater supplies near the coast.",
     "source": "https://oceanservice.noaa.gov/facts/sealevel.html",
     "sourceLabel": "NOAA"
   },
   {
     "id": "sea_rise-4",
-    "types": [
-      "sea_rise"
-    ],
-    "difficulty": 2,
-    "prompt": "Why does higher sea level worsen coastal flood risk?",
+    "types": ["sea_rise"],
+    "difficulty": 1,
+    "prompt": "Why can higher seas make coastal flooding worse?",
     "options": [
-      "It prevents waves forming",
-      "Storms start from a higher water baseline",
-      "It eliminates storm surge",
-      "It makes all coasts taller"
+      "Higher seas remove all storms",
+      "The water starts at a higher level",
+      "Waves can no longer form",
+      "Every beach becomes taller"
     ],
     "correct": 1,
-    "explanation": "A higher baseline allows water to reach farther inland.",
+    "explanation": "With higher sea levels, storm water can reach farther onto land.",
     "source": "https://oceanservice.noaa.gov/facts/sealevel.html",
     "sourceLabel": "NOAA"
   },
   {
     "id": "landslide-1",
-    "types": [
-      "landslide"
-    ],
+    "types": ["landslide"],
     "difficulty": 1,
-    "prompt": "What is a landslide?",
+    "prompt": "What happens in a landslide?",
     "options": [
-      "Downslope movement of rock or soil",
-      "An ocean tide",
-      "A solar storm",
-      "A currency exchange"
+      "Rock or soil slides downhill",
+      "The sea becomes a cloud",
+      "Prices fall",
+      "The sun stops shining"
     ],
     "correct": 0,
-    "explanation": "Gravity moves slope material downward.",
+    "explanation": "A landslide is earth or rock moving down a slope.",
     "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html",
     "sourceLabel": "USGS"
   },
   {
     "id": "landslide-2",
-    "types": [
-      "landslide"
-    ],
+    "types": ["landslide"],
     "difficulty": 1,
-    "prompt": "Which condition can trigger slope failure?",
+    "prompt": "What can make a hillside less stable?",
     "options": [
-      "A stable dry sidewalk",
-      "Low trade tariffs",
-      "A distant eclipse alone",
-      "Heavy rainfall saturating soil"
+      "A dry, flat pavement",
+      "Lower shop prices",
+      "A distant eclipse",
+      "Heavy rain soaking the soil"
     ],
     "correct": 3,
-    "explanation": "Water can weaken slope materials and increase instability.",
+    "explanation": "Water-soaked soil can become unstable and slide.",
     "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html",
     "sourceLabel": "USGS"
   },
   {
     "id": "landslide-3",
-    "types": [
-      "landslide"
-    ],
-    "difficulty": 2,
-    "prompt": "Can earthquakes trigger landslides?",
+    "types": ["landslide"],
+    "difficulty": 1,
+    "prompt": "Can earthquake shaking cause a landslide?",
     "options": [
+      "No, slopes cannot move",
       "Only if trees are blue",
-      "Only on ocean floors",
-      "Yes, shaking can destabilize slopes",
-      "No, slopes cannot move"
+      "Yes, it can loosen a slope",
+      "Only inside a shop"
     ],
     "correct": 2,
-    "explanation": "Shaking is one of several possible slope-failure triggers.",
+    "explanation": "Shaking can make rocks or soil on a slope slide downhill.",
     "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html",
     "sourceLabel": "USGS"
   },
   {
     "id": "landslide-4",
-    "types": [
-      "landslide"
-    ],
-    "difficulty": 2,
-    "prompt": "Why consider slopes when planning roads?",
+    "types": ["landslide"],
+    "difficulty": 1,
+    "prompt": "Why avoid unstable slopes when building roads?",
     "options": [
-      "Transport cannot affect recovery",
-      "Slope failure can block or destroy transport",
-      "Roads eliminate gravity",
-      "All hills are hazard-free"
+      "Roads remove gravity",
+      "A landslide can block the road",
+      "All hills are perfectly safe",
+      "Roads stop all rain"
     ],
     "correct": 1,
-    "explanation": "Infrastructure placement affects exposure and access after disasters.",
+    "explanation": "A landslide can damage roads and cut off a town.",
     "source": "https://pubs.usgs.gov/fs/2004/3072/fs-2004-3072.html",
     "sourceLabel": "USGS"
   },
   {
     "id": "grid_failure-1",
-    "types": [
-      "grid_failure"
-    ],
+    "types": ["grid_failure"],
     "difficulty": 1,
-    "prompt": "Why diversify electricity generation?",
+    "prompt": "Why have more than one source of electricity?",
     "options": [
-      "To reduce dependence on a single failure point",
-      "To ensure every source fails together",
-      "To remove every backup",
-      "To make all energy fossil-based"
+      "One can help if another fails",
+      "So every source fails together",
+      "To remove all backups",
+      "To stop making electricity"
     ],
     "correct": 0,
-    "explanation": "Diverse sources and distributed systems can improve resilience.",
+    "explanation": "Several power sources reduce dependence on just one.",
     "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics",
     "sourceLabel": "US Department of Energy"
   },
   {
     "id": "grid_failure-2",
-    "types": [
-      "grid_failure"
-    ],
+    "types": ["grid_failure"],
     "difficulty": 1,
-    "prompt": "What do grid batteries provide?",
+    "prompt": "What does a battery do?",
     "options": [
-      "Unlimited energy from nothing",
-      "A replacement for all wires",
-      "Fuel reserves forever",
-      "Stored energy for later use"
+      "Makes endless energy from nothing",
+      "Replaces every power wire",
+      "Stores rain clouds",
+      "Stores energy for later"
     ],
     "correct": 3,
-    "explanation": "Storage shifts available electricity across time.",
+    "explanation": "Batteries store energy that can be used when it is needed.",
     "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics",
     "sourceLabel": "US Department of Energy"
   },
   {
     "id": "grid_failure-3",
-    "types": [
-      "grid_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "Why can power loss affect drinking water?",
+    "types": ["grid_failure"],
+    "difficulty": 1,
+    "prompt": "Why can a power cut affect tap water?",
     "options": [
-      "All rivers need batteries",
-      "Gravity stops during outages",
-      "Pumps and treatment may need electricity",
-      "Water is made from electrons"
+      "Rivers stop without batteries",
+      "Water is made from wires",
+      "Water pumps may need electricity",
+      "Gravity turns off"
     ],
     "correct": 2,
-    "explanation": "Essential services depend on interconnected infrastructure.",
+    "explanation": "Pumps and water-treatment equipment may need power to work.",
     "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics",
     "sourceLabel": "US Department of Energy"
   },
   {
     "id": "grid_failure-4",
-    "types": [
-      "grid_failure"
-    ],
-    "difficulty": 2,
-    "prompt": "What is a resilient grid designed to do?",
+    "types": ["grid_failure"],
+    "difficulty": 1,
+    "prompt": "What should a strong power system be able to do?",
     "options": [
-      "Exclude every backup system",
-      "Withstand disruption and recover service",
-      "Guarantee no hazard ever occurs",
-      "Operate only during perfect weather"
+      "Work only in perfect weather",
+      "Recover after a problem",
+      "Have no backup at all",
+      "Ignore broken equipment"
     ],
     "correct": 1,
-    "explanation": "Resilience includes preparation, response and recovery.",
+    "explanation": "A resilient system is built to handle problems and restore service.",
     "source": "https://www.energy.gov/cmei/systems/solar-integration-distributed-energy-resources-and-microgrids-basics",
     "sourceLabel": "US Department of Energy"
   },
   {
     "id": "pandemic-1",
-    "types": [
-      "pandemic"
-    ],
+    "types": ["pandemic"],
     "difficulty": 1,
-    "prompt": "Why coordinate public-health responses?",
+    "prompt": "Why should towns work together during a disease outbreak?",
     "options": [
-      "Risks can cross communities and borders",
-      "Borders physically stop all infections",
-      "Only one city can be affected",
-      "Trade prices cure disease"
+      "Disease can spread between towns",
+      "Borders stop all germs",
+      "Only one town can ever get sick",
+      "Prices cure disease"
     ],
     "correct": 0,
-    "explanation": "Shared risks require coordinated surveillance and response.",
+    "explanation": "Coordinating the response helps communities handle shared risks.",
     "source": "https://www.who.int/health-topics/emergencies",
     "sourceLabel": "WHO"
   },
   {
     "id": "pandemic-2",
-    "types": [
-      "pandemic"
-    ],
+    "types": ["pandemic"],
     "difficulty": 1,
-    "prompt": "Why invest in preparedness before an emergency?",
+    "prompt": "When is a good time to prepare for an emergency?",
     "options": [
-      "Preparedness makes emergencies impossible",
-      "It removes all health needs",
-      "It only changes ocean currents",
-      "Response capacity takes time to develop"
+      "Only after every service fails",
+      "Never",
+      "Only when the danger is over",
+      "Before it happens"
     ],
     "correct": 3,
-    "explanation": "Planning, trained teams and reliable systems support faster responses.",
+    "explanation": "Training, supplies and plans take time to put in place.",
     "source": "https://www.who.int/health-topics/emergencies",
     "sourceLabel": "WHO"
   },
   {
     "id": "pandemic-3",
-    "types": [
-      "pandemic"
-    ],
-    "difficulty": 2,
-    "prompt": "How can a health emergency affect the economy?",
+    "types": ["pandemic"],
+    "difficulty": 1,
+    "prompt": "How can a disease outbreak affect a town?",
     "options": [
-      "It cannot affect supply chains",
-      "It makes every resource unlimited",
-      "It can interrupt work and essential services",
-      "It only changes tectonic plates"
+      "All supplies become unlimited",
+      "It moves the earth underground",
+      "People may be unable to work",
+      "It only changes the tides"
     ],
     "correct": 2,
-    "explanation": "Health and economic systems are connected.",
+    "explanation": "Illness can interrupt work and important services.",
     "source": "https://www.who.int/health-topics/emergencies",
     "sourceLabel": "WHO"
   },
   {
     "id": "pandemic-4",
-    "types": [
-      "pandemic"
-    ],
-    "difficulty": 2,
-    "prompt": "What supports effective emergency response?",
+    "types": ["pandemic"],
+    "difficulty": 1,
+    "prompt": "What helps a town respond to an emergency?",
     "options": [
-      "Breaking every aid agreement",
-      "Clear information and coordinated services",
-      "Hidden warnings",
-      "Removing medical capacity"
+      "Hiding warnings",
+      "Clear information and people working together",
+      "Closing all medical services",
+      "Breaking all aid agreements"
     ],
     "correct": 1,
-    "explanation": "Information and coordination help communities respond.",
+    "explanation": "Clear information and coordinated help make response easier.",
     "source": "https://www.who.int/health-topics/emergencies",
     "sourceLabel": "WHO"
   },
   {
     "id": "supply_shock-1",
-    "types": [
-      "supply_shock"
-    ],
+    "types": ["supply_shock"],
     "difficulty": 1,
-    "prompt": "Why diversify suppliers?",
+    "prompt": "Why buy important supplies from more than one supplier?",
     "options": [
-      "To reduce exposure to one disrupted source",
-      "To guarantee identical failures",
-      "To stop all international trade",
-      "To eliminate resource demand"
+      "Another can help if one cannot deliver",
+      "So all deliveries stop together",
+      "To stop all trade",
+      "To remove the need for supplies"
     ],
     "correct": 0,
-    "explanation": "Supplier diversity can spread disruption risk.",
+    "explanation": "Several suppliers reduce the risk of depending on just one.",
     "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf",
     "sourceLabel": "WTO"
   },
   {
     "id": "supply_shock-2",
-    "types": [
-      "supply_shock"
-    ],
+    "types": ["supply_shock"],
     "difficulty": 1,
-    "prompt": "What can happen when critical supply falls?",
+    "prompt": "If there is much less food to buy, what can happen to prices?",
     "options": [
-      "Prices must always become zero",
-      "Demand ceases to exist",
-      "All resources become unlimited",
-      "Prices rise as buyers compete"
+      "They must become zero",
+      "Food becomes unlimited",
+      "Nobody needs food anymore",
+      "They may rise"
     ],
     "correct": 3,
-    "explanation": "Scarcity can put upward pressure on market prices.",
+    "explanation": "When supplies shrink, buyers may compete and prices can rise.",
     "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf",
     "sourceLabel": "WTO"
   },
   {
     "id": "supply_shock-3",
-    "types": [
-      "supply_shock"
-    ],
-    "difficulty": 2,
-    "prompt": "Why keep emergency inventories?",
+    "types": ["supply_shock"],
+    "difficulty": 1,
+    "prompt": "Why keep some emergency supplies?",
     "options": [
-      "To guarantee stock never spoils",
-      "To make all shipping unnecessary",
-      "To bridge temporary supply interruptions",
-      "To replace all production forever"
+      "To stop producing forever",
+      "To make food never spoil",
+      "To use them if deliveries stop",
+      "To replace every road"
     ],
     "correct": 2,
-    "explanation": "Reserves provide a buffer while normal supply recovers.",
+    "explanation": "Stored supplies can help a town through a temporary shortage.",
     "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf",
     "sourceLabel": "WTO"
   },
   {
     "id": "supply_shock-4",
-    "types": [
-      "supply_shock"
-    ],
-    "difficulty": 2,
-    "prompt": "How can an export embargo affect partners?",
+    "types": ["supply_shock"],
+    "difficulty": 1,
+    "prompt": "What happens if a trading partner stops sending goods?",
     "options": [
-      "It stops every natural hazard",
-      "It reduces available supply",
-      "It creates more exports automatically",
-      "It eliminates every shortage"
+      "More goods appear by magic",
+      "Fewer goods arrive",
+      "Every storm ends",
+      "Shortages become impossible"
     ],
     "correct": 1,
-    "explanation": "Restricting exports can transmit disruption through trade networks.",
+    "explanation": "Stopping exports can leave trading partners with fewer supplies.",
     "source": "https://www.wto.org/english/res_e/booksp_e/wtr21_e/00_wtr21_e.pdf",
     "sourceLabel": "WTO"
   },
   {
     "id": "flood-5",
-    "types": [
-      "flood",
-      "dam_failure"
-    ],
-    "difficulty": 3,
-    "prompt": "What does a local levee fail to guarantee?",
+    "types": ["flood", "dam_failure"],
+    "difficulty": 1,
+    "prompt": "Can a flood wall protect every town along a river?",
     "options": [
-      "That flood risk disappears downstream",
-      "That water remains conserved",
-      "That the river has a direction",
-      "That neighbors share the basin"
+      "No, other towns may still flood",
+      "Yes, all flood risk ends forever",
+      "Yes, it makes the river disappear",
+      "Yes, it stops rain everywhere"
     ],
     "correct": 0,
-    "explanation": "Protecting one location can transfer water and risk elsewhere.",
+    "explanation": "A local wall does not remove flood risk for everyone downstream.",
     "source": "https://www.epa.gov/wetlands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "earthquake-6",
-    "types": [
-      "earthquake"
-    ],
-    "difficulty": 3,
-    "prompt": "Can scientists predict an exact future earthquake reliably?",
+    "types": ["earthquake"],
+    "difficulty": 1,
+    "prompt": "Can we know the exact time of the next earthquake?",
     "options": [
-      "Yes, to the second everywhere",
-      "Only from food prices",
-      "Only from daily temperature",
-      "No, precise predictions are not currently possible"
+      "Yes, from food prices",
+      "Yes, by counting leaves",
+      "Yes, from the day of the week",
+      "No, we still need to prepare"
     ],
     "correct": 3,
-    "explanation": "Hazard estimates and early warning differ from exact prediction.",
+    "explanation": "Scientists study earthquake risk, but cannot reliably predict the exact time.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
     "sourceLabel": "USGS"
   },
   {
     "id": "tsunami-7",
-    "types": [
-      "tsunami"
-    ],
-    "difficulty": 3,
-    "prompt": "When is it safe to return after a tsunami warning?",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "When should people return after a tsunami warning?",
     "options": [
-      "As soon as the sea looks calm",
-      "When a tourist returns",
-      "When local authorities say it is safe",
-      "Immediately after the first wave"
+      "As soon as the beach looks calm",
+      "Right after the first wave",
+      "When local officials say it is safe",
+      "Whenever a tourist returns"
     ],
     "correct": 2,
-    "explanation": "Multiple dangerous waves may arrive over an extended period.",
+    "explanation": "Follow local officials. A calm-looking shore can still be dangerous.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/tsunamis",
     "sourceLabel": "NOAA"
   },
   {
     "id": "heatwave-8",
-    "types": [
-      "heatwave"
-    ],
-    "difficulty": 3,
-    "prompt": "Which surface reflects more sunlight?",
+    "types": ["heatwave"],
+    "difficulty": 1,
+    "prompt": "Which roof reflects more sunlight?",
     "options": [
-      "Bare dark concrete",
-      "A light reflective roof",
+      "A black roof",
+      "A light-colored roof",
       "Dark asphalt",
-      "Black roofing"
+      "A dark tar roof"
     ],
     "correct": 1,
-    "explanation": "Reflective materials absorb less solar energy.",
+    "explanation": "Light-colored roofs reflect more sunlight and take in less heat.",
     "source": "https://www.epa.gov/heatislands",
     "sourceLabel": "US EPA"
   },
   {
     "id": "smog-9",
-    "types": [
-      "smog"
-    ],
-    "difficulty": 3,
-    "prompt": "Which activity is a major source of acid-rain precursors?",
+    "types": ["smog"],
+    "difficulty": 1,
+    "prompt": "Which energy choice avoids burning fossil fuel?",
     "options": [
-      "Burning fossil fuels",
-      "Planting wetland reeds",
-      "Wind turbines turning",
-      "Collecting rainwater"
+      "Wind power",
+      "A coal fire",
+      "An oil-burning engine",
+      "A diesel generator"
     ],
     "correct": 0,
-    "explanation": "Combustion releases sulfur dioxide and nitrogen oxides.",
+    "explanation": "Wind power makes electricity without burning fuel that causes acid-rain pollution.",
     "source": "https://www.epa.gov/acidrain/what-acid-rain",
     "sourceLabel": "US EPA"
   },
   {
     "id": "sea_rise-10",
-    "types": [
-      "sea_rise"
-    ],
-    "difficulty": 3,
-    "prompt": "Which ice loss adds water to the ocean?",
+    "types": ["sea_rise"],
+    "difficulty": 1,
+    "prompt": "Which melting ice adds water to the sea?",
     "options": [
       "Only ice already floating",
-      "Only frost on a ship",
-      "Only sea spray freezing",
-      "Melting ice previously stored on land"
+      "Frost on a boat",
+      "Frozen sea spray",
+      "Ice on land"
     ],
     "correct": 3,
-    "explanation": "Land ice adds water that was not already displacing ocean water.",
+    "explanation": "Ice stored on land adds new water to the ocean when it melts.",
     "source": "https://oceanservice.noaa.gov/facts/sealevel.html",
     "sourceLabel": "NOAA"
+  },
+  {
+    "id": "tsunami-8",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "The sea suddenly pulls far back. What should you do?",
+    "options": [
+      "Go to high ground or inland",
+      "Walk onto the exposed beach",
+      "Wait in the water",
+      "Collect fish at the shore"
+    ],
+    "correct": 0,
+    "explanation": "A sudden sea-level change can be a natural tsunami warning. Move away from the shore.",
+    "source": "https://www.weather.gov/safety/tsunami-during",
+    "sourceLabel": "NOAA / National Weather Service"
+  },
+  {
+    "id": "tsunami-9",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "What helps people leave a tsunami danger zone?",
+    "options": [
+      "Hidden warning signs",
+      "Clearly marked evacuation routes",
+      "Closed escape routes",
+      "Waiting at the port"
+    ],
+    "correct": 1,
+    "explanation": "Marked evacuation routes guide people toward safer ground.",
+    "source": "https://www.weather.gov/safety/tsunami-during",
+    "sourceLabel": "NOAA / National Weather Service"
+  },
+  {
+    "id": "tsunami-10",
+    "types": ["tsunami"],
+    "difficulty": 1,
+    "prompt": "Can a seawall guarantee safety from a tsunami?",
+    "options": [
+      "Yes, every wave stops",
+      "Yes, warnings are unnecessary",
+      "No, follow evacuation warnings",
+      "Yes, stay beside the wall"
+    ],
+    "correct": 2,
+    "explanation": "A seawall cannot guarantee safety. Follow warnings and leave the danger zone.",
+    "source": "https://www.weather.gov/safety/tsunami-during",
+    "sourceLabel": "NOAA / National Weather Service"
   }
 ]

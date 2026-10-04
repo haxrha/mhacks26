@@ -18,6 +18,7 @@ export default function Narrator({
   lines,
   children,
   actions,
+  skipAction,
   onDone,
   className = "",
 }: {
@@ -26,6 +27,7 @@ export default function Narrator({
   lines: string[];
   children?: ReactNode;
   actions?: ReactNode;
+  skipAction?: ReactNode;
   onDone?: () => void;
   className?: string;
 }) {
@@ -91,7 +93,7 @@ export default function Narrator({
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          if ((e.target as HTMLElement).closest("a")) return;
+          if ((e.target as HTMLElement).closest("button, a")) return;
           e.preventDefault();
           advance();
         }
@@ -109,6 +111,7 @@ export default function Narrator({
         </p>
         {!typing && last && children}
         <div className="narrator-actions">
+          {skipAction}
           {typing ? (
             <span className="narrator-hint">Click to skip</span>
           ) : !last ? (
