@@ -18,10 +18,15 @@ const FPS = OCEAN.fps;
 function LiveTerrain({
   state,
   svg,
+  scale: cssScale,
 }: {
   state: GameState;
   svg: RefObject<SVGSVGElement | null>;
+  /** CSS pixels per map pixel: always a whole number of device pixels. */
+  scale: number;
 }) {
+  const scaleRef = useRef(cssScale);
+  scaleRef.current = cssScale;
   const canvas = useRef<HTMLCanvasElement>(null);
   const latest = useRef(state);
   latest.current = state;
@@ -40,28 +45,37 @@ function LiveTerrain({
       const shell = el.parentElement!.getBoundingClientRect();
       const map = svg.current!.getBoundingClientRect();
       const viewport = svg.current!.parentElement!.getBoundingClientRect();
-      // The SVG viewBox and canvas share the same native 4px art grid.
-      const scale = Math.min(map.width / 310, map.height / 193.75);
+      // Integer scale only: one map pixel is exactly `scale` CSS px (a whole number of device px),
+      // and the canvas grid is shifted so it lines up with the SVG's map origin.
+      const scale = scaleRef.current;
       if (scale <= 0) return;
-      const width = Math.max(1, Math.ceil(shell.width / scale));
-      const height = Math.max(1, Math.ceil(shell.height / scale));
+      const relX = map.left - shell.left,
+        relY = map.top - shell.top;
+      const originX = Math.ceil(relX / scale),
+        originY = Math.ceil(relY / scale);
+      const offX = relX - originX * scale,
+        offY = relY - originY * scale;
+      const width = Math.max(1, Math.ceil((shell.width - offX) / scale));
+      const height = Math.max(1, Math.ceil((shell.height - offY) / scale));
       el.width = width;
       el.height = height;
+      Object.assign(el.style, {
+        left: `${offX}px`,
+        top: `${offY}px`,
+        width: `${width * scale}px`,
+        height: `${height * scale}px`,
+      });
       image = ctx.createImageData(width, height);
       view = {
         width,
         height,
-        originX: Math.round(
-          (map.left - shell.left + (map.width - 310 * scale) / 2) / scale,
-        ),
-        originY: Math.round(
-          (map.top - shell.top + (map.height - 193.75 * scale) / 2) / scale,
-        ),
+        originX,
+        originY,
         clip: {
-          left: (viewport.left - shell.left) / scale,
-          top: (viewport.top - shell.top) / scale,
-          right: (viewport.right - shell.left) / scale,
-          bottom: (viewport.bottom - shell.top) / scale,
+          left: (viewport.left - shell.left - offX) / scale,
+          top: (viewport.top - shell.top - offY) / scale,
+          right: (viewport.right - shell.left - offX) / scale,
+          bottom: (viewport.bottom - shell.top - offY) / scale,
         },
       };
     };
@@ -268,8 +282,58 @@ export default function WorldMap({
   selected?: CivId;
   onSelect: (civ: CivId) => void;
 }) {
-  const [zoom, setZoom] = useState(1);
+  const [zoomStep, setZoomStep] = useState(0);
   const svg = useRef<SVGSVGElement>(null);
+  const viewport = useRef<HTMLDivElement>(null);
+  // Fit the map at the largest whole-number scale (in device pixels) that fits the viewport.
+  const [fit, setFit] = useState({
+    device: 3,
+    dpr: 1,
+    left: 0,
+    top: 0,
+    w: 0,
+    h: 0,
+  });
+  useEffect(() => {
+    const el = viewport.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const device = Math.max(
+        2,
+        Math.floor(Math.min((r.width * dpr) / 310, (r.height * dpr) / 193.75)),
+      );
+      const next = {
+        device,
+        dpr,
+        left: r.left,
+        top: r.top,
+        w: r.width,
+        h: r.height,
+      };
+      setFit((f) =>
+        Object.keys(next).every(
+          (k) => f[k as keyof typeof f] === next[k as keyof typeof next],
+        )
+          ? f
+          : next,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const deviceScale = Math.max(1, fit.device + zoomStep);
+  const scale = deviceScale / fit.dpr;
+  // Centre the map, but snap its top-left corner to a whole device pixel so nothing is resampled.
+  const snap = (start: number, room: number, size: number) => {
+    const ideal = start + Math.max(0, (room - size) / 2);
+    return Math.round(ideal * fit.dpr) / fit.dpr - start;
+  };
+  const marginLeft = snap(fit.left, fit.w, 310 * scale);
+  const marginTop = snap(fit.top, fit.h, 193.75 * scale);
   const [arrows, setArrows] = useState(true);
   // Cheap choices push damage onto a neighbor: draw that as an arrow between towns.
   const spills =
@@ -286,13 +350,23 @@ export default function WorldMap({
         key={`${state.seed}:${state.round}`}
         state={state}
         svg={svg}
+        scale={scale}
       />
-      <div className="map-viewport">
+      <div className="map-viewport" ref={viewport} style={{ display: "flex" }}>
         <svg
           ref={svg}
           className="world-map"
           viewBox="0 0 1240 775"
-          style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}
+          style={{
+            width: `${310 * scale}px`,
+            height: `${193.75 * scale}px`,
+            minWidth: 0,
+            minHeight: 0,
+            flex: "none",
+            margin: 0,
+            marginLeft,
+            marginTop,
+          }}
           role="group"
           aria-label="The valley: select a town to inspect it"
         >
@@ -408,17 +482,17 @@ export default function WorldMap({
       <div className="map-controls">
         <button
           aria-label="Zoom out"
-          onClick={() => setZoom(Math.max(0.8, zoom - 0.2))}
+          onClick={() => setZoomStep(Math.max(1 - fit.device, zoomStep - 1))}
         >
           −
         </button>
         <button
           aria-label="Zoom in"
-          onClick={() => setZoom(Math.min(2, zoom + 0.2))}
+          onClick={() => setZoomStep(Math.min(4, zoomStep + 1))}
         >
           +
         </button>
-        <button onClick={() => setZoom(1)}>Reset</button>
+        <button onClick={() => setZoomStep(0)}>Reset</button>
         <button aria-pressed={arrows} onClick={() => setArrows(!arrows)}>
           Spill arrows
         </button>
