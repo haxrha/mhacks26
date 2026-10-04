@@ -218,6 +218,26 @@ export default function LeaderSelect({
     return () => window.clearTimeout(t);
   }, [cursor]);
 
+  // Play the intro sting once when the screen opens. Browsers block audio until the first
+  // click or key press, so if autoplay is refused it waits for that instead.
+  useEffect(() => {
+    const sting = new Audio("/assets/audio/agent-select.mp3");
+    const events = ["pointerdown", "keydown"] as const;
+    const retry = () => {
+      events.forEach((e) => window.removeEventListener(e, retry));
+      sting.play().catch(() => {});
+    };
+    let live = true;
+    sting.play().catch(() => {
+      if (live) events.forEach((e) => window.addEventListener(e, retry));
+    });
+    return () => {
+      live = false;
+      events.forEach((e) => window.removeEventListener(e, retry));
+      sting.pause();
+    };
+  }, []);
+
   /** Lock the highlighted leader for the current seat; the last lock starts the game. */
   function lockIn(i = cursor) {
     const id = LEADERS[i].civ;
