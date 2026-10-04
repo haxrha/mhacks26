@@ -311,7 +311,7 @@ prov = np.where(civ >= 0, civ, -1)
 # overlapping the one behind by ~40%, drawn back to front. A rock floor fills the gaps, foothills run
 # along the front and dither into the grass, and a light-blue ice channel stays clear down to the reservoir.
 mrng = np.random.default_rng(2027)
-SIZES = {"large": 32, "medium": 20, "small": 12}
+SIZES = {"large": 20, "medium": 14, "small": 10}   # a slim coastal range; green pasture below
 
 def peak_sprite(hgt, seed):
     """Return (mask, colour-name grid, spine column) for one peak ~1.6x as wide as tall."""
@@ -355,9 +355,9 @@ protect[DAM_Y - 6:DAM_Y + 4, dam_x - 9:dam_x + 10] = True
 highland_land = land & (civ == 0)
 land_top = np.array([np.argmax(land[:, x]) if land[:, x].any() else H for x in range(W)], float)
 land_top = np.convolve(np.pad(land_top, 7, mode="edge"), np.ones(15) / 15, mode="valid")
-row_back = land_top + 33                    # base line of the back (large) row
-BASE = {"large": row_back, "medium": row_back + 7, "small": row_back + 11}   # ~40% overlap per row
-front = np.minimum(row_back + 11, 56).astype(int)
+row_back = land_top + 19                    # base line of the back (large) row
+BASE = {"large": row_back, "medium": row_back + 5, "small": row_back + 8}    # rows overlap a little
+front = np.minimum(row_back + 8, 36).astype(int)
 
 # rock floor across the whole range so there are no empty patches between peaks
 floor = highland_land & (yy <= front[None, :] + 1) & ~protect
@@ -366,7 +366,7 @@ put(floor & (rnd < 0.11), "mt_shadow")              # pebbles
 put(floor & (np.roll(rnd, 1, axis=1) < 0.04), "mt_shadow")   # a few 2px pebbles
 
 # foothills: a 6-10px band below the front row, dithered 2px into the grass
-fh_len = (6 + 4 * vnoise(10)).astype(int)
+fh_len = (3 + 3 * vnoise(10)).astype(int)
 foot = np.zeros((H, W), bool)
 for x in range(W):
     for y in range(front[x] + 2, min(H, front[x] + 2 + fh_len[0, x])):
@@ -417,14 +417,14 @@ for row in ("large", "medium", "small"):
                 stamp(mask, grid, x, base_y - hgt + 1)
                 last_y, done = base_y, True
                 break
-        x += int(wid * mrng.uniform(0.55, 0.9)) if done else int(mrng.integers(3, 7))
+        x += int(wid * mrng.uniform(1.0, 1.7)) if done else int(mrng.integers(4, 9))   # spaced out
 
 # fill pass: cover the remaining open rock with peaks that sit on bare floor (no overlap, so order holds)
-for row in ("medium", "small", "small"):
+for row in ("small",):
     hgt = SIZES[row]
     cands = [(int(x), int(y)) for y in range(0, H, 3) for x in range(0, W, 3)]
     mrng.shuffle(cands)
-    for (x, y) in cands:
+    for (x, y) in cands[: len(cands) // 3]:   # only a light sprinkle of extra peaks
         if not floor[min(H - 1, y), min(W - 1, x)] or union[min(H - 1, y), min(W - 1, x)]: continue
         mask, grid = peak_sprite(hgt, int(mrng.integers(0, 1 << 30)))
         top = y - hgt + 1
