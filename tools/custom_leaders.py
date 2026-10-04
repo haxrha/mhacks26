@@ -226,50 +226,82 @@ def draw_shrek(talking=False):
 def draw_olaf(talking=False):
     img, put, line, row = canvas()
 
-    def ball(cx, cy, rx, ry):
-        """Snowball: bright on the upper left, cool shade on the lower right."""
+    def shade(x, y, cx, cy, rx, ry):
+        """Clean snow: bright on the upper left, cool shade on the lower right."""
+        d = (x - cx) / max(rx, 1) + (y - cy) / max(ry, 1)
+        return SNOW_L if d < -0.7 else SNOW_D if d > 0.75 else SNOW
+
+    def blob(spans, cx, cy, rx, ry):
+        for y, (x0, x1) in spans.items():
+            for x in range(x0, x1 + 1):
+                put(x, y, shade(x, y, cx, cy, rx, ry))
+
+    def egg(cx, cy, rx, ry, tilt=0.0):
+        """Ellipse leaning sideways by `tilt` pixels per row, for a dynamic pose."""
+        spans = {}
         for y in range(cy - ry, cy + ry + 1):
-            for x in range(cx - rx, cx + rx + 1):
-                if ((x - cx) / (rx + 0.5)) ** 2 + ((y - cy) / (ry + 0.5)) ** 2 <= 1:
-                    d = (x - cx) / rx + (y - cy) / ry
-                    put(x, y, SNOW_L if d < -0.6 else SNOW_D if d > 0.7 else SNOW)
+            t = (y - cy) / (ry + 0.5)
+            half = rx * (1 - t * t) ** 0.5
+            off = (y - cy) * tilt
+            spans[y] = (round(cx + off - half), round(cx + off + half))
+        blob(spans, cx, cy, rx, ry)
 
-    # Twig arms behind the body, waving up and out, with little forked fingers.
-    line(10, 21, 3, 14, TWIG)
-    line(3, 14, 1, 11, TWIG); line(3, 14, 2, 15, TWIG_D); line(5, 16, 4, 13, TWIG)
-    line(19, 21, 25, 14, TWIG)
-    line(25, 14, 27, 11, TWIG); line(25, 14, 27, 15, TWIG_D); line(23, 16, 24, 13, TWIG)
+    # Thin stick arms raised in an energetic pose, with twig fingers (behind the torso).
+    line(11, 25, 4, 17, TWIG)
+    line(4, 17, 3, 13, TWIG); line(4, 17, 1, 16, TWIG_D); line(4, 17, 2, 19, TWIG_D)
+    line(7, 21, 6, 18, TWIG_D)
+    line(17, 25, 24, 17, TWIG)
+    line(24, 17, 25, 13, TWIG); line(24, 17, 27, 16, TWIG_D); line(24, 17, 26, 19, TWIG_D)
+    line(21, 21, 22, 18, TWIG_D)
 
-    # Three snowballs: big bottom, small middle, wide head. Two little snowball feet.
-    ball(14, 34, 7, 6)
-    ball(9, 42, 2, 1); ball(19, 42, 2, 1)
-    ball(14, 23, 4, 4)
-    ball(14, 12, 6, 6)
+    # Two stubby pillar feet under the body.
+    for y in range(40, 45):
+        row(y, 8, 11, SNOW if y < 43 else SNOW_D)
+        row(y, 17, 20, SNOW if y < 43 else SNOW_D)
+    put(8, 44, CLEAR); put(11, 44, CLEAR); put(17, 44, CLEAR); put(20, 44, CLEAR)
 
-    # Hair twigs sprouting from the top of the head.
-    line(13, 6, 11, 1, TWIG); line(14, 6, 15, 0, TWIG); line(15, 6, 18, 2, TWIG_D)
-    put(10, 2, TWIG); put(16, 1, TWIG)
+    # Lower body: a larger, wider egg leaning to one side, with two coal buttons stacked.
+    egg(14, 34, 8, 6, tilt=0.18)
+    # Upper torso: a small, slightly flattened snowball with one coal button.
+    egg(14, 25, 4, 3)
 
-    # Coal buttons.
-    for x, y in ((14, 23), (13, 32), (15, 36)):
-        row(y, x, x + 1, COAL); row(y + 1, x, x + 1, COAL)
+    # Head: tall diamond-oval, big upper skull, narrower cheeks, then a jutting lower jaw.
+    head = {5: (12, 16), 6: (10, 18), 7: (9, 19), 8: (8, 20), 9: (7, 21), 10: (7, 21),
+            11: (7, 21), 12: (7, 21), 13: (8, 20), 14: (8, 20), 15: (8, 20), 16: (8, 21),
+            17: (8, 21), 18: (8, 21), 19: (9, 20), 20: (10, 19), 21: (12, 17)}
+    blob(head, 14, 13, 7, 8)
 
-    # Big round eyes, eyebrows, carrot nose pointing right.
-    row(7, 10, 12, TWIG_D); row(7, 15, 17, TWIG_D)
-    for ex in (10, 15):
-        row(8, ex, ex + 2, WHITE); row(9, ex, ex + 2, WHITE); row(10, ex, ex + 2, WHITE)
-        put(ex + 1, 9, COAL); put(ex + 1, 10, COAL)
-    row(11, 13, 17, CARROT); row(12, 13, 16, CARROT_D); put(18, 11, CARROT_D)
+    # Three thin branching twigs sprouting straight up from the top centre.
+    line(14, 4, 14, 0, TWIG); put(15, 1, TWIG); put(13, 2, TWIG_D)
+    line(12, 5, 11, 1, TWIG); put(10, 2, TWIG_D)
+    line(16, 5, 17, 1, TWIG); put(18, 2, TWIG_D)
 
-    # Huge happy open mouth with Olaf's single big front tooth.
-    row(13, 10, 18, MOUTH)
-    row(14, 11, 17, INSIDE); row(14, 13, 15, WHITE)
-    row(15, 12, 16, INSIDE); put(14, 15, WHITE)
-    if talking:
-        row(16, 12, 16, INSIDE); put(14, 16, TONGUE); put(13, 16, TONGUE)
-        row(17, 13, 15, MOUTH)
-    else:
-        row(16, 13, 15, MOUTH)
+    # Coal buttons: one on the upper torso, two vertically on the lower body.
+    for x, y in ((14, 25), (14, 31), (15, 35)):
+        row(y, x, x + 1, COAL); put(x, y + 1, COAL)
+
+    # Thin stick eyebrows over two large round black eyes set close together.
+    line(8, 8, 12, 7, TWIG_D)
+    line(16, 7, 20, 8, TWIG_D)
+    for ex in (8, 16):
+        for y in range(9, 13):
+            row(y, ex, ex + 3, COAL)
+        for cx, cy in ((ex, 9), (ex + 3, 9), (ex, 12), (ex + 3, 12)):
+            put(cx, cy, SNOW)                     # round off the corners
+        put(ex + 1, 10, WHITE)                    # glint
+
+    # Long, slightly curved carrot nose sticking out from between the eyes.
+    row(12, 13, 18, CARROT); put(19, 13, CARROT); put(20, 13, CARROT_D)
+    row(13, 14, 18, CARROT_D)
+
+    # Huge open mouth with one big rectangular tooth on the top gumline.
+    bottom = 20 if talking else 19
+    row(15, 10, 18, MOUTH)
+    for y in range(16, bottom):
+        row(y, 10 if y < 18 else 11, 18 if y < 18 else 17, INSIDE)
+    row(16, 13, 15, WHITE); row(17, 13, 15, WHITE)
+    row(bottom - 1, 13, 15, TONGUE)
+    row(bottom, 12, 16, MOUTH)
     return outline(img)
 
 
