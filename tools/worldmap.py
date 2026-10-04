@@ -284,7 +284,6 @@ for (pid, name, c, cap, (cx, cy)) in PROV:
         img[clearing] = P["pasture"]
         img[clearing & (rnd < 0.2)] = P["grass"]
         img[clearing & (rnd > 0.95)] = P["rock"]
-        img[clearing & (rim > 0) & (rnd > 0.8)] = P["rock_d"]
     else:
         img[clearing] = P["grass"]
         img[clearing & (rnd < 0.25)] = P["grass_l"]
@@ -353,14 +352,16 @@ protect |= dist_from(ice | lake | water, 2) <= 2
 dam_x = int(round(river_x(DAM_Y)))
 protect[DAM_Y - 6:DAM_Y + 4, dam_x - 9:dam_x + 10] = True
 highland_land = land & (civ == 0)
+# The rocky range only runs along the top-right coast (right of the lake); the west stays pasture.
+range_land = highland_land & (xx >= 172 + (n_b - 0.5) * 18)
 land_top = np.array([np.argmax(land[:, x]) if land[:, x].any() else H for x in range(W)], float)
 land_top = np.convolve(np.pad(land_top, 7, mode="edge"), np.ones(15) / 15, mode="valid")
 row_back = land_top + 19                    # base line of the back (large) row
 BASE = {"large": row_back, "medium": row_back + 5, "small": row_back + 8}    # rows overlap a little
-front = np.minimum(row_back + 8, 36).astype(int)
+front = (row_back + 8).astype(int)   # follows the coastline; range_land keeps it in Highland
 
 # rock floor across the whole range so there are no empty patches between peaks
-floor = highland_land & (yy <= front[None, :] + 1) & ~protect
+floor = range_land & (yy <= front[None, :] + 1) & ~protect
 put(floor, "mt_floor")
 put(floor & (rnd < 0.11), "mt_shadow")              # pebbles
 put(floor & (np.roll(rnd, 1, axis=1) < 0.04), "mt_shadow")   # a few 2px pebbles
@@ -371,7 +372,7 @@ foot = np.zeros((H, W), bool)
 for x in range(W):
     for y in range(front[x] + 2, min(H, front[x] + 2 + fh_len[0, x])):
         foot[y, x] = True
-foot &= highland_land & ~protect
+foot &= range_land & ~protect
 edge = foot & ~np.roll(foot, -2, axis=0)            # bottom 2 rows of the band
 foot_fill = foot & ~(edge & (((xx + yy) & 1) == 1))   # checker blend into grass
 put(foot_fill, "foothill")
@@ -386,7 +387,10 @@ def fits(mask, x, top, avoid_union=False):
     hgt, wid = mask.shape
     if top < 2 or top + hgt > H or x < 0 or x + wid > W: return False
     box = (slice(top, top + hgt), slice(x, x + wid))
-    if not (highland_land[box] | ~mask).all(): return False
+    if not (range_land[box] | ~mask).all(): return False
+    base_row = top + hgt - 1
+    base_cols = [x + i for i in range(wid) if mask[hgt - 1, i]]
+    if not all(floor[base_row, c] or floor[base_row - 1, c] for c in base_cols): return False
     if (protect[box] & mask).any(): return False
     if avoid_union and (union[box] & mask).any(): return False
     return True

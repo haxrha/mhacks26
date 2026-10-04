@@ -31,6 +31,7 @@ const KIND = Object.fromEntries(world.kinds.map((k, i) => [k, i])) as Record<
 const NONE = 255;
 
 const C = {
+  fissure: rgb("#3e2414"),
   deep: rgb(OCEAN.deep),
   sea: rgb("#21497a"),
   crest: rgb(OCEAN.crest),
@@ -419,6 +420,55 @@ const FLAME: Record<string, RGB> = {
 
 const FIRE_RADIUS = 38;
 /** 1 in the middle of a town's fire, fading to 0 at a round, slightly uneven rim. */
+/**
+ * Earthquake fissures for one town: five short jagged cracks running outward from near the keep,
+ * one with a small branch. 1 = crack, 2 = dusty edge beside it. Computed once per town.
+ */
+const CRACKS = new Map<number, Uint8Array>();
+function quakeCracks(a: number): Uint8Array {
+  const cached = CRACKS.get(a);
+  if (cached) return cached;
+  const mask = new Uint8Array(MAP_W * MAP_H);
+  const town = TOWNS[a];
+  if (!town) return mask;
+  let seed = (a + 1) * 2654435761;
+  const rand = () => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed / 4294967296;
+  };
+  const mark = (x: number, y: number, v: 1 | 2) => {
+    if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) return;
+    const i = y * MAP_W + x;
+    if (v === 1 || !mask[i]) mask[i] = v;
+  };
+  const crack = (x0: number, y0: number, angle: number, length: number) => {
+    let x = x0,
+      y = y0;
+    for (let s = 0; s < length; s++) {
+      if (s % 2 === 0) angle += (rand() - 0.5) * 0.9; // jagged
+      x += Math.cos(angle);
+      y += Math.sin(angle) * 0.8;
+      mark(Math.round(x), Math.round(y), 1);
+      mark(Math.round(x) + 1, Math.round(y), 2);
+    }
+    return [x, y, angle] as const;
+  };
+  const [cx, cy] = town.keepTile;
+  for (let k = 0; k < 5; k++) {
+    const angle = k * 1.26 + rand() * 0.6;
+    const r = 9 + rand() * 3;
+    const [mx, my, ma] = crack(
+      cx + Math.cos(angle) * r,
+      cy + Math.sin(angle) * r * 0.8,
+      angle,
+      8 + Math.floor(rand() * 8),
+    );
+    if (k === 0) crack(mx, my, ma + 0.8, 5);
+  }
+  CRACKS.set(a, mask);
+  return mask;
+}
+
 function fireSpread(x: number, y: number, h: number, status: AreaStatus[]) {
   let burn = 0;
   for (let a = 0; a < status.length; a++) {
@@ -545,7 +595,10 @@ function terrainPixel(
           c = mix(c, h < 55 ? C.dry : C.soil, 0.7);
         else if (k === KIND.water && x & 1) c = C.flood;
       } else if ((e === "earthquake" || e === "landslide") && land) {
-        if ((x + (y >> 1) * 3) % 23 === 0 && h < 150) c = C.ink;
+        // A few short jagged fissures around the struck town (no region-wide lines).
+        const crack = quakeCracks(owner)[i];
+        if (crack === 1) c = C.fissure;
+        else if (crack === 2) c = mix(c, C.soil, 0.55);
         else if (e === "landslide" && L.distWater[i] <= 2 && h < 100)
           c = C.soil;
       } else if (e === "grid_failure" && land) {
