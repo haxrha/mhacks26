@@ -5305,3 +5305,9 @@ svg image {
   font-size: 12px;
   font-weight: 600;
 }
+/* Decade panel: always fully on-screen, just below the 64px top bar and above every map layer. */
+.world-view .game-header {
+  top: 74px;
+  z-index: 9;
+  max-width: min(95%, 720px);
+}

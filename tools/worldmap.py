@@ -40,6 +40,9 @@ P = {k: hx(v) for k, v in dict(
     # farms (section 3 polish)
     hedge="#2f5a26", wheat_r="#b39432", crop_l="#7cbf4a", crop_r="#5a9a34", soil_r="#6e4a28",
     roof="#b5432f", roof_d="#8a2f22", wall="#efe2bc",
+    # section 4 polish: marsh, grass tufts, flowers
+    marsh2="#4d7a5f", reed="#8aa050", pool="#3a8bbd", tuft_d="#4d8732", tuft_l="#74b04a",
+    flower_w="#f6efdc", flower_y="#f5c542", flower_p="#e07a9a",
 ).items()}
 CIVS = ["highland", "verdant", "forge", "tidehaven"]
 
@@ -234,7 +237,13 @@ put(vd & (rnd < 0.3), "tree_d")
 clear_v = vd & (n_c > 0.64)
 put(clear_v, "grass"); put(clear_v & (rnd < 0.2), "grass_l")
 marsh_v = vd & (n_b > 0.74)
-put(marsh_v, "marsh"); put(marsh_v & (rnd < 0.05), "shallow")
+put(marsh_v, "marsh2"); put(marsh_v & (rnd < 0.18), "reed")
+pools_marsh_v = marsh_v & (rnd > 0.985)
+pools_marsh_v = pools_marsh_v | np.roll(pools_marsh_v, 1, axis=1)        # 2px pools
+put(pools_marsh_v & marsh_v, "pool")
+forest_body = vd & ~clear_v & ~marsh_v
+forest_rim = forest_body & (dist_from(~forest_body, 3) <= 2)
+put(forest_rim, "grass"); put(forest_rim & (rnd < 0.2), "grass_l")
 # Forge: plains
 put(fg, "grass"); put(fg & (rnd < 0.2), "grass_l"); put(fg & (n_a > 0.68), "grass_d")
 # Riparian treeline: Verdant's forest feathers east onto the Forge bank, fading with the same dither.
@@ -243,7 +252,10 @@ put(fringe, "forest_d"); put(fringe & (rnd < 0.15), "tree_d")
 # Tidehaven: grass + marsh, with a desert shore
 put(td, "grass_l"); put(td & (rnd < 0.2), "grass")
 marsh_t = td & (n_c > 0.66)
-put(marsh_t, "marsh"); put(marsh_t & (rnd < 0.05), "shallow")
+put(marsh_t, "marsh2"); put(marsh_t & (rnd < 0.18), "reed")
+pools_marsh_t = marsh_t & (rnd > 0.985)
+pools_marsh_t = pools_marsh_t | np.roll(pools_marsh_t, 1, axis=1)        # 2px pools
+put(pools_marsh_t & marsh_t, "pool")
 # Harborkeep's southern shore is desert: a sand band between the beach and the grass, dithered inland.
 desert_edge = 170 + (n_c - 0.5) * 14 + 4 * np.sin(xx / 12.0)
 sand_t = td & (across(yy, desert_edge, 5.0) > bayer)
@@ -270,6 +282,17 @@ near_wl[1:, :] |= wl[:-1, :]; near_wl[:-1, :] |= wl[1:, :]; near_wl[:, 1:] |= wl
 sandy = (img == P["sand"]).all(2) | (img == P["sand_d"]).all(2)
 bank = land & ~water & ~ice & near_wl & ~sandy & (d_sea > 1)
 put(bank, "bank")
+
+grassy = np.zeros((H, W), bool)
+for g in ("grass", "grass_l", "grass_d", "pasture", "meadow"):
+    grassy |= (img == P[g]).all(2)
+grassy &= land & ~water
+put(grassy & (n_b > 0.58) & (rnd < 0.28), "tuft_d")
+put(grassy & (n_a < 0.42) & (rnd > 0.72), "tuft_l")
+flowers = grassy & (rnd > 0.9965)
+put(flowers & ((xx + yy) % 3 == 0), "flower_w")
+put(flowers & ((xx + yy) % 3 == 1), "flower_y")
+put(flowers & ((xx + yy) % 3 == 2), "flower_p")
 
 occupied = water.copy() | ~land       # sprite placement blocker
 
@@ -630,7 +653,9 @@ KINDS = ["deep", "sea", "shallow", "water", "marsh", "forest", "grass", "pasture
 COLOR_KIND = {}
 for name, kname in [("forest", "forest"), ("forest_d", "forest"), ("tree", "forest"), ("tree_d", "forest"),
                     ("trunk", "forest"), ("grass", "grass"), ("grass_l", "grass"), ("grass_d", "grass"),
-                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("hedge", "grass"),
+                    ("meadow", "grass"), ("bank", "grass"), ("wet_sand", "beach"), ("hedge", "grass"), ("marsh2", "marsh"), ("reed", "marsh"), ("pool", "marsh"),
+                    ("tuft_d", "grass"), ("tuft_l", "grass"), ("flower_w", "grass"), ("flower_y", "grass"),
+                    ("flower_p", "grass"),
                     ("wheat_r", "field"), ("crop_l", "field"), ("crop_r", "field"), ("soil_r", "field"), ("crop", "field"), ("pasture", "pasture"), ("rock", "rock"),
                     ("rock_l", "rock"), ("rock_d", "rock"), ("snow", "snow"), ("snow_d", "snow"), ("sand", "beach"),
                     ("sand_d", "beach"), ("marsh", "marsh"), ("shallow", "marsh"), ("wheat", "field"),
