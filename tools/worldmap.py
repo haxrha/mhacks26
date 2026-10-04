@@ -141,14 +141,16 @@ def across(coord, edge, band=BAND):
 north = 66 + (n_a - 0.5) * 26 + (n_b - 0.5) * 10 + 4 * np.sin(xx / 13.0)
 south = 146 + (n_c - 0.5) * 28 + (n_a - 0.5) * 10 + 4 * np.sin(xx / 11.0 + 2)
 river_seam = rx + (n_b - 0.5) * 16 + 3 * np.sin(yy / 9.0)
-hl = land & (across(yy, north) <= bayer)
+hl = land & (across(yy, north, band=14.0) <= bayer)   # wide, soft seam into the lowlands
 td = land & (across(yy, south) > bayer)
 mid = land & ~hl & ~td
 vd = mid & (across(xx, river_seam) <= bayer)
 fg = mid & (across(xx, river_seam) > bayer)
 # Highland: rock & snow up top, pasture below
 put(hl, "pasture")
-put(hl & (rnd < 0.18), "grass")
+# Pasture fades toward the lowland grass over the last ~16 tiles, so there is no visible line.
+fade = np.clip((yy - (north - 18)) / 18.0, 0.0, 1.0)
+put(hl & (rnd < 0.18 + 0.7 * fade), "grass")
 # Verdant: forest, clearings, marsh
 put(vd, "forest_d")
 put(vd & (rnd < 0.3), "tree_d")
