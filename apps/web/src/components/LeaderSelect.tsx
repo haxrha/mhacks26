@@ -297,14 +297,33 @@ export default function LeaderSelect({
       </section>
 
       {children && more && (
-        <section
-          id="ls-options"
-          className="ls-options"
-          role="dialog"
-          aria-label="Game options"
-        >
-          {children}
-        </section>
+        <>
+          <div
+            className="ls-options-backdrop"
+            aria-hidden="true"
+            onClick={() => setMore(false)}
+          />
+          <section
+            id="ls-options"
+            className="ls-options"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ls-options-title"
+          >
+            <header className="ls-options-bar">
+              <h2 id="ls-options-title">GAME OPTIONS</h2>
+              <button
+                className="ls-options-close"
+                aria-label="Close options"
+                autoFocus
+                onClick={() => setMore(false)}
+              >
+                ✕
+              </button>
+            </header>
+            <div className="ls-options-body">{children}</div>
+          </section>
+        </>
       )}
     </main>
   );
