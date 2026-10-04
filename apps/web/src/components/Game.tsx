@@ -44,7 +44,7 @@ import {
   type Stock,
 } from "@/game/types";
 import { decadeLine, eventLines, introLines } from "@/game/leaders";
-import { townOf } from "@/game/towns";
+import { townOf, KINGDOM } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
 import Narrator from "./Narrator";
@@ -788,7 +788,13 @@ function BuildPanel({
             </option>
           ))}
         </select>
-        <span>→</span>
+        <img
+          className="trade-arrow"
+          src={`/assets/arrows/${KINGDOM[civ]}-swap.png`}
+          width={32}
+          height={32}
+          alt="for"
+        />
         <ResourceIcon resource={get} size={24} />
         <select
           aria-label="Get"

@@ -2,7 +2,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { CIVS, EVENTS } from "@/game/content";
 import { spillTarget } from "@/game/engine";
-import { OWNERS, TOWNS, townOf } from "@/game/towns";
+import { OWNERS, TOWNS, townOf, ARROW_COLORS } from "@/game/towns";
 import { CIV_IDS, type CivId, type GameState } from "@/game/types";
 import {
   OCEAN,
@@ -114,6 +114,49 @@ const keep = (civ: CivId) => {
   return [t.keepTile[0] * 4, t.keepTile[1] * 4] as const;
 };
 
+/**
+ * A smooth arrow between two towns: a cubic curve that bows to one side by a fixed share of its
+ * length, trimmed so it starts and ends outside the town icons, plus an arrowhead that follows
+ * the curve's final direction.
+ */
+function spillArc(x: number, y: number, tx: number, ty: number, lane: number) {
+  const len = Math.hypot(tx - x, ty - y) || 1;
+  const ux = (tx - x) / len,
+    uy = (ty - y) / len;
+  // Perpendicular to the left of travel: A->B and B->A bow to opposite sides.
+  const nx = uy,
+    ny = -ux;
+  const start = 48,
+    end = 66;
+  const sx = x + ux * start,
+    sy = y + uy * start;
+  const ex = tx - ux * end,
+    ey = ty - uy * end;
+  const bow = Math.min(150, len * 0.26) * (1 + lane * 0.35);
+  const c1x = sx + (ex - sx) * 0.25 + nx * bow,
+    c1y = sy + (ey - sy) * 0.25 + ny * bow;
+  const c2x = sx + (ex - sx) * 0.75 + nx * bow,
+    c2y = sy + (ey - sy) * 0.75 + ny * bow;
+  const d = `M${sx} ${sy} C${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}`;
+  // Arrowhead along the curve's end tangent (from the second control point to the end).
+  const tl = Math.hypot(ex - c2x, ey - c2y) || 1;
+  const hx = (ex - c2x) / tl,
+    hy = (ey - c2y) / tl;
+  const size = 26,
+    half = 13;
+  const tipX = ex + hx * size * 0.55,
+    tipY = ey + hy * size * 0.55;
+  const baseX = ex - hx * size * 0.45,
+    baseY = ey - hy * size * 0.45;
+  const b1 = [baseX - hy * half, baseY + hx * half],
+    b2 = [baseX + hy * half, baseY - hx * half];
+  const head = `M${tipX} ${tipY} L${b1[0]} ${b1[1]} L${b2[0]} ${b2[1]}Z`;
+  // The upper half of the head (screen-up) gets the light tone, like the sprites.
+  const up = b1[1] <= b2[1] ? b1 : b2;
+  const headLight = `M${tipX} ${tipY} L${up[0]} ${up[1]} L${baseX} ${baseY}Z`;
+  return { d, head, headLight };
+}
+
 export default function WorldMap({
   state,
   selected,
@@ -151,39 +194,6 @@ export default function WorldMap({
           role="group"
           aria-label="The valley: select a town to inspect it"
         >
-          <defs>
-            <marker
-              id="flow-tip"
-              markerWidth="8"
-              markerHeight="8"
-              refX="7"
-              refY="4"
-              orient="auto"
-            >
-              <path d="M0 0 L8 4 L0 8Z" fill="#fff1b0" />
-            </marker>
-          </defs>
-          {arrows &&
-            spills.map(({ from, to, e }, i) => {
-              const [x, y] = keep(from),
-                [tx, ty] = keep(to);
-              return (
-                <g key={from}>
-                  <path
-                    className="province-flow"
-                    d={`M${x} ${y} Q${(x + tx) / 2 + 40 + i * 20} ${(y + ty) / 2 - 60} ${tx} ${ty}`}
-                    fill="none"
-                    stroke={e.color}
-                    strokeWidth="7"
-                    strokeDasharray="14 9"
-                    markerEnd="url(#flow-tip)"
-                  />
-                  <title>
-                    {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
-                  </title>
-                </g>
-              );
-            })}
           {TOWNS.map((town) => {
             const civ = OWNERS[town.civ];
             const [x, y] = keep(civ);
@@ -258,6 +268,54 @@ export default function WorldMap({
               </g>
             );
           })}
+          {arrows &&
+            spills.map(({ from, to, e }) => {
+              const [x, y] = keep(from),
+                [tx, ty] = keep(to);
+              // Arrows sharing a destination take separate lanes so they don't overlap.
+              const lane = spills.filter(
+                (o) => o.to === to && o.from < from,
+              ).length;
+              const { d, head, headLight } = spillArc(x, y, tx, ty, lane);
+              const [light, dark] = ARROW_COLORS[to];
+              return (
+                <g key={from} className="spill-arrow">
+                  <title>
+                    {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
+                  </title>
+                  <path
+                    className="spill-outline spill-draw"
+                    d={d}
+                    pathLength={1}
+                  />
+                  <path
+                    className="spill-line spill-draw"
+                    d={d}
+                    style={{ stroke: dark }}
+                    pathLength={1}
+                  />
+                  <path
+                    className="spill-light spill-draw"
+                    d={d}
+                    style={{ stroke: light }}
+                    pathLength={1}
+                  />
+                  <path className="spill-flow" d={d} />
+                  <g className="spill-tip">
+                    <path
+                      className="spill-head"
+                      d={head}
+                      style={{ fill: dark }}
+                    />
+                    <path
+                      className="spill-head-light"
+                      d={headLight}
+                      style={{ fill: light }}
+                    />
+                  </g>
+                </g>
+              );
+            })}
         </svg>
       </div>
       <div className="map-controls">
