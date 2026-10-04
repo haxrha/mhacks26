@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DbConnection } from "@/module_bindings";
+import { identityTokenKey, migrateIdentityToken } from "./identityToken";
 import type { Action, CivId, GameState } from "./types";
 
 /** The subscription is the sole source of state for an online world. */
@@ -36,13 +37,14 @@ export function useWorld(onState: (state: GameState) => void) {
     const uri = process.env.NEXT_PUBLIC_SPACETIME_URI || "ws://127.0.0.1:3001";
     const db =
       process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "rising-waters-local";
-    const tokenKey = `rising-waters-identity:${uri}:${db}`;
+    const tokenKey = identityTokenKey(uri, db);
     try {
+      const token = migrateIdentityToken(localStorage, uri, db);
       await new Promise<void>((resolve, reject) => {
         const conn = DbConnection.builder()
           .withUri(uri)
           .withDatabaseName(db)
-          .withToken(localStorage.getItem(tokenKey) || undefined)
+          .withToken(token)
           .onConnect((conn, identity, token) => {
             localStorage.setItem(tokenKey, token);
             const sync = () => {
