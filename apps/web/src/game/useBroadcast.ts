@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BroadcastFacts } from "./radioScript";
 import { playBlob, stopAudio } from "./voiceChannel";
 
-const KEY = "earthshare-radio";
+const KEY = "rising-waters-radio";
 export type RadioStatus = "idle" | "loading" | "playing" | "error";
 
 /** Opt-in voice setting plus the decade debrief as a voiced radio broadcast via /api/broadcast. */

@@ -171,7 +171,7 @@ export default function DisasterPreview() {
     <div className="game-layout world-view disaster-preview">
       <aside className="sidebar">
         <a className="brand" href="/">
-          earthshare.
+          rising waters.
         </a>
         <div className="sidebar-bottom">
           <a href="/">Return to game</a>

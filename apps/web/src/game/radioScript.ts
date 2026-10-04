@@ -88,7 +88,7 @@ export function cleanFacts(raw: unknown): BroadcastFacts | null {
   return { round, leader, news, lesson };
 }
 
-export const GROK_SYSTEM = `You write a very short radio blip for "Earthshare World Service", the in-game news of a sustainability strategy game where four towns share one river and one climate.
+export const GROK_SYSTEM = `You write a very short radio blip for "Rising Waters World Service", the in-game news of a sustainability strategy game where four towns share one river and one climate.
 
 Rules:
 - Output ONLY 1 to 3 lines, one per line, in the form: speaker: text

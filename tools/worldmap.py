@@ -1,4 +1,4 @@
-"""EARTHSHARE world map generator.
+"""Rising Waters world map generator.
 
 320x200 tile map (1 px = 1 tile), upscaled 4x nearest-neighbour to 1280x800.
 Four civ regions per AGENTS.md §5.1, each split into smaller areas marked by castles.

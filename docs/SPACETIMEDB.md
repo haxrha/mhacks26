@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Earthshare uses a native TypeScript module running inside SpacetimeDB's V8 runtime. The browser subscribes through the official TypeScript SDK. The database stores rooms, claimed civilization seats, state revisions, and private quiz clocks. Reducers perform actions and turn transitions atomically; the browser never submits a replacement game state. No Flask, Python bridge, REST relay, or API key is needed.
+Rising Waters uses a native TypeScript module running inside SpacetimeDB's V8 runtime. The browser subscribes through the official TypeScript SDK. The database stores rooms, claimed civilization seats, state revisions, and private quiz clocks. Reducers perform actions and turn transitions atomically; the browser never submits a replacement game state. No Flask, Python bridge, REST relay, or API key is needed.
 
 The SDK and module dependency are pinned through lockfiles at 2.10.2. Generated bindings are checked in. Regenerate after changing reducer parameters or tables. Shared game state contains only JSON values, so cloning works both in browsers and the native runtime.
 

@@ -1,5 +1,5 @@
 /**
- * Earthshare rules. Pure functions over a plain, serializable GameState so the browser and the
+ * Rising Waters rules. Pure functions over a plain, serializable GameState so the browser and the
  * SpacetimeDB module run the exact same game.
  *
  * Each cycle (one decade):

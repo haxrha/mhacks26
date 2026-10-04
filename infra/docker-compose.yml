@@ -24,7 +24,7 @@ services:
     profiles: ["tools"]
     volumes:
       - publisher_identity:/config
-    command: ["--root-dir", "/config", "publish", "earthshare-game", "--module-path", "spacetime", "--server", "http://spacetimedb:3000", "--yes=skip-login", "--delete-data=never", "--no-config"]
+    command: ["--root-dir", "/config", "publish", "rising-waters", "--module-path", "spacetime", "--server", "http://spacetimedb:3000", "--yes=skip-login", "--delete-data=never", "--no-config"]
     depends_on: [spacetimedb]
 volumes:
   caddy_data:

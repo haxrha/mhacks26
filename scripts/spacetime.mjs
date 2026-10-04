@@ -16,7 +16,7 @@ const usesPortable = !process.env.SPACETIME_CLI && existsSync(portable);
 const cli =
   process.env.SPACETIME_CLI || (usesPortable ? portable : "spacetime");
 const root = ["--root-dir=.tools/config"];
-const database = process.env.SPACETIME_DATABASE || "earthshare-game-local";
+const database = process.env.SPACETIME_DATABASE || "rising-waters-local";
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: "inherit", shell: false });
@@ -56,7 +56,7 @@ const installedVersion =
   )?.[1] ?? versionText.match(/\bv?(\d+\.\d+\.\d+)\b/)?.[1];
 if (installedVersion !== "2.10.2") {
   console.error(
-    `Earthshare requires SpacetimeDB 2.10.2; found: ${versionText}`,
+    `Rising Waters requires SpacetimeDB 2.10.2; found: ${versionText}`,
   );
   process.exit(1);
 }

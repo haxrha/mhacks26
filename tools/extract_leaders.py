@@ -1,4 +1,4 @@
-"""Extract the four leader sprites (+ 32x32 portraits) from the "EARTHSHARE — 8-bit Reference" PDF.
+"""Extract the four leader sprites (+ 32x32 portraits) from the 8-bit reference PDF ("EARTHSHARE — 8-bit Reference.pdf").
 
 The Civilizations artboard is one JPEG where each art pixel is 18x18 image pixels. We sample each
 cell, drop the crimson/confetti background, keep the main figure and snap JPEG noise to clean colours.

@@ -35,8 +35,8 @@ export function useWorld(onState: (state: GameState) => void) {
     setStatus("Connecting…");
     const uri = process.env.NEXT_PUBLIC_SPACETIME_URI || "ws://127.0.0.1:3001";
     const db =
-      process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "earthshare-game-local";
-    const tokenKey = `earthshare-identity:${uri}:${db}`;
+      process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "rising-waters-local";
+    const tokenKey = `rising-waters-identity:${uri}:${db}`;
     try {
       await new Promise<void>((resolve, reject) => {
         const conn = DbConnection.builder()

@@ -1,4 +1,4 @@
-# AGENTS.md — EARTHSHARE
+# AGENTS.md — RISING WATERS
 
 > One river. Four civilizations. Every choice flows downstream.
 
@@ -46,7 +46,7 @@ The game's map image is `assets/world-map.png` (1280 × 800, no labels). `assets
 ## 3. Folder layout
 
 ```
-earthshare/
+rising-waters/
   AGENTS.md
   index.html
   src/

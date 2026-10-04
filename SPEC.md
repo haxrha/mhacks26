@@ -1,4 +1,4 @@
-# EARTHSHARE — Hackathon Build Spec
+# RISING WATERS — Hackathon Build Spec
 
 > A 4-player, turn-based strategy game that teaches sustainability through **shared geography and externalities**. Four civilizations share one map, one climate, and one market. Every player chases their own prosperity, but hazards and pollution physically flow across the map onto neighbors. Players learn by watching their decisions land on someone else (and other players' decisions land on them).
 

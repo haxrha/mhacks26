@@ -1,5 +1,5 @@
 {
-  "name": "earthshare",
+  "name": "rising-waters",
   "private": true,
   "scripts": {
     "dev": "npm --prefix apps/web run dev",

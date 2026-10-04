@@ -7,7 +7,7 @@ import type { GameState } from "../src/game/types";
 
 const uri = process.env.NEXT_PUBLIC_SPACETIME_URI || "ws://127.0.0.1:3001";
 const database =
-  process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "earthshare-game-local";
+  process.env.NEXT_PUBLIC_SPACETIME_DATABASE || "rising-waters-local";
 const id = Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
 async function client() {
   return new Promise<DbConnection>((resolve, reject) => {

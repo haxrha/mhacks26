@@ -75,7 +75,9 @@ import {
 
 /** A fresh 32-bit world seed. The engine stays deterministic: every roll comes from this seed. */
 const newSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] || 1;
-const SAVE_KEY = "earthshare-v2";
+const SAVE_KEY = "rising-waters-v2";
+/** Saves made before the rename; read once and moved to SAVE_KEY. */
+const OLD_SAVE_KEY = "earthshare-v2";
 
 function Costs({ cost }: { cost: Partial<Stock> }) {
   const entries = RESOURCES.filter((r) => (cost[r] ?? 0) > 0);
@@ -111,7 +113,14 @@ export default function Game() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      let raw = localStorage.getItem(SAVE_KEY);
+      const old = raw ? null : localStorage.getItem(OLD_SAVE_KEY);
+      if (old) {
+        // Carry a pre-rename save over to the new key once.
+        localStorage.setItem(SAVE_KEY, old);
+        localStorage.removeItem(OLD_SAVE_KEY);
+        raw = old;
+      }
       if (raw) {
         const s = JSON.parse(raw);
         if (validSave(s)) setResume(s);
@@ -193,7 +202,7 @@ export default function Game() {
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = `earthshare-decade-${state.round}.json`;
+    a.download = `rising-waters-decade-${state.round}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -202,7 +211,8 @@ export default function Game() {
     try {
       if (file.size > 2_000_000) throw Error("Save is too large.");
       const data = JSON.parse(await file.text());
-      if (!validSave(data)) throw Error("This is not a valid Earthshare save.");
+      if (!validSave(data))
+        throw Error("This is not a valid Rising Waters save.");
       setState(data);
       setImportError("");
     } catch (e) {
@@ -380,7 +390,7 @@ export default function Game() {
         >
           <Leaf size={26} />
           <span>
-            earthshare<span className="brand-dot">.</span>
+            rising waters<span className="brand-dot">.</span>
           </span>
         </a>
         <div className="sidebar-bottom">
