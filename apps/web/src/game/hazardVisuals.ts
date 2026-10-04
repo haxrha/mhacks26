@@ -180,8 +180,10 @@ export function stormPickups(
   frame: number,
   seed: number,
   hurricane: boolean,
+  boatClockOffset = 0,
 ): StormPickup[] {
-  const key = `${area}:${seed}:${hurricane}:${status.buildings.join(",")}`;
+  const offset = Math.round(boatClockOffset);
+  const key = `${area}:${seed}:${hurricane}:${offset}:${status.buildings.join(",")}`;
   const cached = pickupCache.get(key);
   if (cached) return cached.filter((p) => p.caught <= frame);
   const candidates: Omit<StormPickup, "caught">[] = [];
@@ -216,7 +218,7 @@ export function stormPickups(
   const caughtFishing = new Set<string>();
   for (let t = 0; t <= config.storm.period * 2; t += 2) {
     const [x, y] = stormPosition(L, area, t, seed, hurricane);
-    for (const boat of fishingTraffic(t)) {
+    for (const boat of fishingTraffic(t + offset)) {
       if (
         !caughtFishing.has(boat.id) &&
         Math.hypot(boat.x - x, boat.y - y) < radius
@@ -454,7 +456,7 @@ export function hazardPaint(
             : P.water,
         );
     }
-    if (fx?.has("drought") && [3, 6, 7, 11].includes(k)) {
+    if (fx?.has("drought") && [6, 7, 11].includes(k)) {
       const [cx, cy] = TOWNS[a].keepTile;
       let intensity = 0.2;
       for (const [dx, dy, rx, ry] of [
@@ -465,7 +467,7 @@ export function hazardPaint(
         const d = ((x - cx - dx) / rx) ** 2 + ((y - cy - dy) / ry) ** 2;
         intensity = Math.max(intensity, Math.max(0, 1 - d) * (0.85 + n * 0.2));
       }
-      if (k !== 3 || (intensity > 0.7 && L.hash[i] > 140)) {
+      {
         const base = L.palette[L.base[i]],
           dry = intensity > 0.65 ? P.soil : P.dry;
         pixel(
@@ -828,7 +830,15 @@ export function hazardPaint(
       const stormFrame = age(hurricane ? "hurricane" : "tornado");
       const t = (stormFrame / config.storm.period) * Math.PI * 2;
       const [x0, y0] = stormPosition(L, area, stormFrame, seed, hurricane);
-      const pickups = stormPickups(L, area, s, stormFrame, seed, hurricane);
+      const pickups = stormPickups(
+        L,
+        area,
+        s,
+        stormFrame,
+        seed,
+        hurricane,
+        frame - stormFrame,
+      );
       const contact = windArrival(L, area, seed, hurricane);
       // Wind strips vegetation and scatters debris; burning debris ignites the wake.
       for (let y = 0; y < H; y++)

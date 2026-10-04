@@ -880,6 +880,7 @@ test("storms collect the new moving fishing fleet and shoreline moorings", () =>
   let mooring = false,
     fishing = false;
   for (let seed = 0; seed < 30; seed++) {
+    const offset = 87; // The world was already running when this storm began.
     const picks = stormPickups(
       L,
       area,
@@ -887,6 +888,7 @@ test("storms collect the new moving fishing fleet and shoreline moorings", () =>
       384,
       seed,
       true,
+      offset,
     );
     for (const p of picks) {
       if (p.id === `port:${area}`) {
@@ -896,11 +898,35 @@ test("storms collect the new moving fishing fleet and shoreline moorings", () =>
       }
       if (p.id.startsWith("fishing:")) {
         fishing = true;
-        const boat = fishingTraffic(p.caught).find((b) => b.id === p.id)!;
+        const boat = fishingTraffic(p.caught + offset).find(
+          (b) => b.id === p.id,
+        )!;
         assert.equal(p.x, boat.x);
         assert.equal(p.y, boat.y);
       }
     }
   }
   assert(mooring && fishing);
+});
+
+test("latest main drought keeps river channels blue and dries only deep-reservoir banks", () => {
+  const L = worldLayers();
+  const state = withEvent("heartland", "drought");
+  const area = townIndex("heartland");
+  const paint = hazardPaint(L, areaStatus(state), 40, state.seed);
+  const out = new Uint8ClampedArray(MAP_W * MAP_H * 4);
+  renderWorld(state, 40, out);
+  let river = 0,
+    bank = 0;
+  for (let i = 0; i < L.kind.length; i++) {
+    if (L.kind[i] !== 3 || L.area[i] !== area) continue;
+    assert.equal(
+      paint.under[i * 4 + 3],
+      0,
+      "patchy land drought must not recolour river water",
+    );
+    if (L.depth[i] === 1 && L.nearDeep[i] <= 3) bank++;
+    else river++;
+  }
+  assert(bank > 0 && river > 0);
 });

@@ -82,6 +82,10 @@ export interface WorldLayers {
   distSea: Uint8Array;
   /** For sea tiles: how far out from the shore (1 = touching land). */
   distLand: Uint8Array;
+  /** For inland water: 1 at the bank, growing toward the middle. */
+  depth: Uint8Array;
+  /** Distance to water at least 4px from any bank: small only in and around the reservoir. */
+  nearDeep: Uint8Array;
   hash: Uint8Array;
 }
 
@@ -140,6 +144,7 @@ export function worldLayers(): WorldLayers {
     h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
     hash[i] = (h ^ (h >>> 16)) & 255;
   }
+  const depth = distance(kind, (k) => k !== KIND.water);
   cached = {
     base: fromBase64(world.base),
     palette: world.palette.map(rgb),
@@ -149,6 +154,8 @@ export function worldLayers(): WorldLayers {
     distWater: distance(kind, (k) => k <= KIND.water),
     distSea: distance(kind, (k) => k <= KIND.shallow),
     distLand: distance(kind, (k) => k > KIND.shallow),
+    depth,
+    nearDeep: distance(depth, (d) => d >= 4),
     hash,
   };
   return cached;
@@ -1108,6 +1115,12 @@ function terrainPixel(
     if (local < OCEAN.surf.activeFrames && shore === crest) c = C.foam;
   }
 
+  // Latest main's drought fix: clear river water, with exposed reservoir banks only.
+  if (k === KIND.water && a !== NONE && status[a].effects.has("drought")) {
+    if (L.depth[i] === 1 && L.nearDeep[i] <= 3) c = h < 128 ? C.soil : C.dry;
+    else c = mix(c, C.shimmer, 0.18);
+  }
+
   return c;
 }
 
@@ -1273,6 +1286,7 @@ export function renderWorld(
       age,
       state?.seed ?? 0,
       type === "hurricane",
+      frame - age,
     ))
       lifted.add(p.id);
   });
