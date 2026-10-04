@@ -1,10 +1,18 @@
 [
   {
     "id": "flood-1",
-    "types": ["flood", "dam_failure"],
+    "types": [
+      "flood",
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "What natural area soaks up extra floodwater?",
-    "options": ["Wetlands", "Parking lots", "Concrete roads", "Bare rock"],
+    "options": [
+      "Wetlands",
+      "Parking lots",
+      "Concrete roads",
+      "Bare rock"
+    ],
     "correct": 0,
     "explanation": "Wetlands hold extra water like a sponge.",
     "source": "https://www.epa.gov/wetlands",
@@ -12,7 +20,10 @@
   },
   {
     "id": "flood-2",
-    "types": ["flood", "dam_failure"],
+    "types": [
+      "flood",
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Why does rain run off a paved road?",
     "options": [
@@ -28,7 +39,10 @@
   },
   {
     "id": "flood-3",
-    "types": ["flood", "dam_failure"],
+    "types": [
+      "flood",
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Which way does river water flow?",
     "options": [
@@ -44,7 +58,10 @@
   },
   {
     "id": "flood-4",
-    "types": ["flood", "dam_failure"],
+    "types": [
+      "flood",
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Who should work together to reduce river floods?",
     "options": [
@@ -60,7 +77,9 @@
   },
   {
     "id": "dam_failure-1",
-    "types": ["dam_failure"],
+    "types": [
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "What can happen if a dam breaks?",
     "options": [
@@ -76,7 +95,9 @@
   },
   {
     "id": "dam_failure-2",
-    "types": ["dam_failure"],
+    "types": [
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Why should a dam be built to handle earthquakes?",
     "options": [
@@ -92,7 +113,9 @@
   },
   {
     "id": "dam_failure-3",
-    "types": ["dam_failure"],
+    "types": [
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "A dam breaks and then floods a town. What happened?",
     "options": [
@@ -108,7 +131,9 @@
   },
   {
     "id": "dam_failure-4",
-    "types": ["dam_failure"],
+    "types": [
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Who needs a warning if a dam may break?",
     "options": [
@@ -124,7 +149,9 @@
   },
   {
     "id": "hurricane-1",
-    "types": ["hurricane"],
+    "types": [
+      "hurricane"
+    ],
     "difficulty": 1,
     "prompt": "What can push seawater onto land during a hurricane?",
     "options": [
@@ -140,7 +167,9 @@
   },
   {
     "id": "hurricane-2",
-    "types": ["hurricane"],
+    "types": [
+      "hurricane"
+    ],
     "difficulty": 1,
     "prompt": "What danger can a hurricane bring besides strong wind?",
     "options": [
@@ -156,7 +185,9 @@
   },
   {
     "id": "hurricane-3",
-    "types": ["hurricane"],
+    "types": [
+      "hurricane"
+    ],
     "difficulty": 1,
     "prompt": "Can floodwater stay after hurricane winds calm down?",
     "options": [
@@ -172,7 +203,9 @@
   },
   {
     "id": "hurricane-4",
-    "types": ["hurricane"],
+    "types": [
+      "hurricane"
+    ],
     "difficulty": 1,
     "prompt": "What helps keep power on when a storm damages the grid?",
     "options": [
@@ -188,7 +221,9 @@
   },
   {
     "id": "earthquake-1",
-    "types": ["earthquake"],
+    "types": [
+      "earthquake"
+    ],
     "difficulty": 1,
     "prompt": "What usually causes an earthquake?",
     "options": [
@@ -204,7 +239,9 @@
   },
   {
     "id": "earthquake-2",
-    "types": ["earthquake"],
+    "types": [
+      "earthquake"
+    ],
     "difficulty": 1,
     "prompt": "Is an earthquake the same thing as a heatwave?",
     "options": [
@@ -220,7 +257,9 @@
   },
   {
     "id": "earthquake-3",
-    "types": ["earthquake"],
+    "types": [
+      "earthquake"
+    ],
     "difficulty": 1,
     "prompt": "What helps a building survive earthquake shaking?",
     "options": [
@@ -236,10 +275,17 @@
   },
   {
     "id": "earthquake-4",
-    "types": ["earthquake"],
+    "types": [
+      "earthquake"
+    ],
     "difficulty": 1,
     "prompt": "What big wave can an undersea earthquake cause?",
-    "options": ["A rainbow", "A tsunami", "A heatwave", "A dust cloud"],
+    "options": [
+      "A rainbow",
+      "A tsunami",
+      "A heatwave",
+      "A dust cloud"
+    ],
     "correct": 1,
     "explanation": "An undersea earthquake can move seawater and start a tsunami.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards",
@@ -247,7 +293,9 @@
   },
   {
     "id": "tsunami-1",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "What can start a tsunami?",
     "options": [
@@ -263,7 +311,9 @@
   },
   {
     "id": "tsunami-2",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "Where should people go after a tsunami warning?",
     "options": [
@@ -279,7 +329,9 @@
   },
   {
     "id": "tsunami-3",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "After one tsunami wave, could more waves arrive?",
     "options": [
@@ -295,7 +347,9 @@
   },
   {
     "id": "tsunami-4",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "Can a tsunami travel across an ocean?",
     "options": [
@@ -311,10 +365,17 @@
   },
   {
     "id": "volcano-1",
-    "types": ["volcano"],
+    "types": [
+      "volcano"
+    ],
     "difficulty": 1,
     "prompt": "What can carry volcanic ash to another town?",
-    "options": ["Wind", "Shop prices", "Electric cables", "Fish"],
+    "options": [
+      "Wind",
+      "Shop prices",
+      "Electric cables",
+      "Fish"
+    ],
     "correct": 0,
     "explanation": "Wind can carry ash far from a volcano.",
     "source": "https://volcanoes.usgs.gov/volcanic_ash/",
@@ -322,7 +383,9 @@
   },
   {
     "id": "volcano-2",
-    "types": ["volcano"],
+    "types": [
+      "volcano"
+    ],
     "difficulty": 1,
     "prompt": "Why should machines be protected from volcanic ash?",
     "options": [
@@ -338,7 +401,9 @@
   },
   {
     "id": "volcano-3",
-    "types": ["volcano"],
+    "types": [
+      "volcano"
+    ],
     "difficulty": 1,
     "prompt": "What should be kept clean during an ash fall?",
     "options": [
@@ -354,7 +419,9 @@
   },
   {
     "id": "volcano-4",
-    "types": ["volcano"],
+    "types": [
+      "volcano"
+    ],
     "difficulty": 1,
     "prompt": "Why keep an eye on an active volcano?",
     "options": [
@@ -370,7 +437,9 @@
   },
   {
     "id": "drought-1",
-    "types": ["drought"],
+    "types": [
+      "drought"
+    ],
     "difficulty": 1,
     "prompt": "What is a drought?",
     "options": [
@@ -386,7 +455,9 @@
   },
   {
     "id": "drought-2",
-    "types": ["drought"],
+    "types": [
+      "drought"
+    ],
     "difficulty": 1,
     "prompt": "Why can food cost more during a drought?",
     "options": [
@@ -402,7 +473,9 @@
   },
   {
     "id": "drought-3",
-    "types": ["drought"],
+    "types": [
+      "drought"
+    ],
     "difficulty": 1,
     "prompt": "What saves water when watering crops?",
     "options": [
@@ -418,7 +491,9 @@
   },
   {
     "id": "drought-4",
-    "types": ["drought"],
+    "types": [
+      "drought"
+    ],
     "difficulty": 1,
     "prompt": "Why should neighbors share underground water carefully?",
     "options": [
@@ -434,7 +509,9 @@
   },
   {
     "id": "heatwave-1",
-    "types": ["heatwave"],
+    "types": [
+      "heatwave"
+    ],
     "difficulty": 1,
     "prompt": "What helps make a hot town cooler?",
     "options": [
@@ -450,7 +527,9 @@
   },
   {
     "id": "heatwave-2",
-    "types": ["heatwave"],
+    "types": [
+      "heatwave"
+    ],
     "difficulty": 1,
     "prompt": "Why do people often use more electricity during a heatwave?",
     "options": [
@@ -466,7 +545,9 @@
   },
   {
     "id": "heatwave-3",
-    "types": ["heatwave"],
+    "types": [
+      "heatwave"
+    ],
     "difficulty": 1,
     "prompt": "Why can a city feel hotter than nearby countryside?",
     "options": [
@@ -482,7 +563,9 @@
   },
   {
     "id": "heatwave-4",
-    "types": ["heatwave"],
+    "types": [
+      "heatwave"
+    ],
     "difficulty": 1,
     "prompt": "What helps people during very hot weather?",
     "options": [
@@ -498,7 +581,9 @@
   },
   {
     "id": "wildfire-1",
-    "types": ["wildfire"],
+    "types": [
+      "wildfire"
+    ],
     "difficulty": 1,
     "prompt": "Can wildfire smoke reach another town?",
     "options": [
@@ -514,7 +599,9 @@
   },
   {
     "id": "wildfire-2",
-    "types": ["wildfire"],
+    "types": [
+      "wildfire"
+    ],
     "difficulty": 1,
     "prompt": "Why can wildfire smoke be harmful to breathe?",
     "options": [
@@ -530,7 +617,9 @@
   },
   {
     "id": "wildfire-3",
-    "types": ["wildfire"],
+    "types": [
+      "wildfire"
+    ],
     "difficulty": 1,
     "prompt": "Why check air-quality reports during a wildfire?",
     "options": [
@@ -546,7 +635,9 @@
   },
   {
     "id": "wildfire-4",
-    "types": ["wildfire"],
+    "types": [
+      "wildfire"
+    ],
     "difficulty": 1,
     "prompt": "What can help clean smoky air indoors?",
     "options": [
@@ -562,7 +653,9 @@
   },
   {
     "id": "spill-1",
-    "types": ["spill"],
+    "types": [
+      "spill"
+    ],
     "difficulty": 1,
     "prompt": "How can spilled oil reach another coast?",
     "options": [
@@ -578,7 +671,9 @@
   },
   {
     "id": "spill-2",
-    "types": ["spill"],
+    "types": [
+      "spill"
+    ],
     "difficulty": 1,
     "prompt": "Which job can an oil spill hurt?",
     "options": [
@@ -594,7 +689,9 @@
   },
   {
     "id": "spill-3",
-    "types": ["spill"],
+    "types": [
+      "spill"
+    ],
     "difficulty": 1,
     "prompt": "Can an oil spill hurt a neighboring town?",
     "options": [
@@ -610,7 +707,9 @@
   },
   {
     "id": "spill-4",
-    "types": ["spill"],
+    "types": [
+      "spill"
+    ],
     "difficulty": 1,
     "prompt": "Why is preventing an oil spill better than cleaning it up?",
     "options": [
@@ -626,7 +725,9 @@
   },
   {
     "id": "smog-1",
-    "types": ["smog"],
+    "types": [
+      "smog"
+    ],
     "difficulty": 1,
     "prompt": "What can create pollution that leads to acid rain?",
     "options": [
@@ -642,7 +743,9 @@
   },
   {
     "id": "smog-2",
-    "types": ["smog"],
+    "types": [
+      "smog"
+    ],
     "difficulty": 1,
     "prompt": "Can air pollution reach a neighboring town?",
     "options": [
@@ -658,7 +761,9 @@
   },
   {
     "id": "smog-3",
-    "types": ["smog"],
+    "types": [
+      "smog"
+    ],
     "difficulty": 1,
     "prompt": "Can pollution reach the ground without rain?",
     "options": [
@@ -674,7 +779,9 @@
   },
   {
     "id": "smog-4",
-    "types": ["smog"],
+    "types": [
+      "smog"
+    ],
     "difficulty": 1,
     "prompt": "What can acid rain damage?",
     "options": [
@@ -690,7 +797,9 @@
   },
   {
     "id": "sea_rise-1",
-    "types": ["sea_rise"],
+    "types": [
+      "sea_rise"
+    ],
     "difficulty": 1,
     "prompt": "What helps raise sea levels as Earth warms?",
     "options": [
@@ -706,7 +815,9 @@
   },
   {
     "id": "sea_rise-2",
-    "types": ["sea_rise"],
+    "types": [
+      "sea_rise"
+    ],
     "difficulty": 1,
     "prompt": "Does sea level rise by exactly the same amount everywhere?",
     "options": [
@@ -722,7 +833,9 @@
   },
   {
     "id": "sea_rise-3",
-    "types": ["sea_rise"],
+    "types": [
+      "sea_rise"
+    ],
     "difficulty": 1,
     "prompt": "What can rising seas do to coastal drinking water?",
     "options": [
@@ -738,7 +851,9 @@
   },
   {
     "id": "sea_rise-4",
-    "types": ["sea_rise"],
+    "types": [
+      "sea_rise"
+    ],
     "difficulty": 1,
     "prompt": "Why can higher seas make coastal flooding worse?",
     "options": [
@@ -754,7 +869,9 @@
   },
   {
     "id": "landslide-1",
-    "types": ["landslide"],
+    "types": [
+      "landslide"
+    ],
     "difficulty": 1,
     "prompt": "What happens in a landslide?",
     "options": [
@@ -770,7 +887,9 @@
   },
   {
     "id": "landslide-2",
-    "types": ["landslide"],
+    "types": [
+      "landslide"
+    ],
     "difficulty": 1,
     "prompt": "What can make a hillside less stable?",
     "options": [
@@ -786,7 +905,9 @@
   },
   {
     "id": "landslide-3",
-    "types": ["landslide"],
+    "types": [
+      "landslide"
+    ],
     "difficulty": 1,
     "prompt": "Can earthquake shaking cause a landslide?",
     "options": [
@@ -802,7 +923,9 @@
   },
   {
     "id": "landslide-4",
-    "types": ["landslide"],
+    "types": [
+      "landslide"
+    ],
     "difficulty": 1,
     "prompt": "Why avoid unstable slopes when building roads?",
     "options": [
@@ -818,7 +941,9 @@
   },
   {
     "id": "grid_failure-1",
-    "types": ["grid_failure"],
+    "types": [
+      "grid_failure"
+    ],
     "difficulty": 1,
     "prompt": "Why have more than one source of electricity?",
     "options": [
@@ -834,7 +959,9 @@
   },
   {
     "id": "grid_failure-2",
-    "types": ["grid_failure"],
+    "types": [
+      "grid_failure"
+    ],
     "difficulty": 1,
     "prompt": "What does a battery do?",
     "options": [
@@ -850,7 +977,9 @@
   },
   {
     "id": "grid_failure-3",
-    "types": ["grid_failure"],
+    "types": [
+      "grid_failure"
+    ],
     "difficulty": 1,
     "prompt": "Why can a power cut affect tap water?",
     "options": [
@@ -866,7 +995,9 @@
   },
   {
     "id": "grid_failure-4",
-    "types": ["grid_failure"],
+    "types": [
+      "grid_failure"
+    ],
     "difficulty": 1,
     "prompt": "What should a strong power system be able to do?",
     "options": [
@@ -882,7 +1013,9 @@
   },
   {
     "id": "pandemic-1",
-    "types": ["pandemic"],
+    "types": [
+      "pandemic"
+    ],
     "difficulty": 1,
     "prompt": "Why should towns work together during a disease outbreak?",
     "options": [
@@ -898,7 +1031,9 @@
   },
   {
     "id": "pandemic-2",
-    "types": ["pandemic"],
+    "types": [
+      "pandemic"
+    ],
     "difficulty": 1,
     "prompt": "When is a good time to prepare for an emergency?",
     "options": [
@@ -914,7 +1049,9 @@
   },
   {
     "id": "pandemic-3",
-    "types": ["pandemic"],
+    "types": [
+      "pandemic"
+    ],
     "difficulty": 1,
     "prompt": "How can a disease outbreak affect a town?",
     "options": [
@@ -930,7 +1067,9 @@
   },
   {
     "id": "pandemic-4",
-    "types": ["pandemic"],
+    "types": [
+      "pandemic"
+    ],
     "difficulty": 1,
     "prompt": "What helps a town respond to an emergency?",
     "options": [
@@ -946,7 +1085,9 @@
   },
   {
     "id": "supply_shock-1",
-    "types": ["supply_shock"],
+    "types": [
+      "supply_shock"
+    ],
     "difficulty": 1,
     "prompt": "Why buy important supplies from more than one supplier?",
     "options": [
@@ -962,7 +1103,9 @@
   },
   {
     "id": "supply_shock-2",
-    "types": ["supply_shock"],
+    "types": [
+      "supply_shock"
+    ],
     "difficulty": 1,
     "prompt": "If there is much less food to buy, what can happen to prices?",
     "options": [
@@ -978,7 +1121,9 @@
   },
   {
     "id": "supply_shock-3",
-    "types": ["supply_shock"],
+    "types": [
+      "supply_shock"
+    ],
     "difficulty": 1,
     "prompt": "Why keep some emergency supplies?",
     "options": [
@@ -994,7 +1139,9 @@
   },
   {
     "id": "supply_shock-4",
-    "types": ["supply_shock"],
+    "types": [
+      "supply_shock"
+    ],
     "difficulty": 1,
     "prompt": "What happens if a trading partner stops sending goods?",
     "options": [
@@ -1010,7 +1157,10 @@
   },
   {
     "id": "flood-5",
-    "types": ["flood", "dam_failure"],
+    "types": [
+      "flood",
+      "dam_failure"
+    ],
     "difficulty": 1,
     "prompt": "Can a flood wall protect every town along a river?",
     "options": [
@@ -1026,7 +1176,9 @@
   },
   {
     "id": "earthquake-6",
-    "types": ["earthquake"],
+    "types": [
+      "earthquake"
+    ],
     "difficulty": 1,
     "prompt": "Can we know the exact time of the next earthquake?",
     "options": [
@@ -1042,7 +1194,9 @@
   },
   {
     "id": "tsunami-7",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "When should people return after a tsunami warning?",
     "options": [
@@ -1058,7 +1212,9 @@
   },
   {
     "id": "heatwave-8",
-    "types": ["heatwave"],
+    "types": [
+      "heatwave"
+    ],
     "difficulty": 1,
     "prompt": "Which roof reflects more sunlight?",
     "options": [
@@ -1074,7 +1230,9 @@
   },
   {
     "id": "smog-9",
-    "types": ["smog"],
+    "types": [
+      "smog"
+    ],
     "difficulty": 1,
     "prompt": "Which energy choice avoids burning fossil fuel?",
     "options": [
@@ -1090,7 +1248,9 @@
   },
   {
     "id": "sea_rise-10",
-    "types": ["sea_rise"],
+    "types": [
+      "sea_rise"
+    ],
     "difficulty": 1,
     "prompt": "Which melting ice adds water to the sea?",
     "options": [
@@ -1106,7 +1266,9 @@
   },
   {
     "id": "tsunami-8",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "The sea suddenly pulls far back. What should you do?",
     "options": [
@@ -1122,7 +1284,9 @@
   },
   {
     "id": "tsunami-9",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "What helps people leave a tsunami danger zone?",
     "options": [
@@ -1138,7 +1302,9 @@
   },
   {
     "id": "tsunami-10",
-    "types": ["tsunami"],
+    "types": [
+      "tsunami"
+    ],
     "difficulty": 1,
     "prompt": "Can a seawall guarantee safety from a tsunami?",
     "options": [
@@ -1151,5 +1317,149 @@
     "explanation": "A seawall cannot guarantee safety. Follow warnings and leave the danger zone.",
     "source": "https://www.weather.gov/safety/tsunami-during",
     "sourceLabel": "NOAA / National Weather Service"
+  },
+  {
+    "id": "tornado-1",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "Where should people shelter during a tornado warning?",
+    "options": [
+      "A basement or safe interior room",
+      "Beside a large window",
+      "On an open beach",
+      "Inside a tent"
+    ],
+    "correct": 0,
+    "explanation": "Use a safe room away from windows.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-2",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "What should a school do during a tornado warning?",
+    "options": [
+      "Open every window",
+      "Follow its tornado shelter drill",
+      "Send everyone outside",
+      "Wait on the roof"
+    ],
+    "correct": 1,
+    "explanation": "A practiced drill helps people reach shelter.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-3",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "Which place is safer when a tornado approaches?",
+    "options": [
+      "A tent",
+      "A lightweight shed",
+      "A sturdy building",
+      "A parked bicycle"
+    ],
+    "correct": 2,
+    "explanation": "Seek shelter in a sturdy building.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-4",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "What should you avoid near a tornado?",
+    "options": [
+      "A planned shelter",
+      "Weather warnings",
+      "A basement",
+      "Windows and flying debris"
+    ],
+    "correct": 3,
+    "explanation": "Flying debris can break windows and hurt people.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-5",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "How can a town stay informed about tornado warnings?",
+    "options": [
+      "Listen to official weather alerts",
+      "Watch shop prices",
+      "Count streetlights",
+      "Wait for a rainbow"
+    ],
+    "correct": 0,
+    "explanation": "Official alerts tell people when to take shelter.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-6",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "Is a tent a safe tornado shelter?",
+    "options": [
+      "Yes, if it is brightly colored",
+      "No, reach a sturdy shelter",
+      "Yes, if it faces north",
+      "Only during summer"
+    ],
+    "correct": 1,
+    "explanation": "Tents cannot protect people from tornado winds.",
+    "source": "https://www.weather.gov/safety/tornado-during",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-7",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "Can a tornado happen at night?",
+    "options": [
+      "Only after sunrise",
+      "Only at lunchtime",
+      "Yes, tornadoes can happen at night",
+      "Only during an eclipse"
+    ],
+    "correct": 2,
+    "explanation": "Tornadoes can occur during day or night.",
+    "source": "https://www.weather.gov/safety/tornado",
+    "sourceLabel": "National Weather Service"
+  },
+  {
+    "id": "tornado-8",
+    "types": [
+      "tornado"
+    ],
+    "difficulty": 1,
+    "prompt": "What is a tornado?",
+    "options": [
+      "A slow ocean tide",
+      "A mountain glacier",
+      "A gentle sea breeze",
+      "A rotating column of air reaching the ground"
+    ],
+    "correct": 3,
+    "explanation": "A tornado connects a thunderstorm to the ground.",
+    "source": "https://www.weather.gov/safety/tornado",
+    "sourceLabel": "National Weather Service"
   }
 ]

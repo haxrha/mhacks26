@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { DbConnection } from "../src/module_bindings";
 import { QUESTIONS } from "../src/game/questions";
+import { RESEARCH } from "../src/game/content";
+import { canAfford } from "../src/game/engine";
 import type { GameState } from "../src/game/types";
 
 const uri = process.env.NEXT_PUBLIC_SPACETIME_URI || "ws://127.0.0.1:3001";
@@ -119,12 +121,49 @@ async function main() {
     await act(guest, { type: "choose", civ: "archipelago", option: 2 });
     await until(() => state().phase === "build");
 
-    // Build, then both end the turn.
+    // New projects go through the same authenticated server reducer and replicate to both clients.
+    await assert.rejects(
+      act(host, { type: "research", civ: "heartland", technology: "unknown" }),
+    );
+    await assert.rejects(
+      act(guest, {
+        type: "research",
+        civ: "heartland",
+        technology: "solar_power",
+      }),
+    );
+    const project = Object.entries(RESEARCH).find(
+      ([, t]) =>
+        !t.prerequisites.length &&
+        canAfford(state().civs.heartland.stock, t.cost),
+    );
+    assert(project, "the test town can afford a research project");
+    await act(host, {
+      type: "research",
+      civ: "heartland",
+      technology: project[0],
+    });
+    await until(() => state().civs.heartland.research?.id === project[0]);
+    assert.equal(state().civs.heartland.actionsUsed, 1);
+    await until(() => guest.db.room.id.find(id)?.revision === row().revision);
+    assert.equal(guest.db.room.id.find(id)?.stateJson, row().stateJson);
+    // Both end the turn; recovery persists and research advances on the server.
     await host.reducers.ready({ roomId: id });
     assert.equal(state().phase, "build");
     await guest.reducers.ready({ roomId: id });
     await until(() => state().round === 2);
     assert.equal(state().phase, "event");
+    assert(
+      state().civs.heartland.hazards!.length > 0 ||
+        state().news.some((n) => n.text.includes("recovery")),
+    );
+    assert.equal(state().civs.heartland.actionsUsed, 0);
+    if (project[1].turns > 1)
+      assert.equal(
+        state().civs.heartland.research?.remaining,
+        project[1].turns - 1,
+      );
+    else assert(state().civs.heartland.technologies!.includes(project[0]));
     await until(() => guest.db.room.id.find(id)?.revision === row().revision);
     assert.equal(guest.db.room.id.find(id)?.stateJson, row().stateJson);
     await until(() => [...host.db.seat.iter()].every((seat) => !seat.ready));

@@ -67,6 +67,7 @@ export function eventLines(state: GameState, civ: CivId): string[] {
   const lines = [`${e.name}! ${e.tell}`];
   if (ev.cause && e.caused)
     lines.push(e.caused.replace("{cause}", CIVS[ev.cause].name));
+  if (ev.reason) lines.push(ev.reason);
   lines.push(
     `If we do nothing we lose ${describe(ev.loss)}. First, a question. Answer quickly and well, and we lose less.`,
   );

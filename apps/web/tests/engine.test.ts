@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { BUILDINGS, EVENTS } from "../src/game/content";
 import {
+  collapseFromTsunami,
   CLIMATE_LOSS,
   EXCHANGE_RATE,
   ROUNDS,
@@ -16,6 +17,8 @@ import {
   rollEvents,
   spillTarget,
 } from "../src/game/engine";
+import { ECONOMY } from "../src/game/content";
+import { upkeep } from "../src/game/disasters";
 import { QUESTIONS } from "../src/game/questions";
 import {
   CIV_IDS,
@@ -31,6 +34,7 @@ const total = (s: GameState, c: CivId) =>
 /** A solo game with the player's event forced, sitting at the quiz. */
 function atQuiz(event: EventId = "flood", seed = 7) {
   const s = createGame(P, "solo", seed);
+  s.minorEvents = {};
   s.events[P] = { type: event, loss: { ...EVENTS[event].loss } };
   return advance(s);
 }
@@ -92,12 +96,37 @@ test("bank exchanges record cargo notices without changing failed actions", () =
   assert.equal(bad.state, s);
 });
 
-test("seeded primary and cascade rolls can produce all 16 hazards", () => {
+test("seeded primary and delayed cascade rolls can produce every hazard", () => {
   const seen = new Set<EventId>();
-  for (let seed = 1; seed <= 4000 && seen.size < 16; seed++)
-    for (const event of Object.values(createGame(P, "solo", seed).events))
-      seen.add(event.type);
-  assert.deepEqual([...seen].sort(), (Object.keys(EVENTS) as EventId[]).sort());
+  for (
+    let seed = 1;
+    seed <= 4000 && seen.size < Object.keys(EVENTS).length;
+    seed++
+  ) {
+    const s = createGame(P, "solo", seed);
+    s.climate = 2.3;
+    s.civs.petrostate.buildings.push("refinery");
+    for (let round = 1; round <= 10; round++) {
+      s.round = round;
+      rollEvents(s);
+      for (const e of Object.values(s.events)) seen.add(e.type);
+    }
+  }
+  assert.deepEqual(
+    [...seen].sort(),
+    Object.keys(EVENTS)
+      .filter(
+        (id) =>
+          ![
+            "heatwave",
+            "smog",
+            "grid_failure",
+            "pandemic",
+            "supply_shock",
+          ].includes(id),
+      )
+      .sort(),
+  );
 });
 
 test("warming increases only climate-driven event severity and frequency", () => {
@@ -153,11 +182,20 @@ test("one cycle runs event → quiz → response → choice → build → next d
   assert(s.civs[P].report.length > 0, "the narrator has a report to read");
   const before = { ...s.civs[P].stock };
   const gain = income(s, P);
+  const cost = upkeep(s.civs[P]);
+  const aid = RESOURCES.some((r) => before[r] + gain[r] < cost[r]);
   s = applyAction(s, { type: "ready", civ: P }).state;
   assert.equal(s.round, 2);
   assert.equal(s.phase, "event");
   for (const r of RESOURCES)
-    assert.equal(s.civs[P].stock[r], before[r] + gain[r]);
+    assert.equal(
+      s.civs[P].stock[r],
+      Math.min(
+        ECONOMY.storageCapacity,
+        Math.max(0, before[r] + gain[r] - cost[r]) +
+          (aid && r === "wheat" ? 1 : 0),
+      ),
+    );
 });
 
 test("a right answer means smaller losses than a wrong one", () => {
@@ -183,7 +221,7 @@ test("the cheap choice pushes the damage onto a neighbor", () => {
   assert(total(s, target) < before + 0 || s.civs[target].report.length > 0);
 });
 
-test("the sustainable choice halves damage and builds lasting protection", () => {
+test("the sustainable choice reduces damage and builds lasting protection", () => {
   let s = hearNeighbor(answer(rich(atQuiz("flood")), false));
   s = applyAction(s, { type: "choose", civ: P, option: 1 }).state;
   assert(s.civs[P].buildings.includes("wetland"));
@@ -197,7 +235,7 @@ test("building checks cost and caps; the bank trades 3:1", () => {
     s = applyAction(s, { type: "build", civ: P, building: "kiln" }).state;
   assert.match(
     applyAction(s, { type: "build", civ: P, building: "kiln" }).error ?? "",
-    /room for only/,
+    /room for only|No project actions/,
   );
   assert(applyAction(s, { type: "build", civ: P, building: "wetland" }).error);
   const sheep = s.civs[P].stock.sheep;
@@ -246,8 +284,9 @@ test("hot-seat waits for every person before moving on", () => {
 });
 
 test("every playable event has a quiz, neighbor line and lasting mitigation", () => {
-  assert.equal(Object.keys(EVENTS).length, 16);
+  assert.equal(Object.keys(EVENTS).length, 19);
   for (const [id, event] of Object.entries(EVENTS)) {
+    if (id === "mega_tsunami") continue; // Terminal catastrophe has no recovery choice.
     assert(event.neighbor.length > 20, `${id} needs a neighbor response`);
     let s = rich(atQuiz(id as EventId));
     s = hearNeighbor(answer(s, true));
@@ -288,4 +327,40 @@ test("content is consistent", () => {
     );
     assert(BUILDINGS[e.green.build!].protects?.includes(id as EventId));
   }
+});
+
+test("catastrophic tsunami kills every civilization immediately and permanently", () => {
+  const original = createGame(P, "hotseat", 17);
+  original.events.archipelago = { type: "mega_tsunami", loss: {}, severity: 3 };
+  for (const c of CIV_IDS) {
+    original.civs[c].buildings.push("tsunami_warning", "seawall");
+    original.civs[c].quiz = {
+      questionId: "test",
+      option: 0,
+      correct: true,
+      ms: 1000,
+    };
+  }
+  const snapshot = structuredClone(original);
+  const ended = advance(original);
+  assert.deepEqual(original, snapshot);
+  assert.equal(ended.phase, "ended");
+  assert.equal(ended.outcome, "collapse");
+  assert.equal(ended.collapseCause?.type, "mega_tsunami");
+  for (const c of CIV_IDS) {
+    assert.equal(ended.civs[c].eliminated, true);
+    assert.equal(ended.civs[c].buildings.length, 0);
+    assert(
+      RESOURCES.every(
+        (r) => ended.civs[c].stock[r] === 0 && income(ended, c)[r] === 0,
+      ),
+    );
+    assert(
+      applyAction(ended, { type: "build", civ: c, building: "farm" }).error,
+    );
+  }
+  const news = ended.news.length;
+  assert.equal(collapseFromTsunami(ended), true);
+  assert.equal(ended.news.length, news);
+  assert.deepEqual(advance(ended), ended);
 });

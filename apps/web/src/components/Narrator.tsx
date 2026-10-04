@@ -40,6 +40,7 @@ export default function Narrator({
   const line = lines[Math.min(index, lines.length - 1)] ?? "";
   const typing = shown < line.length;
   const last = index >= lines.length - 1;
+  const canSkipAll = lines.length - index >= 3;
 
   useEffect(() => {
     still.current =
@@ -133,7 +134,7 @@ export default function Narrator({
         </p>
         {!typing && last && children}
         <div className="narrator-actions">
-          {skipAction}
+          {canSkipAll && skipAction}
           {typing ? (
             <span className="narrator-hint">Click to skip</span>
           ) : !last ? (
@@ -144,14 +145,14 @@ export default function Narrator({
               </small>
             </button>
           ) : (
-            (actions ??
-            (onDone && (
+            !actions &&
+            onDone && (
               <button className="primary" onClick={onDone}>
                 ▶ Got it
               </button>
-            )))
+            )
           )}
-          {!last && !skipAction && (
+          {canSkipAll && !skipAction && (
             <button
               className="narrator-next"
               style={{ animation: "none", background: "#e8cf95" }}
@@ -162,6 +163,15 @@ export default function Narrator({
             </button>
           )}
         </div>
+        {actions && (
+          <div
+            className={`narrator-reveal ${!typing && last ? "revealed" : ""}`}
+            aria-hidden={typing || !last}
+            inert={typing || !last}
+          >
+            <div className="narrator-reveal-inner">{actions}</div>
+          </div>
+        )}
       </div>
       <figure className="narrator-portrait">
         <div className="narrator-face">

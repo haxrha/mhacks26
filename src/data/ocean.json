@@ -3,18 +3,38 @@
   "wave": "#3b6ea8",
   "foam": "#9fd6e4",
   "crest": "#ecebe1",
-  "fps": 6,
+  "fps": 60,
   "shimmer": {
-    "framesPerStep": 12,
-    "framesPerDrift": 48,
-    "riverFramesPerStep": 6,
+    "framesPerStep": 6,
+    "framesPerDrift": 24,
+    "riverFramesPerStep": 3,
     "density": 4
   },
   "tsunami": {
-    "frames": 72,
+    "frames": 96,
     "sides": ["west", "east", "south"],
     "width": 9,
-    "coastalReach": 5
+    "coastalReach": 24,
+    "offshoreMargin": 64,
+    "largeFrames": 144,
+    "largeWidth": 18,
+    "localHalfLength": 32,
+    "localTravel": 84,
+    "localInland": 30,
+    "largeReach": 120,
+    "washFrames": 24,
+    "restFrames": 108,
+    "edgeFeather": 7,
+    "inlandFeather": 8,
+    "washOpacity": 0.58,
+    "crestRipple": 1.4,
+    "aftermathFrames": 90,
+    "floodOpacity": 0.78,
+    "forestSwampChance": 0.42,
+    "largeFloodOpacity": 0.95,
+    "largeTransport": 92,
+    "localTransport": 18,
+    "largeForestDestruction": 0.88
   },
   "trade": {
     "frames": 72,
@@ -26,5 +46,21 @@
     "enclave": [19, 110],
     "petrostate": [303, 109],
     "archipelago": [218, 188]
-  }
+  },
+  "surf": {
+    "period": 96,
+    "activeFrames": 18,
+    "patchWidth": 14,
+    "coastalReach": 2
+  },
+  "swell": {
+    "period": 144,
+    "frames": 96,
+    "width": 3,
+    "halfLength": 22,
+    "speed": 1.35,
+    "lanes": 4,
+    "offshoreMargin": 48
+  },
+  "timelineFps": 6
 }

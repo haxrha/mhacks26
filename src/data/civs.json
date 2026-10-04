@@ -9,17 +9,17 @@
     "weakness": "Little farmland",
     "start": {
       "sheep": 3,
-      "wheat": 1,
+      "wheat": 3,
       "wood": 2,
       "brick": 2,
       "ore": 3
     },
     "base": {
-      "sheep": 2,
+      "sheep": 1,
       "wheat": 0,
       "wood": 1,
       "brick": 0,
-      "ore": 2
+      "ore": 1
     },
     "buildings": []
   },
@@ -36,12 +36,12 @@
       "wheat": 3,
       "wood": 3,
       "brick": 1,
-      "ore": 0
+      "ore": 1
     },
     "base": {
       "sheep": 1,
-      "wheat": 2,
-      "wood": 2,
+      "wheat": 1,
+      "wood": 1,
       "brick": 0,
       "ore": 0
     },
@@ -57,7 +57,7 @@
     "weakness": "Few sheep",
     "start": {
       "sheep": 0,
-      "wheat": 2,
+      "wheat": 3,
       "wood": 2,
       "brick": 3,
       "ore": 3
@@ -66,8 +66,8 @@
       "sheep": 0,
       "wheat": 1,
       "wood": 0,
-      "brick": 2,
-      "ore": 2
+      "brick": 1,
+      "ore": 1
     },
     "buildings": [
       "kiln"
@@ -89,8 +89,8 @@
       "ore": 1
     },
     "base": {
-      "sheep": 2,
-      "wheat": 2,
+      "sheep": 1,
+      "wheat": 1,
       "wood": 0,
       "brick": 1,
       "ore": 0

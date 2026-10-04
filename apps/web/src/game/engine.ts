@@ -12,7 +12,31 @@
  * After 10 cycles, or once warming reaches +3°C, the game ends.
  */
 import { clone } from "./clone";
-import { BUILDINGS, CIVS, EVENTS, stock } from "./content";
+import {
+  BUILDINGS,
+  CIVS,
+  ECONOMY,
+  EVENTS,
+  GEOGRAPHY,
+  RESEARCH,
+  RISK,
+  stock,
+} from "./content";
+import {
+  damageBuildings,
+  drawRegionalEvents,
+  ensureHazard,
+  eventLoss,
+  productionPenalty,
+  destructionProfile,
+  profile,
+  recover,
+  recoveryCost,
+  researchProtection,
+  technologies,
+  tickRecovery,
+  upkeep,
+} from "./disasters";
 import { QUESTIONS } from "./questions";
 import {
   CIV_IDS,
@@ -35,27 +59,9 @@ const CLIMATE_DRIFT = 0.05;
 const START_CLIMATE = 0.4;
 
 // ---------- geography: who your choices land on ----------
-export const DOWNSTREAM: Record<CivId, CivId[]> = {
-  heartland: ["enclave", "petrostate"],
-  enclave: ["archipelago"],
-  petrostate: ["archipelago"],
-  archipelago: [],
-};
-export const DOWNWIND: Record<CivId, CivId> = {
-  petrostate: "heartland",
-  heartland: "enclave",
-  enclave: "archipelago",
-  archipelago: "petrostate",
-};
-/** Shared aquifer (Highland–Forge) and shared coast (Verdant–Tidehaven). */
-export const SHARED: Record<CivId, CivId> = {
-  heartland: "petrostate",
-  petrostate: "heartland",
-  enclave: "archipelago",
-  archipelago: "enclave",
-};
-const upstream = (c: CivId) => CIV_IDS.filter((u) => DOWNSTREAM[u].includes(c));
-const upwind = (c: CivId) => CIV_IDS.filter((u) => DOWNWIND[u] === c);
+export const DOWNSTREAM = GEOGRAPHY.downstream;
+export const DOWNWIND = GEOGRAPHY.downwind;
+export const SHARED = GEOGRAPHY.shared;
 
 // ---------- helpers ----------
 export function random(s: GameState): number {
@@ -86,14 +92,14 @@ export const describe = (amounts: Partial<Stock>) =>
   RESOURCES.filter((r) => (amounts[r] ?? 0) > 0)
     .map((r) => `${amounts[r]} ${r}`)
     .join(", ") || "nothing";
-const halve = (loss: Partial<Stock>): Partial<Stock> =>
-  Object.fromEntries(
-    Object.entries(loss).map(([r, n]) => [r, Math.floor((n ?? 0) / 2)]),
-  );
 export const builtCount = (civ: Civ, id: string) =>
   civ.buildings.filter((b) => b === id).length;
 export const canBuild = (civ: Civ, id: string) =>
+  !!BUILDINGS[id] &&
   !BUILDINGS[id].earned &&
+  (!BUILDINGS[id].requires ||
+    technologies(civ).includes(BUILDINGS[id].requires!)) &&
+  (civ.actionsUsed ?? 0) < ECONOMY.actionsPerRound &&
   builtCount(civ, id) < (BUILDINGS[id].max ?? Infinity) &&
   canAfford(civ.stock, BUILDINGS[id].cost);
 export const protectedFrom = (civ: Civ, event: EventId) =>
@@ -136,6 +142,9 @@ export function createGame(
         ready: false,
         asked: [],
         report: [],
+        hazards: [],
+        technologies: [],
+        actionsUsed: 0,
       } satisfies Civ,
     ]),
   ) as unknown as Record<CivId, Civ>;
@@ -160,53 +169,40 @@ export function createGame(
 
 /** Each town draws this cycle's event, weighted by its geography, the climate and its neighbors. */
 export function rollEvents(s: GameState) {
+  if (s.phase === "ended") return;
+  drawRegionalEvents(s, () => random(s));
+  collapseFromTsunami(s);
+}
+
+/** A catastrophic wave is a terminal shared loss, independent of quiz or defenses. */
+export function collapseFromTsunami(s: GameState) {
+  if (s.collapseCause) return true;
+  const origin = CIV_IDS.find(
+    (c) =>
+      s.events[c].type === "mega_tsunami" ||
+      s.civs[c].hazards?.some((h) => h.type === "mega_tsunami"),
+  );
+  if (!origin) return false;
+  s.collapseCause = { type: "mega_tsunami", origin, started: s.round };
+  s.phase = "ended";
+  s.outcome = "collapse";
+  s.scheduled = [];
+  s.minorEvents = {};
   for (const c of CIV_IDS) {
-    const options = (Object.keys(EVENTS) as EventId[]).flatMap((id) => {
-      const e = EVENTS[id];
-      if (e.chainFrom?.length) return [];
-      let w = e.regions[c] ?? 0;
-      if (!w) return [];
-      if (e.climateDriven) w *= 1 + s.climate / 1.5;
-      const senders = e.carrier === "wind" ? upwind(c) : upstream(c);
-      const count = (x: CivId) =>
-        s.civs[x].buildings.filter((b) => b === e.cause).length;
-      if (e.cause) w *= 1 + 0.5 * senders.reduce((n, x) => n + count(x), 0);
-      return [{ id, w }];
-    });
-    const total = options.reduce((n, o) => n + o.w, 0);
-    let roll = random(s) * total;
-    const pick = options.find((o) => (roll -= o.w) < 0) ?? options[0];
-    let pickedId = pick.id;
-    const chained = (Object.keys(EVENTS) as EventId[]).filter((id) => {
-      const chain = EVENTS[id];
-      return (
-        (chain.regions[c] ?? 0) > 0 &&
-        chain.chainFrom?.includes(pick.id) &&
-        random(s) < (chain.chainChance ?? 0)
-      );
-    });
-    if (chained.length) pickedId = chained[0];
-    const e = EVENTS[pickedId];
-    const loss = { ...e.loss };
-    if (e.climateDriven && s.climate >= 1.5) {
-      // A hotter world hits harder: +1 to the biggest loss.
-      const top = RESOURCES.reduce((a, r) =>
-        (loss[r] ?? 0) > (loss[a] ?? 0) ? r : a,
-      );
-      loss[top] = (loss[top] ?? 0) + 1;
-    }
-    const senders = e.carrier === "wind" ? upwind(c) : upstream(c);
-    const cause = e.cause
-      ? senders
-          .filter((x) => s.civs[x].buildings.includes(e.cause!))
-          .sort(
-            (a, b) =>
-              s.civs[b].buildings.filter((x) => x === e.cause).length -
-              s.civs[a].buildings.filter((x) => x === e.cause).length,
-          )[0]
-      : undefined;
-    s.events[c] = { type: pickedId, cause, loss };
+    const civ = s.civs[c];
+    civ.eliminated = true;
+    civ.buildings = [];
+    civ.stock = stock();
+    civ.technologies = [];
+    civ.research = undefined;
+    civ.productionCarry = {};
+    civ.ready = true;
+    civ.report = [
+      "The catastrophic tsunami destroyed this civilization. No survivors remain; the world has collapsed.",
+    ];
+    s.news.push({ round: s.round, civ: c, text: civ.report[0] });
   }
+  return true;
 }
 
 // ---------- quiz ----------
@@ -228,6 +224,7 @@ function pickQuestion(s: GameState, civ: CivId) {
 export function advance(state: GameState): GameState {
   if (state.phase !== "event") return state;
   const s = clone(state);
+  if (collapseFromTsunami(s)) return s;
   for (const c of CIV_IDS) pickQuestion(s, c);
   s.phase = "quiz";
   return progress(s);
@@ -276,9 +273,38 @@ export function actionError(s: GameState, a: Action): string | null {
   }
   if (s.phase !== "build") return "It isn't time to build.";
   if (civ.ready) return "Your turn is already over.";
+  if (
+    a.type !== "exchange" &&
+    a.type !== "ready" &&
+    (civ.actionsUsed ?? 0) >= ECONOMY.actionsPerRound
+  )
+    return "No project actions left. Trade or end the round; projects refresh next round.";
+  if (a.type === "research") {
+    const tech = RESEARCH[a.technology];
+    if (!tech) return "Unknown research.";
+    if (civ.research) return "A research project is already in progress.";
+    if (technologies(civ).includes(a.technology)) return "Already researched.";
+    if (!tech.prerequisites.every((t) => technologies(civ).includes(t)))
+      return "Complete the prerequisite research first.";
+    if (!canAfford(civ.stock, tech.cost))
+      return "Not enough resources for research.";
+    return null;
+  }
+  if (a.type === "contain") {
+    if (
+      !(civ.hazards ?? []).some((h) => h.type === a.hazard) &&
+      !civ.damageScars?.some((s) => s.type === a.hazard)
+    )
+      return "That hazard is no longer active.";
+    if (!canAfford(civ.stock, recoveryCost(a.hazard)))
+      return "Not enough resources for recovery.";
+    return null;
+  }
   if (a.type === "build") {
     const b = BUILDINGS[a.building];
     if (!b || b.earned) return "You can't build that.";
+    if (b.requires && !technologies(civ).includes(b.requires))
+      return `Research ${RESEARCH[b.requires].name} first.`;
     if (builtCount(civ, a.building) >= (b.max ?? Infinity))
       return `Your town has room for only ${b.max} of those.`;
     if (!canAfford(civ.stock, b.cost)) return "Not enough resources.";
@@ -308,6 +334,23 @@ export function applyAction(
   } else if (a.type === "build") {
     pay(civ.stock, BUILDINGS[a.building].cost);
     civ.buildings.push(a.building);
+    civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
+  } else if (a.type === "research") {
+    pay(civ.stock, RESEARCH[a.technology].cost);
+    civ.research = {
+      id: a.technology,
+      remaining: RESEARCH[a.technology].turns,
+    };
+    civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
+  } else if (a.type === "contain") {
+    pay(civ.stock, recoveryCost(a.hazard));
+    recover(civ, a.hazard);
+    civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
+    s.news.push({
+      round: s.round,
+      civ: a.civ,
+      text: `${CIVS[a.civ].name} funded ${EVENTS[a.hazard].name.toLowerCase()} recovery; severity and recovery time fell.`,
+    });
   } else if (a.type === "exchange") {
     civ.stock[a.give] -= EXCHANGE_RATE;
     civ.stock[a.get] += 1;
@@ -350,6 +393,7 @@ export function progress(state: GameState): GameState {
       if (s.civs[c].choice === undefined) botChoice(s, c);
     if (CIV_IDS.every((c) => s.civs[c].choice !== undefined)) {
       resolveEvents(s);
+      if (s.outcome === "collapse") return s;
       for (const c of bots(s)) botBuild(s, c);
       s.phase = "build";
     }
@@ -360,61 +404,209 @@ export function progress(state: GameState): GameState {
 }
 
 /** Apply this cycle's events: quiz and choice soften the losses; cheap choices land on neighbors. */
-function resolveEvents(s: GameState) {
+export function resolveEvents(s: GameState) {
+  if (collapseFromTsunami(s)) return;
   const spills: {
     from: CivId;
     to: CivId;
-    loss: Partial<Stock>;
     event: EventId;
+    loss: Partial<Stock>;
   }[] = [];
   for (const c of CIV_IDS) {
-    const civ = s.civs[c];
-    const ev = s.events[c];
-    const e = EVENTS[ev.type];
-    let loss = { ...ev.loss };
+    const civ = s.civs[c],
+      ev = s.events[c],
+      e = EVENTS[ev.type];
+    const choice = civ.choice ?? 2;
+    const h = ensureHazard(s, c, ev);
+    let allowance = destructionProfile(ev.type).perRound;
     const report: string[] = [];
-    if (civ.quiz?.correct) {
-      for (const r of RESOURCES)
-        if (loss[r]) loss[r] = Math.max(0, loss[r]! - 1);
-      report.push("Your quick answer softened the blow.");
-    }
-    if (protectedFrom(civ, ev.type)) {
-      loss = halve(loss);
-      report.push("Defenses you built before halved the damage.");
-    }
-    const choice = civ.choice;
-    if (choice === 0) {
-      loss = {};
-      s.climate += e.cheap.climate ?? 0;
-      if (e.cheap.spillTo && e.cheap.spill) {
-        const to = spillTarget(c, e.cheap.spillTo);
-        spills.push({ from: c, to, loss: e.cheap.spill, event: ev.type });
-        report.push(
-          `${e.cheap.label}: no losses here, but ${CIVS[to].name} takes ${describe(e.cheap.spill)}.`,
-        );
-      } else if (e.cheap.climate)
-        report.push(
-          `${e.cheap.label}: no losses here, but warming rose +${e.cheap.climate}°C.`,
-        );
-    } else if (choice === 1) {
-      loss = halve(loss);
-      if (e.green.build) civ.buildings.push(e.green.build);
+    const origin = ev.cause ?? ev.origin;
+    if (origin && origin !== c) {
       report.push(
-        `${e.green.label}: you built ${BUILDINGS[e.green.build!]?.name ?? "defenses"}.`,
+        `The pressure came from ${CIVS[origin].name}. ${ev.reason ?? "Connected water or wind carried the consequences here."}`,
       );
+      s.news.push({
+        round: s.round,
+        civ: origin,
+        text: `${EVENTS[ev.type].name} pressure from ${CIVS[origin].name} reached ${CIVS[c].name}; that town now needs recovery.`,
+      });
     }
-    const taken = lose(civ.stock, loss);
-    report.unshift(`${e.name}: you lost ${describe(taken)}.`);
+    const taken = lose(civ.stock, eventLoss(s, c, ev, choice));
+    if (civ.quiz?.correct) {
+      const beforeQuiz = eventLoss(s, c, ev, choice, false);
+      const afterQuiz = eventLoss(s, c, ev, choice, true);
+      const count = (x: Partial<Stock>) =>
+        Object.values(x).reduce((n, v) => n + (v ?? 0), 0);
+      if (count(beforeQuiz) > count(afterQuiz))
+        report.push(
+          "Your answer reduced potential goods losses; recovery is still needed.",
+        );
+      else {
+        h.remaining = Math.max(1, h.remaining - 1);
+        report.push(
+          "Your answer prepared the recovery team: recovery finishes one round sooner.",
+        );
+      }
+    }
+    if (protectedFrom(civ, ev.type) || researchProtection(civ, ev.type))
+      report.push("Existing defenses and research reduced exposure.");
+    if (choice === 0) {
+      s.climate += e.cheap.climate ?? 0;
+      h.severity = Math.max(
+        RISK.temporaryMinimumSeverity,
+        h.severity - RISK.cheapSeverityReduction,
+      );
+      h.containment = RISK.cheapContainment;
+      report.push(
+        "Temporary containment reduced severity. Without recovery, this incident can grow again.",
+      );
+      if (e.cheap.spillTo && e.cheap.spill)
+        spills.push({
+          from: c,
+          to: spillTarget(c, e.cheap.spillTo),
+          event: ev.type,
+          loss: e.cheap.spill,
+        });
+    } else if (choice === 1) {
+      h.containment = RISK.greenContainment;
+      h.severity = Math.max(
+        RISK.minimumSeverity,
+        h.severity - RISK.greenSeverityReduction,
+      );
+      h.remaining = Math.max(1, h.remaining - 1);
+      if (e.green.build && !civ.buildings.includes(e.green.build))
+        civ.buildings.push(e.green.build);
+      report.push(
+        e.green.label +
+          ": " +
+          (BUILDINGS[e.green.build!]?.name ?? "defenses") +
+          ", lasting protection and shorter recovery.",
+      );
+    } else
+      report.push(
+        "No containment was funded. Severity may increase next round.",
+      );
+    const destroyed = damageBuildings(
+      s,
+      c,
+      h,
+      choice,
+      () => random(s),
+      allowance,
+    );
+    allowance -= destroyed.length;
+    for (const id of destroyed)
+      report.push(
+        BUILDINGS[id].name +
+          " was destroyed. Its production and points are gone; rebuild when reserves permit.",
+      );
+    report.unshift(
+      e.name +
+        ": " +
+        (Object.keys(taken).length
+          ? "lost " + describe(taken) + "."
+          : "stored goods were spared, but production and recovery are affected."),
+    );
+    // Smaller pressures keep occurring while a major disaster is being managed.
+    const minor = s.minorEvents?.[c];
+    if (minor && minor.type !== ev.type) {
+      const mh = ensureHazard(s, c, minor);
+      const lost = lose(civ.stock, eventLoss(s, c, minor, 2, false));
+      report.push(
+        "Also: " +
+          EVENTS[minor.type].name +
+          " disrupted the region" +
+          (Object.keys(lost).length ? " (lost " + describe(lost) + ")" : "") +
+          ".",
+      );
+      const damaged = damageBuildings(s, c, mh, 2, () => random(s), allowance);
+      allowance -= damaged.length;
+      for (const id of damaged)
+        report.push(
+          BUILDINGS[id].name +
+            " was destroyed by " +
+            EVENTS[minor.type].name.toLowerCase() +
+            ".",
+        );
+    }
+    // Recovery effects apply even when they are not this round's featured dialogue.
+    for (const old of civ.hazards ?? [])
+      if (
+        old.type !== ev.type &&
+        old.type !== minor?.type &&
+        old.severity >= 1.5
+      ) {
+        const r = profile(old.type).production[0] as Resource | undefined;
+        const lost = r ? lose(civ.stock, { [r]: 1 }) : {};
+        report.push(
+          EVENTS[old.type].name +
+            " recovery continues" +
+            (Object.keys(lost).length
+              ? ": lost " + describe(lost)
+              : "; output remains disrupted") +
+            ".",
+        );
+      }
+    for (const scar of civ.damageScars ?? []) {
+      if (
+        scar.type !== "mega_tsunami" ||
+        civ.hazards?.some((x) => x.type === scar.type)
+      )
+        continue;
+      const coastalDamage = damageBuildings(
+        s,
+        c,
+        { ...scar, origin: c, containment: 0, destroyed: scar.destroyed ?? 0 },
+        choice,
+        () => random(s),
+        destructionProfile(scar.type).perRound,
+      );
+      if (coastalDamage.length)
+        report.push(
+          "Tsunami erosion destroyed " +
+            coastalDamage.map((id) => BUILDINGS[id].name).join(", ") +
+            ". Fund recovery to stabilize damaged ground.",
+        );
+    }
+    report.push(
+      "Recovery: " +
+        h.remaining +
+        " round(s), severity " +
+        h.severity.toFixed(1) +
+        ". Fund recovery in the build menu to shorten it.",
+    );
     civ.report = report;
     s.news.push({
       round: s.round,
       civ: c,
-      text: `${CIVS[c].name}: ${e.name.toLowerCase()} arrived by ${e.carrier}${ev.cause ? ` from ${CIVS[ev.cause].name}` : ""}; lost ${describe(taken)}.`,
+      text:
+        CIVS[c].name +
+        ": " +
+        report[0] +
+        (destroyed.length
+          ? " " +
+            destroyed.map((id) => BUILDINGS[id].name).join(", ") +
+            " destroyed."
+          : ""),
     });
   }
   for (const sp of spills) {
     const taken = lose(s.civs[sp.to].stock, sp.loss);
-    const line = `${CIVS[sp.from].name} pushed their ${EVENTS[sp.event].name.toLowerCase()} onto us: we lost ${describe(taken)}.`;
+    const ev = { type: sp.event, loss: sp.loss, severity: 1, origin: sp.from };
+    const h = ensureHazard(s, sp.to, ev);
+    h.severity = Math.min(
+      RISK.maxSeverity,
+      h.severity + RISK.spillSeverityIncrease,
+    );
+    const line =
+      CIVS[sp.from].name +
+      " pushed " +
+      EVENTS[sp.event].name.toLowerCase() +
+      " pressure onto us: " +
+      (Object.keys(taken).length
+        ? "lost " + describe(taken)
+        : "production was disrupted") +
+      "; recovery is needed.";
     s.civs[sp.to].report.push(line);
     s.news.push({ round: s.round, civ: sp.to, text: line });
   }
@@ -427,25 +619,83 @@ export function cycleClimate(s: GameState) {
   for (const c of CIV_IDS) {
     const civ = s.civs[c];
     const clean = civ.buildings.includes("windmill");
+    const researchFactor = technologies(civ).reduce(
+      (n, t) => n * (RESEARCH[t]?.emissions ?? 1),
+      1,
+    );
     for (const b of civ.buildings) {
       const def = BUILDINGS[b];
       if (!def?.climate) continue;
-      delta += def.dirty && clean ? def.climate / 2 : def.climate;
+      delta += def.dirty
+        ? def.climate * (clean ? 0.5 : 1) * researchFactor
+        : def.climate;
     }
   }
   return delta;
 }
-export function income(s: GameState, c: CivId): Stock {
+function output(s: GameState, c: CivId): Stock {
   const out = stock(CIVS[c].base);
-  for (const b of s.civs[c].buildings)
-    for (const r of RESOURCES) out[r] += BUILDINGS[b]?.yields?.[r] ?? 0;
+  const civ = s.civs[c];
+  const copies: Record<string, number> = {};
+  for (const b of civ.buildings) {
+    copies[b] = (copies[b] ?? 0) + 1;
+    const factor =
+      copies[b] > ECONOMY.diminishingCopies
+        ? ECONOMY.secondaryYieldMultiplier
+        : 1;
+    for (const r of RESOURCES)
+      out[r] += (BUILDINGS[b]?.yields?.[r] ?? 0) * factor;
+  }
+  for (const id of technologies(civ))
+    for (const r of RESOURCES) out[r] += RESEARCH[id]?.yields?.[r] ?? 0;
+  for (const r of RESOURCES)
+    out[r] = Math.max(0, out[r] * (1 - productionPenalty(civ, r)));
+  return out;
+}
+/** Fractional output carries forward, so a small disruption does not erase a one-unit farm forever. */
+export function income(s: GameState, c: CivId): Stock {
+  if (s.civs[c].eliminated) return stock();
+  const out = output(s, c);
+  for (const r of RESOURCES)
+    out[r] = Math.floor(out[r] + (s.civs[c].productionCarry?.[r] ?? 0));
   return out;
 }
 function endCycle(state: GameState): GameState {
   const s = state;
   for (const c of CIV_IDS) {
     const add = income(s, c);
+    const raw = output(s, c);
+    s.civs[c].productionCarry ??= {};
+    for (const r of RESOURCES)
+      s.civs[c].productionCarry![r] = round2(
+        raw[r] + (s.civs[c].productionCarry![r] ?? 0) - add[r],
+      );
     for (const r of RESOURCES) s.civs[c].stock[r] += add[r];
+    const civ = s.civs[c];
+    const cost = upkeep(civ);
+    const short = RESOURCES.filter((r) => civ.stock[r] < cost[r]);
+    const paid = lose(civ.stock, cost);
+    if (short.length) {
+      civ.hardship = (civ.hardship ?? 0) + ECONOMY.emergencyPenalty;
+      for (const r of RESOURCES)
+        civ.stock[r] += (ECONOMY.emergencyAid as Partial<Stock>)[r] ?? 0;
+      s.news.push({
+        round: s.round,
+        civ: c,
+        text: `Food or maintenance shortage (${short.join(", ")}). Emergency wheat keeps recovery possible; prosperity −${ECONOMY.emergencyPenalty}. Build food production or trade before expanding.`,
+      });
+    }
+    const overflow = stock();
+    for (const r of RESOURCES) {
+      overflow[r] = Math.max(0, civ.stock[r] - ECONOMY.storageCapacity);
+      civ.stock[r] = Math.min(ECONOMY.storageCapacity, civ.stock[r]);
+    }
+    s.news.push({
+      round: s.round,
+      civ: c,
+      text: `Production: ${describe(add)}. Upkeep: ${describe(paid)}.${RESOURCES.some((r) => overflow[r]) ? ` Storage full: ${describe(overflow)} redistributed.` : ""}`,
+    });
+    tickRecovery(s, c);
   }
   s.climate = round2(Math.max(0, s.climate + cycleClimate(s)));
   s.history.push({ round: s.round, climate: s.climate });
@@ -461,9 +711,10 @@ function endCycle(state: GameState): GameState {
     civ.responded = undefined;
     civ.choice = undefined;
     civ.ready = false;
+    civ.actionsUsed = 0;
   }
   rollEvents(s);
-  s.phase = "event";
+  if (!s.collapseCause) s.phase = "event";
   return s;
 }
 
@@ -474,7 +725,10 @@ export function score(s: GameState, c: CivId) {
     (n, b) => n + (BUILDINGS[b]?.points ?? 1),
     0,
   );
-  return buildings;
+  return Math.max(
+    0,
+    buildings + technologies(civ).length - (civ.hardship ?? 0),
+  );
 }
 export const greenCount = (s: GameState, c: CivId) =>
   s.civs[c].buildings.filter((b) => BUILDINGS[b]?.green).length;
@@ -547,8 +801,33 @@ function botChoice(s: GameState, c: CivId) {
 }
 function botBuild(s: GameState, c: CivId) {
   const civ = s.civs[c];
-  for (let n = 0; n < 3; n++) {
-    let id = BUILD_ORDER[c].find((b) => canBuild(civ, b));
+  const emergency = [...(civ.hazards ?? [])]
+    .sort((a, b) => b.severity - a.severity)
+    .find((h) => h.severity >= 1 && canAfford(civ.stock, recoveryCost(h.type)));
+  if (emergency) {
+    pay(civ.stock, recoveryCost(emergency.type));
+    recover(civ, emergency.type);
+    civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
+  }
+  if (!civ.research && (civ.actionsUsed ?? 0) < ECONOMY.actionsPerRound) {
+    const id = Object.keys(RESEARCH).find(
+      (t) =>
+        !technologies(civ).includes(t) &&
+        RESEARCH[t].prerequisites.every((p) => technologies(civ).includes(p)) &&
+        canAfford(civ.stock, RESEARCH[t].cost),
+    );
+    if (id) {
+      pay(civ.stock, RESEARCH[id].cost);
+      civ.research = { id, remaining: RESEARCH[id].turns };
+      civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
+    }
+  }
+  for (let n = civ.actionsUsed ?? 0; n < ECONOMY.actionsPerRound; n++) {
+    const priorities =
+      income(s, c).wheat <= upkeep(civ).wheat
+        ? ["farm", ...BUILD_ORDER[c]]
+        : BUILD_ORDER[c];
+    let id = priorities.find((b) => canBuild(civ, b));
     if (!id) {
       // Trade a surplus 3:1 toward the first thing on the wish list.
       const wish = BUILD_ORDER[c].find((b) =>
@@ -576,6 +855,7 @@ function botBuild(s: GameState, c: CivId) {
     if (!id) break;
     pay(civ.stock, BUILDINGS[id].cost);
     civ.buildings.push(id);
+    civ.actionsUsed = (civ.actionsUsed ?? 0) + 1;
   }
   civ.ready = true;
 }

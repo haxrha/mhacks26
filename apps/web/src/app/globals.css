@@ -3041,6 +3041,37 @@ svg image {
   height: 100%;
   image-rendering: pixelated;
 }
+.world-hazard-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  z-index: 2;
+}
+.catastrophic-result {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 8;
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  background: #efe2bc;
+  color: #2a1a0e;
+  border: 4px solid #8a5a32;
+  box-shadow: 5px 5px #1a120a;
+}
+.catastrophic-result .endgame > h2 {
+  font-size: 28px;
+}
+.catastrophic-result .endgame > p {
+  font-size: 20px;
+}
+.catastrophic-result .climate-chart {
+  display: none;
+}
 .pixel-map .world-map {
   display: block;
   width: 100%;
@@ -4852,7 +4883,8 @@ svg image {
   background-image: none;
 }
 .world-view .world-stage {
-  --dialogue-space: 280px;
+  --camera-reserve: 188px;
+  --camera-side: calc(16px + 5vw);
   position: absolute;
   inset: 64px 0 54px;
   height: auto;
@@ -4867,9 +4899,13 @@ svg image {
 }
 .world-stage .map-viewport {
   position: absolute;
-  inset: 8px calc(8px + 5vw) var(--dialogue-space) 8px;
+  inset: 0;
   height: auto;
   overflow: auto;
+  touch-action: none;
+  cursor: grab;
+  scrollbar-width: none;
+  user-select: none;
 }
 .world-stage .world-canvas {
   position: absolute;
@@ -4922,9 +4958,64 @@ svg image {
   min-width: 44px;
   min-height: 44px;
 }
+.narrator-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 460ms ease,
+    opacity 320ms ease,
+    visibility 460ms;
+}
+.narrator-reveal.revealed {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+}
+.narrator-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+.planning-summary {
+  padding: 8px 12px;
+  font-size: 19px;
+  background: #efe2bc;
+  color: #2a1a0e;
+}
+.planning-summary p {
+  margin: 4px 0;
+}
+.build-panel .planning-summary {
+  flex-shrink: 0;
+  max-height: 150px;
+  overflow: auto;
+}
+.build-panel .build-list {
+  min-height: 90px;
+}
+.build-panel {
+  overflow: auto;
+}
+.project-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+}
+.project-tabs button {
+  min-height: 44px;
+}
+.recovery-row {
+  background: #f7d9a0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .narrator-reveal {
+    transition: none;
+  }
+}
 @media (max-width: 900px) {
   .world-stage .map-viewport {
-    right: 8px;
+    --camera-side: 16px;
   }
   .sea-warning {
     top: 102px;
@@ -4975,5 +5066,145 @@ svg image {
   }
   .world-stage .narrator-portrait figcaption small {
     font-size: 15px;
+  }
+}
+/* Stable camera; the advisor never participates in map sizing. */
+.world-view.disaster-preview .world-stage {
+  /* This test route has no resource bar; animate the sea all the way down. */
+  bottom: 0;
+}
+.map-viewport.panning,
+.map-viewport.panning .castle-hotspot {
+  cursor: grabbing;
+}
+.map-viewport::-webkit-scrollbar {
+  display: none;
+}
+.pan-hint {
+  background: #2a1a0e;
+  color: #efe2bc;
+  padding: 6px 10px;
+  font:
+    18px "VT323",
+    monospace;
+}
+.player-portrait {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 80px;
+  height: 80px;
+  image-rendering: pixelated;
+  background: #d8bd83;
+  border: 4px solid;
+  border-color: #c48a52 #3e2414 #3e2414 #c48a52;
+  outline: 2px solid #1a120a;
+  box-shadow: 4px 4px #1a120a;
+}
+.project-tabs button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #8a5a32;
+  color: #fff0cf;
+  border: 3px solid;
+  border-color: #c48a52 #3e2414 #3e2414 #c48a52;
+  box-shadow: 3px 3px #1a120a;
+  font:
+    20px "VT323",
+    monospace;
+  padding: 10px 8px;
+}
+.project-tabs button[aria-pressed="true"] {
+  background: #5e3c20;
+  border-color: #3e2414 #c48a52 #c48a52 #3e2414;
+  box-shadow: 1px 1px #1a120a;
+}
+.project-tabs button:hover {
+  color: #ffe379;
+}
+.project-tabs button:active,
+.exchange .trade-submit:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px #1a120a;
+}
+.exchange {
+  background: #e1c792;
+  padding: 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.build-panel .planning-summary {
+  max-height: 110px;
+}
+.trade-heading {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2a1a0e;
+}
+.trade-heading b {
+  font-size: 23px;
+}
+.trade-heading > span {
+  margin-left: auto;
+  font-size: 17px;
+}
+.exchange select {
+  min-height: 44px;
+  flex: 1;
+  min-width: 95px;
+  padding: 6px;
+  border: 3px solid;
+  border-color: #5e3c20 #c48a52 #c48a52 #5e3c20;
+}
+.exchange .trade-submit {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #2a1a0e;
+  background: #f5c542;
+  border: 3px solid;
+  border-color: #fff0a1 #8a5a32 #8a5a32 #fff0a1;
+  box-shadow: 4px 4px #1a120a;
+  font:
+    24px "VT323",
+    monospace;
+}
+.exchange .trade-submit:hover:not(:disabled) {
+  background: #ffe379;
+}
+.exchange .trade-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.exchange p {
+  width: 100%;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.trade-feedback {
+  min-height: 20px;
+}
+@media (max-width: 600px) {
+  .world-stage .map-viewport {
+    --camera-reserve: 168px;
+  }
+  .pan-hint {
+    display: none;
+  }
+  .player-portrait {
+    width: 60px;
+    height: 60px;
+  }
+  .project-tabs button {
+    font-size: 18px;
   }
 }

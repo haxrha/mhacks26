@@ -1,0 +1,313 @@
+{
+  "majorChance": 0.16,
+  "majorCooldown": 3,
+  "maxSeverity": 3,
+  "minorSeverity": 1,
+  "majorSeverity": 2,
+  "quizReduction": 1,
+  "cheapMultiplier": 0.8,
+  "greenMultiplier": 0.6,
+  "greenDamageMultiplier": 0.2,
+  "defenseMultiplier": 0.7,
+  "damageChance": 0.65,
+  "maxDestroyed": 1,
+  "majorDestroyed": 2,
+  "productionPenalty": 0.18,
+  "maxProductionPenalty": 0.8,
+  "cheapContainment": 0.5,
+  "greenContainment": 1,
+  "containmentDecay": 0.35,
+  "earthquakeWaveChance": 0.45,
+  "majorWaveChance": 0.015,
+  "aftershockChance": 0.35,
+  "hurricaneFloodChance": 0.65,
+  "spillSpreadChance": 0.6,
+  "profiles": {
+    "flood": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": ["farm", "pasture", "kiln"],
+      "production": ["wheat", "sheep"],
+      "growth": 0.15,
+      "cleanup": {
+        "wood": 1
+      }
+    },
+    "drought": {
+      "major": false,
+      "duration": 3,
+      "vulnerable": ["farm", "pasture"],
+      "production": ["wheat", "sheep"],
+      "growth": 0.2,
+      "cleanup": {
+        "wheat": 1,
+        "wood": 1
+      }
+    },
+    "heatwave": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": [],
+      "production": ["wheat", "sheep"],
+      "growth": 0.15,
+      "cleanup": {
+        "wood": 1
+      }
+    },
+    "smog": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": [],
+      "production": ["brick", "ore"],
+      "growth": 0.15,
+      "cleanup": {
+        "ore": 1
+      }
+    },
+    "landslide": {
+      "major": false,
+      "duration": 3,
+      "vulnerable": ["lumber", "mine", "farm"],
+      "production": ["wood", "ore"],
+      "growth": 0.15,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "small_quake": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": ["kiln", "house"],
+      "production": ["brick"],
+      "growth": 0,
+      "cleanup": {
+        "wood": 1
+      }
+    },
+    "grid_failure": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": [],
+      "production": ["brick", "ore"],
+      "growth": 0.1,
+      "cleanup": {
+        "ore": 1
+      }
+    },
+    "pandemic": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": [],
+      "production": ["sheep", "wheat"],
+      "growth": 0.15,
+      "cleanup": {
+        "wheat": 1
+      }
+    },
+    "supply_shock": {
+      "major": false,
+      "duration": 2,
+      "vulnerable": [],
+      "production": ["brick", "ore"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1
+      }
+    },
+    "sea_rise": {
+      "major": false,
+      "duration": 3,
+      "vulnerable": ["farm", "pasture"],
+      "production": ["wheat", "sheep"],
+      "growth": 0.2,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "wildfire": {
+      "major": true,
+      "duration": 4,
+      "vulnerable": ["lumber", "grove", "farm", "house"],
+      "production": ["wood", "wheat"],
+      "growth": 0.4,
+      "cleanup": {
+        "wheat": 1,
+        "wood": 1
+      }
+    },
+    "hurricane": {
+      "major": true,
+      "duration": 3,
+      "vulnerable": [
+        "farm",
+        "pasture",
+        "windmill",
+        "solar",
+        "house",
+        "lumber",
+        "grove",
+        "kiln",
+        "refinery"
+      ],
+      "production": ["wheat", "sheep", "brick", "wood"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "tornado": {
+      "major": true,
+      "duration": 3,
+      "vulnerable": ["farm", "pasture", "windmill", "solar", "house"],
+      "production": ["wheat", "sheep"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "earthquake": {
+      "major": true,
+      "duration": 3,
+      "vulnerable": ["kiln", "mine", "refinery", "house"],
+      "production": ["brick", "ore"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1,
+        "ore": 1
+      }
+    },
+    "tsunami": {
+      "major": true,
+      "duration": 3,
+      "vulnerable": ["farm", "pasture", "refinery", "house"],
+      "production": ["wheat", "sheep"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "mega_tsunami": {
+      "major": true,
+      "duration": 6,
+      "vulnerable": [
+        "farm",
+        "pasture",
+        "refinery",
+        "house",
+        "kiln",
+        "lumber",
+        "grove",
+        "windmill",
+        "solar"
+      ],
+      "production": ["wheat", "sheep", "wood", "brick"],
+      "growth": 0.15,
+      "cleanup": {
+        "wood": 1,
+        "brick": 2
+      }
+    },
+    "volcano": {
+      "major": true,
+      "duration": 5,
+      "vulnerable": [
+        "farm",
+        "pasture",
+        "grove",
+        "house",
+        "lumber",
+        "mine",
+        "kiln"
+      ],
+      "production": ["wheat", "wood", "sheep", "ore"],
+      "growth": 0.1,
+      "cleanup": {
+        "wheat": 1,
+        "wood": 1
+      }
+    },
+    "dam_failure": {
+      "major": true,
+      "duration": 4,
+      "vulnerable": ["farm", "pasture", "kiln", "house"],
+      "production": ["wheat", "brick"],
+      "growth": 0.1,
+      "cleanup": {
+        "wood": 1,
+        "brick": 1
+      }
+    },
+    "spill": {
+      "major": true,
+      "duration": 4,
+      "vulnerable": [],
+      "production": ["wheat", "sheep"],
+      "growth": 0.3,
+      "cleanup": {
+        "wood": 1,
+        "ore": 1
+      }
+    }
+  },
+  "climateSeverityThreshold": 1.5,
+  "causeWeight": 0.5,
+  "ongoingLossMultiplier": 0.5,
+  "cheapSeverityReduction": 0.4,
+  "greenSeverityReduction": 0.8,
+  "containedRecovery": 0.35,
+  "minimumSeverity": 0.25,
+  "temporaryMinimumSeverity": 0.5,
+  "recoverySeverityReduction": 1,
+  "recoveryRoundsReduction": 2,
+  "hardenedDamageMultiplier": 0.3,
+  "spillSeverityIncrease": 0.25,
+  "protectedProductionMultiplier": 0.7,
+  "disabledEvents": [
+    "heatwave",
+    "smog",
+    "grid_failure",
+    "pandemic",
+    "supply_shock"
+  ],
+  "fossilOilWeight": 2,
+  "fireStormMultiplier": 1.35,
+  "destruction": {
+    "mega_tsunami": {
+      "cap": 12,
+      "perRound": 4,
+      "scarRounds": 9,
+      "productionMultiplier": 2.4
+    },
+    "tsunami": {
+      "cap": 2,
+      "perRound": 1,
+      "scarRounds": 4,
+      "productionMultiplier": 1.1
+    },
+    "hurricane": {
+      "cap": 5,
+      "perRound": 2,
+      "scarRounds": 5,
+      "productionMultiplier": 1.5
+    },
+    "tornado": {
+      "cap": 4,
+      "perRound": 2,
+      "scarRounds": 4,
+      "productionMultiplier": 1.4
+    },
+    "volcano": {
+      "cap": 4,
+      "perRound": 2,
+      "scarRounds": 7,
+      "productionMultiplier": 1.4
+    }
+  },
+  "fireStormExtraCap": 2,
+  "megaTsunamiClimateThreshold": 2
+}

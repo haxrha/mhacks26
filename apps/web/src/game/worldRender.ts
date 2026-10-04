@@ -11,6 +11,13 @@
 import world from "../../../../src/data/worldmap.json";
 import oceanData from "../../../../src/data/ocean.json";
 import { EVENTS } from "./content";
+import {
+  hazardPaint,
+  shakeHazardRegions,
+  visualNoise,
+  type HazardFrames,
+  stormPickups,
+} from "./hazardVisuals";
 import { spillTarget } from "./engine";
 import { OWNERS, TOWNS } from "./towns";
 import { CIV_IDS, type CivId, type GameState } from "./types";
@@ -137,6 +144,19 @@ export function worldLayers(): WorldLayers {
   return cached;
 }
 
+let cachedSurf: Uint8Array | undefined;
+/** Foam stays on water beside every coast, including cliffs and forests. */
+export function surfMask(): Uint8Array {
+  if (cachedSurf) return cachedSurf;
+  const L = worldLayers();
+  const coast = distance(L.kind, (k) => k > KIND.water);
+  cachedSurf = new Uint8Array(MAP_W * MAP_H);
+  for (let i = 0; i < cachedSurf.length; i++)
+    if (L.kind[i] <= KIND.shallow && coast[i] <= OCEAN.surf.coastalReach)
+      cachedSurf[i] = coast[i];
+  return cachedSurf;
+}
+
 const isSea = (k: number) => k <= KIND.shallow;
 const lowland = (k: number) =>
   k === KIND.grass ||
@@ -248,10 +268,110 @@ export function portRoute(civ: CivId): [number, number][] {
   return path;
 }
 
+/** Seeded, oblique velocity. Small waves travel toward their coastal region. */
+export function tsunamiHeading(state: GameState, area: number, large = false) {
+  const civ = OWNERS[TOWNS[area].civ];
+  const type = large ? "mega_tsunami" : "tsunami";
+  const incident = state.civs[civ].hazards?.find((h) => h.type === type);
+  const began =
+    incident?.started ??
+    (state.events[civ].type === type ? state.events[civ].started : undefined) ??
+    state.round;
+  const n = visualNoise(began, area, state.seed + (large ? 9173 : 413));
+  if (large) {
+    const angle = n * Math.PI * 2;
+    return [Math.cos(angle), Math.sin(angle)] as const;
+  }
+  const [cx, cy] = TOWNS[area].keepTile;
+  const angle = Math.atan2(100 - cy, 160 - cx) + (n - 0.5) * 1.2;
+  return [Math.cos(angle), Math.sin(angle)] as const;
+}
 export function tsunamiDirection(state: GameState): string {
-  return OCEAN.tsunami.sides[
-    ((state.seed >>> 0) + state.round) % OCEAN.tsunami.sides.length
-  ];
+  const statuses = areaStatus(state);
+  const area = Math.max(
+    0,
+    statuses.findIndex(
+      (s) => s.effects.has("tsunami") || s.effects.has("mega_tsunami"),
+    ),
+  );
+  const [dx, dy] = tsunamiHeading(
+    state,
+    area,
+    statuses[area].effects.has("mega_tsunami"),
+  );
+  return [
+    dy > 0.35 ? "north" : dy < -0.35 ? "south" : "",
+    dx > 0.35 ? "west" : dx < -0.35 ? "east" : "",
+  ]
+    .filter(Boolean)
+    .join("-");
+}
+
+/** Contact and transport use world coordinates, shared by sprite removal and debris. */
+export function tsunamiImpact(
+  state: GameState,
+  x: number,
+  y: number,
+  frame: number,
+  clocks?: HazardFrames,
+) {
+  const statuses = areaStatus(state),
+    L = worldLayers();
+  for (let area = 0; area < statuses.length; area++) {
+    const large = statuses[area].effects.has("mega_tsunami");
+    if (!large && !statuses[area].effects.has("tsunami")) continue;
+    const [dx, dy] = tsunamiHeading(state, area, large);
+    const [cx, cy] = TOWNS[area].keepTile;
+    const i = Math.floor(y) * MAP_W + Math.floor(x);
+    if (
+      !large &&
+      (Math.abs((x - cx) * -dy + (y - cy) * dx) >
+        OCEAN.tsunami.localHalfLength - 4 ||
+        (L.kind[i] > 3 && L.area[i] !== area))
+    )
+      continue;
+    if (L.kind[i] > 3 && !lowland(L.kind[i]) && L.kind[i] !== 12) continue;
+    if (
+      L.distSea[i] >
+      (large ? OCEAN.tsunami.largeReach : OCEAN.tsunami.coastalReach)
+    )
+      continue;
+    const m = OCEAN.tsunami.offshoreMargin;
+    const bounds = [
+      [-m, -m],
+      [MAP_W + m, -m],
+      [-m, MAP_H + m],
+      [MAP_W + m, MAP_H + m],
+    ].map(([px, py]) => px * dx + py * dy);
+    const start = large
+      ? Math.min(...bounds)
+      : cx * dx + cy * dy - OCEAN.tsunami.localTravel;
+    const travel = large
+      ? Math.max(...bounds) - start
+      : OCEAN.tsunami.localTravel + OCEAN.tsunami.localInland;
+    const period = large ? OCEAN.tsunami.largeFrames : OCEAN.tsunami.frames;
+    const ageFrame =
+      clocks?.[area]?.[large ? "mega_tsunami" : "tsunami"] ?? frame;
+    const cycle = state.collapseCause
+      ? Math.min(ageFrame, period + OCEAN.tsunami.restFrames - 1)
+      : ageFrame % (period + OCEAN.tsunami.restFrames);
+    const arrival = ((x * dx + y * dy - start) / travel) * (period - 1);
+    if (arrival < 0 || arrival >= period) continue;
+    const age = cycle - arrival;
+    if (!large && age > OCEAN.tsunami.aftermathFrames) continue;
+    if (age >= 0)
+      return {
+        age,
+        dx,
+        dy,
+        large,
+        distance: Math.min(
+          large ? OCEAN.tsunami.largeTransport : OCEAN.tsunami.localTransport,
+          ((age * travel) / (period - 1)) * 0.85,
+        ),
+      };
+  }
+  return undefined;
 }
 
 export interface WorldView {
@@ -270,8 +390,33 @@ export function renderWorldView(
   out: Uint8ClampedArray,
   view: WorldView,
   traffic = tradeTraffic(state, frame),
+  clocks?: HazardFrames,
+  overlay?: Uint8ClampedArray,
 ) {
-  const { width, height, originX, originY, clip } = view;
+  overlay?.fill(0);
+  const cover = (o: number) => {
+    if (!overlay) return;
+    overlay[o] = out[o];
+    overlay[o + 1] = out[o + 1];
+    overlay[o + 2] = out[o + 2];
+    overlay[o + 3] = 255;
+  };
+  // A camera resize must never let the compositor write beyond its current buffer.
+  const width = Math.floor(view.width);
+  const height = Math.min(
+    Math.floor(view.height),
+    Math.floor(out.length / (width * 4)),
+  );
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width < 1 ||
+    height < 1
+  )
+    return;
+  const originX = Math.round(view.originX),
+    originY = Math.round(view.originY);
+  const { clip } = view;
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
       const c = seaPixel(x - originX, y - originY, frame, state?.climate);
@@ -282,7 +427,7 @@ export function renderWorldView(
       out[o + 3] = 255;
     }
   const island = new Uint8ClampedArray(MAP_W * MAP_H * 4);
-  renderWorld(state, frame, island, traffic);
+  renderWorld(state, frame, island, traffic, clocks);
   for (let y = 0; y < MAP_H; y++)
     for (let x = 0; x < MAP_W; x++) {
       const tx = x + originX,
@@ -302,55 +447,495 @@ export function renderWorldView(
         i = (y * MAP_W + x) * 4;
       out.set(island.subarray(i, i + 4), o);
     }
-  const active =
-    state &&
-    state.phase !== "ended" &&
-    areaStatus(state).some((a) => a.effects.has("tsunami"));
-  if (!active) return;
-  const side = tsunamiDirection(state);
-  const alongX = side !== "south",
-    extent = alongX ? width : height;
-  const progress = (frame % OCEAN.tsunami.frames) / (OCEAN.tsunami.frames - 1);
-  const front = Math.floor(-12 + progress * (extent + 24));
-  const L = worldLayers();
-  for (let y = 0; y < height; y++)
-    for (let x = 0; x < width; x++) {
-      const wx = x - originX,
-        wy = y - originY;
-      const inMap = wx >= 0 && wy >= 0 && wx < MAP_W && wy < MAP_H;
-      const i = wy * MAP_W + wx;
-      // Only the sea and low coastal ground are swept. Inland hills remain readable.
+  renderSwells(frame, out, { ...view, width, height, originX, originY });
+  if (!state || (state.phase === "ended" && !state.collapseCause)) return;
+  const statuses = areaStatus(state),
+    L = worldLayers();
+  statuses.forEach((status, area) => {
+    const large = status.effects.has("mega_tsunami");
+    if (!large && !status.effects.has("tsunami")) return;
+    const [dx, dy] = tsunamiHeading(state, area, large);
+    const [cx, cy] = TOWNS[area].keepTile;
+    const margin = OCEAN.tsunami.offshoreMargin;
+    const projections = [
+      [-margin, -margin],
+      [MAP_W + margin, -margin],
+      [-margin, MAP_H + margin],
+      [MAP_W + margin, MAP_H + margin],
+    ].map(([x, y]) => x * dx + y * dy);
+    const min = Math.min(...projections),
+      max = Math.max(...projections);
+    const period = large ? OCEAN.tsunami.largeFrames : OCEAN.tsunami.frames;
+    const localFrame =
+      clocks?.[area]?.[large ? "mega_tsunami" : "tsunami"] ?? frame;
+    // Leave a quiet interval between preview passes. The crest clears before
+    // restarting offshore, rather than teleporting from inland back to sea.
+    const cycleFrame = state.collapseCause
+      ? Math.min(localFrame, period + OCEAN.tsunami.restFrames - 1)
+      : localFrame % (period + OCEAN.tsunami.restFrames);
+    const progress = Math.min(1, cycleFrame / (period - 1));
+    const life = Math.max(
+      0,
+      Math.min(1, cycleFrame / 6, (period - 1 - cycleFrame) / 12),
+    );
+    const start = large ? min : cx * dx + cy * dy - OCEAN.tsunami.localTravel;
+    const travel = large
+      ? max - min
+      : OCEAN.tsunami.localTravel + OCEAN.tsunami.localInland;
+    const front = large
+      ? min + progress * (max - min)
+      : cx * dx +
+        cy * dy -
+        OCEAN.tsunami.localTravel +
+        progress * (OCEAN.tsunami.localTravel + OCEAN.tsunami.localInland);
+    const thickness = large ? OCEAN.tsunami.largeWidth : OCEAN.tsunami.width;
+    // Sample shared cross-wave coordinates at half a native pixel, keeping
+    // expensive trigonometry out of the per-pixel loop.
+    const extent = width + height + MAP_W + MAP_H;
+    const crests = new Float32Array(extent * 4 + 1);
+    const breakers = new Float32Array(crests.length);
+    for (let q = 0; q < crests.length; q++) {
+      const across = q / 2 - extent;
+      crests[q] = tsunamiCrest(across, localFrame, large);
+      breakers[q] = 2 + 1.5 * (1 + Math.sin(across / 5 - localFrame / 3));
+    }
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const wx = x - originX,
+          wy = y - originY,
+          inMap = wx >= 0 && wy >= 0 && wx < MAP_W && wy < MAP_H;
+        const i = wy * MAP_W + wx,
+          k = inMap ? L.kind[i] : 0;
+        const across = (wx - cx) * -dy + (wy - cy) * dx;
+        const halfLength = OCEAN.tsunami.localHalfLength;
+        if (!large && Math.abs(across) >= halfLength) continue;
+        const projection = wx * dx + wy * dy;
+        const arrival = ((projection - start) / travel) * (period - 1);
+        const sinceHit = cycleFrame - arrival;
+        const aftermath =
+          arrival >= 0 &&
+          arrival < period &&
+          sinceHit > 2 &&
+          (large ||
+            state.collapseCause ||
+            sinceHit < OCEAN.tsunami.aftermathFrames)
+            ? Math.min(
+                1,
+                (sinceHit - 2) / 8,
+                large || state.collapseCause
+                  ? 1
+                  : (OCEAN.tsunami.aftermathFrames - sinceHit) / 24,
+              )
+            : 0;
+        const o = (y * width + x) * 4;
+        if (inMap && aftermath > 0 && (large || L.area[i] === area)) {
+          if (k === KIND.snow || k === KIND.rock) {
+            if (large) {
+              const fractured =
+                visualNoise(
+                  Math.floor(wx / 4),
+                  Math.floor(wy / 3),
+                  state.seed,
+                ) > 0.6;
+              const color = fractured ? C.soil : C.flood;
+              for (let channel = 0; channel < 3; channel++)
+                out[o + channel] = Math.round(
+                  out[o + channel] * (1 - aftermath) +
+                    color[channel] * aftermath,
+                );
+              cover(o);
+            }
+            // Strip the snow caps while leaving rock faces and their outlines.
+            if (out[o] > 190 && out[o + 1] > 190 && out[o + 2] > 180)
+              for (let channel = 0; channel < 3; channel++)
+                out[o + channel] = Math.round(
+                  out[o + channel] * (1 - aftermath) +
+                    C.rock[channel] * aftermath,
+                );
+          } else if (lowland(k) || k === KIND.water || k === 12) {
+            const reach = large
+              ? OCEAN.tsunami.largeReach
+              : OCEAN.tsunami.coastalReach;
+            const reachFade = Math.max(
+              0,
+              Math.min(1, (reach - L.distSea[i]) / OCEAN.tsunami.inlandFeather),
+            );
+            const footprint = large
+              ? 1
+              : Math.min(
+                  1,
+                  (halfLength - Math.abs(across)) / OCEAN.tsunami.edgeFeather,
+                );
+            const patch =
+              Math.sin(wx / 8 + (state.seed % 17)) +
+              Math.cos(wy / 7) +
+              Math.sin((wx + wy) / 11);
+            let c = C.flood,
+              opacity = large
+                ? OCEAN.tsunami.largeFloodOpacity
+                : OCEAN.tsunami.floodOpacity;
+            if (k === KIND.forest) {
+              // Patchy pools and fallen trunks replace some tree clusters.
+              const puddle = patch > OCEAN.tsunami.forestSwampChance;
+              c = puddle ? C.murk : C.soil;
+              opacity = large ? 0.97 : puddle ? 0.88 : 0.2;
+              const cluster = visualNoise(
+                Math.floor(wx / 9),
+                Math.floor(wy / 7),
+                state.seed,
+              );
+              const gx = (((wx % 9) + 9) % 9) - Math.floor(cluster * 3),
+                gy = ((wy % 7) + 7) % 7;
+              const trunkY = Math.round(
+                2 + gx * (cluster > 0.8 ? -0.35 : 0.35),
+              );
+              const trunk = gx >= 1 && gx <= 6 && gy === trunkY;
+              const branches =
+                (gx === 2 || gx === 4) && Math.abs(gy - trunkY) === 1;
+              if (cluster > 0.65 && (trunk || branches)) {
+                c = trunk ? C.soil : [60, 91, 43];
+                opacity = 1;
+              }
+            }
+            opacity *= aftermath * reachFade * footprint;
+            for (let channel = 0; channel < 3; channel++)
+              out[o + channel] = Math.round(
+                out[o + channel] * (1 - opacity) + c[channel] * opacity,
+              );
+            if (opacity > 0) cover(o);
+          }
+        }
+        let landFade = 1;
+        // Rivers are inland terrain too: otherwise disconnected white fragments
+        // appear far upstream while the actual coastal crest is still offshore.
+        if (inMap && k >= 3) {
+          if (!large && L.area[i] !== area) continue;
+          const reach = large
+            ? OCEAN.tsunami.largeReach
+            : OCEAN.tsunami.coastalReach;
+          landFade = Math.min(
+            1,
+            (reach - L.distSea[i]) / OCEAN.tsunami.inlandFeather,
+          );
+          if (landFade <= 0) continue;
+          // Feather the local inundation before the regional boundary.
+          if (!large)
+            for (const [ox, oy] of [
+              [-4, 0],
+              [4, 0],
+              [0, -4],
+              [0, 4],
+            ]) {
+              const nx = wx + ox,
+                ny = wy + oy;
+              if (
+                nx >= 0 &&
+                ny >= 0 &&
+                nx < MAP_W &&
+                ny < MAP_H &&
+                L.kind[ny * MAP_W + nx] > 3 &&
+                L.area[ny * MAP_W + nx] !== area
+              )
+                landFade *= 0.5;
+            }
+        }
+        const endFade = large
+          ? 1
+          : Math.min(
+              1,
+              (halfLength - Math.abs(across)) / OCEAN.tsunami.edgeFeather,
+            );
+        const taper = large
+          ? 1
+          : Math.sqrt(Math.max(0, 1 - (across / halfLength) ** 2));
+        const ribbonWidth = thickness * (0.45 + 0.55 * taper);
+        const crossIndex = Math.round(across * 2) + extent * 2;
+        const ripple = crests[crossIndex];
+        const depth = front + ripple - projection;
+        const washWidth = OCEAN.tsunami.washFrames * taper;
+        if (depth < 0 || depth > ribbonWidth + washWidth) continue;
+        const wake = depth > ribbonWidth;
+        const turbulence = visualNoise(
+          Math.floor((across - localFrame * 0.7) / 2),
+          Math.floor((depth + localFrame * 0.35) / 2),
+          state.seed,
+        );
+        const breaking = breakers[crossIndex];
+        const foam =
+          depth < 1.2 ||
+          (depth < breaking && turbulence > 0.3) ||
+          (depth < ribbonWidth * 0.7 && turbulence > 0.88);
+        const c = foam
+          ? C.crest
+          : depth < ribbonWidth * 0.45
+            ? C.foam
+            : C.flood;
+        // The same crest/body continues across shore. Its transparent wake
+        // reveals flooded ground, instead of creating a second rectangular slab.
+        const wakeFade = Math.max(
+          0,
+          1 - (depth - ribbonWidth) / Math.max(1, washWidth),
+        );
+        const opacity =
+          life *
+          endFade *
+          landFade *
+          (wake
+            ? OCEAN.tsunami.washOpacity * wakeFade * (0.55 + turbulence * 0.45)
+            : 0.85 + turbulence * 0.15);
+        for (let channel = 0; channel < 3; channel++)
+          out[o + channel] = Math.round(
+            out[o + channel] * (1 - opacity) + c[channel] * opacity,
+          );
+        if (opacity > 0) cover(o);
+      }
+    // Roofs and trunks are swept forward, leaving rubble behind the crest.
+    // These are visual consequences; only the reducer removes gameplay buildings.
+    const fragments = statuses.flatMap((s, a) =>
+      !large && a !== area
+        ? []
+        : world.castles[a].slots
+            .slice(0, s.buildings.length)
+            .map(([x, y]) => ({ x: x + 3, y: y + 4, tree: false })),
+    );
+    for (let y = 0; y < MAP_H; y += 9)
+      for (let x = 0; x < MAP_W; x += 11) {
+        const i = y * MAP_W + x;
+        if (
+          L.kind[i] === KIND.forest &&
+          (large || L.area[i] === area) &&
+          visualNoise(x, y, state.seed) > (large ? 0.25 : 0.6)
+        )
+          fragments.push({ x, y, tree: true });
+      }
+    const dot = (x: number, y: number, color: readonly number[]) => {
+      x = Math.round(x + originX);
+      y = Math.round(y + originY);
       if (
-        inMap &&
-        L.kind[i] > KIND.water &&
-        (L.distSea[i] > OCEAN.tsunami.coastalReach || !lowland(L.kind[i]))
+        x < clip.left ||
+        y < clip.top ||
+        x >= clip.right ||
+        y >= clip.bottom ||
+        x < 0 ||
+        y < 0 ||
+        x >= width ||
+        y >= height
+      )
+        return;
+      const o = (y * width + x) * 4;
+      out[o] = color[0];
+      out[o + 1] = color[1];
+      out[o + 2] = color[2];
+      cover(o);
+    };
+    for (const p of fragments) {
+      const i = Math.round(p.y) * MAP_W + Math.round(p.x);
+      if (!lowland(L.kind[i]) && L.kind[i] !== 12) continue;
+      const across = (p.x - cx) * -dy + (p.y - cy) * dx;
+      if (
+        (!large && Math.abs(across) > OCEAN.tsunami.localHalfLength - 4) ||
+        L.distSea[i] >
+          (large ? OCEAN.tsunami.largeReach : OCEAN.tsunami.coastalReach)
       )
         continue;
-      const axis =
-        side === "east" ? width - 1 - x : side === "south" ? height - 1 - y : x;
-      const bend = Math.floor((alongX ? y : x) / 9) % 3;
-      const d = front + bend - axis;
-      if (d < 0 || d >= OCEAN.tsunami.width) continue;
-      const c = d < 2 ? C.crest : d < 4 ? C.foam : d < 6 ? C.flood : C.shallow;
-      const o = (y * width + x) * 4;
-      out[o] = c[0];
-      out[o + 1] = c[1];
-      out[o + 2] = c[2];
+      const hit = ((p.x * dx + p.y * dy - start) / travel) * (period - 1);
+      if (hit < 0 || hit >= period) continue;
+      const age = cycleFrame - hit;
+      if (age < 0 || (!large && age > OCEAN.tsunami.aftermathFrames)) continue;
+      const drift = Math.min(
+        large ? OCEAN.tsunami.largeTransport : OCEAN.tsunami.localTransport,
+        ((age * travel) / (period - 1)) * 0.85,
+      );
+      if (!p.tree)
+        for (let ry = -4; ry <= 2; ry++)
+          for (let rx = -4; rx <= 4; rx++) {
+            const noise = visualNoise(p.x + rx, p.y + ry, state.seed);
+            dot(
+              p.x + rx,
+              p.y + ry,
+              ry < -1
+                ? C.flood
+                : noise > 0.6
+                  ? [133, 85, 51]
+                  : noise > 0.3
+                    ? [89, 82, 66]
+                    : C.murk,
+            );
+          }
+      for (let n = 0; n < (p.tree ? 7 : 10); n++) {
+        dot(
+          p.x + (n % 5) - 2,
+          p.y + Math.floor(n / 5),
+          n % 3 ? [107, 83, 55] : [49, 44, 35],
+        );
+        dot(
+          p.x + dx * drift + n - 3,
+          p.y + dy * drift + Math.sin(n + age / 4),
+          p.tree ? [96, 65, 35] : n % 3 ? [153, 65, 37] : [230, 193, 126],
+        );
+      }
     }
+    // The actual boats are removed at contact and tumble with the inland flow.
+    const boats = world.sprites
+      .filter((s) => s.kind === "boat")
+      .map((s) => ({ x: s.x, y: s.y }));
+    for (const civ of CIV_IDS) {
+      const [x, y] = portRoute(civ)[0];
+      boats.push({ x, y: y + 2 });
+    }
+    for (const trip of traffic) {
+      const route = portRoute(trip.civ),
+        t = trip.frame / OCEAN.trade.frames;
+      const index = Math.min(
+        route.length - 1,
+        Math.floor((1 - Math.abs(t * 2 - 1)) * route.length),
+      );
+      const [x, y] = route[index];
+      boats.push({ x: x - 2, y: y - 4 });
+    }
+    for (const boat of boats) {
+      const impact = tsunamiImpact(state, boat.x, boat.y, frame, clocks);
+      if (!impact || impact.large !== large) continue;
+      const sideways =
+        Math.sin(impact.age / 5 + boat.x) * Math.min(8, impact.age / 3);
+      const x = boat.x + impact.dx * impact.distance - impact.dy * sideways;
+      const y = boat.y + impact.dy * impact.distance + impact.dx * sideways;
+      const angle = impact.age / 4 + boat.x;
+      for (let n = -4; n <= 4; n++) {
+        dot(
+          x + Math.cos(angle) * n,
+          y + Math.sin(angle) * n * 0.6,
+          [116, 75, 40],
+        );
+        if (n % 2)
+          dot(
+            x + Math.cos(angle) * n + 1,
+            y + Math.sin(angle) * n * 0.6 + 1,
+            [205, 160, 99],
+          );
+      }
+      if (impact.age < 18)
+        for (let n = 1; n <= 5; n++)
+          dot(
+            x - Math.sin(angle) * n,
+            y + Math.cos(angle) * n,
+            [239, 226, 188],
+          );
+      for (let n = 0; n < 5; n++)
+        dot(x - impact.dx * n, y - impact.dy * n, [190, 222, 221]);
+    }
+  });
+}
+
+/** Independently travelling breakers keep a long front from looking rigid. */
+export function tsunamiCrest(across: number, frame: number, large: boolean) {
+  return (
+    OCEAN.tsunami.crestRipple *
+    (large ? 2.4 : 1) *
+    (Math.sin(across / 13 - frame / 7) +
+      0.55 * Math.sin(across / 5 + frame / 3.5) +
+      0.25 * Math.sin(across / 2.7 - frame / 2))
+  );
+}
+
+/** Swells spawn offshore in world coordinates; the camera only projects their pixels. */
+export function renderSwells(
+  frame: number,
+  out: Uint8ClampedArray,
+  view: WorldView,
+) {
+  const { width, height, originX, originY } = view;
+  const L = worldLayers();
+  const water = (x: number, y: number) => {
+    const wx = Math.floor(x),
+      wy = Math.floor(y);
+    return (
+      wx < 0 ||
+      wy < 0 ||
+      wx >= MAP_W ||
+      wy >= MAP_H ||
+      isSea(L.kind[wy * MAP_W + wx])
+    );
+  };
+  const margin = OCEAN.swell.offshoreMargin;
+  for (let lane = 0; lane < OCEAN.swell.lanes; lane++) {
+    const age = (frame + lane * 37) % OCEAN.swell.period;
+    if (age >= OCEAN.swell.frames) continue;
+    const cycle = Math.floor((frame + lane * 37) / OCEAN.swell.period);
+    const fraction = 0.28 + ((cycle * 13 + lane * 7) % 40) / 100;
+    const start =
+      lane === 0
+        ? [-margin, MAP_H * fraction]
+        : lane === 1
+          ? [MAP_W + margin, MAP_H * fraction]
+          : lane === 2
+            ? [MAP_W * fraction, -margin]
+            : [MAP_W * fraction, MAP_H + margin];
+    const heading =
+      lane === 0
+        ? [1, 0.38]
+        : lane === 1
+          ? [-1, -0.32]
+          : lane === 2
+            ? [0.42, 1]
+            : [-0.36, -1];
+    const norm = Math.hypot(...heading),
+      dx = heading[0] / norm,
+      dy = heading[1] / norm;
+    const travel = age * OCEAN.swell.speed;
+    for (
+      let along = -OCEAN.swell.halfLength;
+      along <= OCEAN.swell.halfLength;
+      along++
+    ) {
+      const sx = start[0] - dy * along,
+        sy = start[1] + dx * along;
+      let coast = Infinity;
+      for (let t = 0; t <= travel + 2; t++) {
+        if (!water(sx + dx * t, sy + dy * t)) {
+          coast = t;
+          break;
+        }
+      }
+      if (travel > coast + 3) continue;
+      for (let depth = 0; depth < OCEAN.swell.width; depth++) {
+        const t = Math.min(travel, coast - 1) - depth;
+        const wx = Math.round(sx + dx * t),
+          wy = Math.round(sy + dy * t);
+        const x = wx + Math.round(originX),
+          y = wy + Math.round(originY);
+        if (x < 0 || y < 0 || x >= width || y >= height || !water(wx, wy))
+          continue;
+        if (Math.abs(along) > OCEAN.swell.halfLength - 4 && (along + depth) % 3)
+          continue;
+        const c = depth === 0 ? (travel >= coast - 2 ? C.foam : C.wave) : C.sea;
+        const o = (y * width + x) * 4;
+        out[o] = c[0];
+        out[o + 1] = c[1];
+        out[o + 2] = c[2];
+      }
+    }
+  }
 }
 
 export interface AreaStatus {
   effects: Set<string>;
   buildings: string[];
   damaged: number;
+  scars?: { type: string; severity: number; remaining: number }[];
 }
 /** What is happening in each town's region right now. */
 export function areaStatus(state?: GameState): AreaStatus[] {
   return TOWNS.map((t) => {
     const civ = OWNERS[t.civ];
     const effects = new Set<string>();
+    if (state?.collapseCause && state.collapseCause.origin === civ)
+      effects.add("mega_tsunami");
     let damaged = 0;
     if (state && state.phase !== "ended") {
+      for (const h of state.civs[civ].hazards ?? []) effects.add(h.type);
+      const minor = state.minorEvents?.[civ];
+      if (minor) effects.add(minor.type);
       const own = state.events[civ];
       const avoided = state.phase === "build" && state.civs[civ].choice === 0;
       if (own && !avoided) {
@@ -375,87 +960,16 @@ export function areaStatus(state?: GameState): AreaStatus[] {
     }
     return {
       effects,
-      buildings: state
-        ? ["house", "house", ...state.civs[civ].buildings]
-        : ["house", "house"],
+      buildings: state?.civs[civ].eliminated
+        ? []
+        : state
+          ? ["house", "house", ...state.civs[civ].buildings]
+          : ["house", "house"],
       damaged,
+      scars: state?.civs[civ].damageScars ?? [],
     };
   });
 }
-/** Separate flame lobes, three poses, so the fire shifts instead of sitting in a bar. */
-const FLAMES = [
-  [
-    "..R...........",
-    ".ROR...R....R.",
-    "OYYO..ROR..ROR",
-    ".OOO.OYYO.OYYO",
-    "..O...OO...OO.",
-    "......O.....O.",
-  ],
-  [
-    ".......R......",
-    "..R...ROR...R.",
-    ".ROR.OYYO..ROR",
-    "OYYO..OOO.OYYO",
-    ".OO....O...OO.",
-    "..O.........O.",
-  ],
-  [
-    "...........R..",
-    "..R....R...ROR",
-    ".ROR..ROR.OYYO",
-    "OYYO.OYYO..OO.",
-    ".OO...OO....O.",
-    "..O....O......",
-  ],
-];
-const FLAME: Record<string, RGB> = {
-  R: rgb("#d02818"),
-  O: rgb("#f06020"),
-  Y: rgb("#ffe14a"),
-};
-
-const FIRE_RADIUS = 38;
-/** 1 in the middle of a town's fire, fading to 0 at a round, slightly uneven rim. */
-function fireSpread(x: number, y: number, h: number, status: AreaStatus[]) {
-  let burn = 0;
-  for (let a = 0; a < status.length; a++) {
-    const fx = status[a].effects;
-    if (!fx.has("wildfire") && !fx.has("volcano")) continue;
-    const [cx, cy] = TOWNS[a].keepTile;
-    const dist = Math.hypot(x - cx, y - cy);
-    const radius = FIRE_RADIUS + ((h + a * 13) % 7) - 3;
-    const rim = 8;
-    if (dist >= radius + rim) continue;
-    const t = dist <= radius ? 1 : 1 - (dist - radius) / rim;
-    if (t > burn) burn = t;
-  }
-  return burn;
-}
-/** Flame colour at this pixel, or undefined where the charred ground should show. */
-function flameColor(
-  x: number,
-  y: number,
-  frame: number,
-  hash: Uint8Array,
-): RGB | undefined {
-  const bob = (frame >> 2) & 1;
-  const rows = FLAMES[(frame >> 1) % FLAMES.length];
-  for (let dy = 0; dy < rows.length; dy++) {
-    const ay = y - dy + bob;
-    if (ay < 0 || ay >= MAP_H) continue;
-    const row = rows[dy];
-    for (let dx = 0; dx < row.length; dx++) {
-      const ch = row[dx];
-      if (ch === ".") continue;
-      const ax = x - dx;
-      if (ax < 0 || ax >= MAP_W) continue;
-      if (hash[ay * MAP_W + ax] % 251 === 0) return FLAME[ch];
-    }
-  }
-  return;
-}
-
 /** Snow at lower altitude melts first as the planet warms (climate is °C above baseline). */
 const meltThreshold = (y: number, h: number) =>
   3 - (Math.min(y, 50) / 50) * 2.6 + (h / 255 - 0.5) * 0.4;
@@ -502,72 +1016,21 @@ function terrainPixel(
     ((seaStep + h) & 3) === 0
   )
     c = C.wave;
+  const shore = surfMask()[i];
+  if (shore) {
+    const patch =
+      Math.floor(x / OCEAN.surf.patchWidth) +
+      Math.floor(y / OCEAN.surf.patchWidth) * 31;
+    const local =
+      (frame + ((patch * 17) % OCEAN.surf.period)) % OCEAN.surf.period;
+    const crest =
+      OCEAN.surf.coastalReach -
+      Math.floor(
+        local / (OCEAN.surf.activeFrames / (OCEAN.surf.coastalReach + 1)),
+      );
+    if (local < OCEAN.surf.activeFrames && shore === crest) c = C.foam;
+  }
 
-  // Hazards active in this area (sea tiles take the hazards of the nearest area).
-  const owner = a !== NONE ? a : L.near[i];
-  const fx = owner === NONE ? undefined : status[owner].effects;
-  const land = a !== NONE && !isSea(k);
-  if (fx && fx.size) {
-    for (const e of fx) {
-      if (
-        (e === "flood" || e === "dam_failure") &&
-        land &&
-        lowland(k) &&
-        L.distWater[i] <= 3
-      ) {
-        c =
-          ((x + y + (frame >> 1)) & 3) === 0
-            ? C.foam
-            : h < 90
-              ? C.shallow
-              : C.flood;
-      } else if (
-        (e === "hurricane" || e === "tsunami" || e === "sea_rise") &&
-        land &&
-        lowland(k) &&
-        L.distSea[i] <= 4
-      ) {
-        c = ((x - y + (frame >> 1)) & 3) === 0 ? C.foam : C.flood;
-      } else if (e === "spill" && (isSea(k) || k === KIND.water)) {
-        const band = (x + 2 * y + (frame >> 1)) % 6;
-        if (band === 0) c = C.sludge;
-        else if (band === 1) c = C.sludgeD;
-      } else if ((e === "smog" || e === "heatwave") && (x + 2 * y) % 5 === 0) {
-        c = mix(c, rgb(EVENTS[e as keyof typeof EVENTS].color), 0.5);
-      } else if (e === "drought" && land) {
-        // Patchy, not total: keeps the area readable while showing it has dried out.
-        if (
-          (k === KIND.grass || k === KIND.pasture || k === KIND.field) &&
-          h < 110
-        )
-          c = mix(c, h < 55 ? C.dry : C.soil, 0.7);
-        else if (k === KIND.water && x & 1) c = C.flood;
-      } else if ((e === "earthquake" || e === "landslide") && land) {
-        if ((x + (y >> 1) * 3) % 23 === 0 && h < 150) c = C.ink;
-        else if (e === "landslide" && L.distWater[i] <= 2 && h < 100)
-          c = C.soil;
-      } else if (e === "grid_failure" && land) {
-        c = mix(c, C.ink, 0.35);
-      } else if (e === "pandemic" && land && (x + y * 2) % 7 === 0) {
-        c = mix(c, rgb(EVENTS.pandemic.color), 0.55);
-      } else if (e === "supply_shock" && land && h < 70) {
-        c = mix(c, rgb(EVENTS.supply_shock.color), 0.35);
-      }
-    }
-  }
-  // A wildfire is a circle around the town, not a fill up to the region line.
-  if (k === KIND.forest || k === KIND.grass || k === KIND.pasture) {
-    const burn = fireSpread(x, y, h, status);
-    if (burn > 0.8) {
-      c = mix(c, h & 1 ? C.char : C.charD, 0.92);
-      const flame = flameColor(x, y, frame, L.hash);
-      if (flame) c = flame;
-    } else if (burn > 0.35) {
-      c = mix(c, C.char, 0.4 + burn * 0.45);
-    } else if (burn > 0) {
-      c = mix(c, C.char, burn * 0.45);
-    }
-  }
   return c;
 }
 
@@ -645,6 +1108,18 @@ const BUILDING_SPRITES: Record<string, Sprite> = {
     rows: ["..RRR..", ".RRRRR.", "RRRRRRR", ".WWWWW.", ".WWdWW."],
     pal: { R: "#f5c542", W: "#efe2bc", d: "#3e2414" },
   },
+  refinery: {
+    rows: ["..O..O.", "..M..M.", "OMMMMMO", "OMdMdMO", "OOOOOOO"],
+    pal: { O: "#1a120a", M: "#776e60", d: "#8a5a32" },
+  },
+  solar: {
+    rows: ["OOOOOOO", "ObbObbO", "OOOOOOO", ".P...P."],
+    pal: { O: "#1a120a", b: "#21497a", P: "#9a9182" },
+  },
+  battery: {
+    rows: ["..MM..", ".OggO.", ".OgGO.", ".OggO.", ".OOOO."],
+    pal: { O: "#1a120a", M: "#9a9182", g: "#46d6d0", G: "#f5c542" },
+  },
 };
 const WINDMILL_SPIN = [".x.", "xxx", ".x.", ".B.", ".B.", "BBB"];
 
@@ -693,9 +1168,30 @@ export function renderWorld(
   frame: number,
   out: Uint8ClampedArray,
   traffic: PortTraffic[] = tradeTraffic(state, frame),
+  clocks?: HazardFrames,
 ) {
   const L = worldLayers();
   const status = areaStatus(state);
+  const paint = hazardPaint(L, status, frame, state?.seed ?? 0, clocks);
+  const lifted = new Set<string>();
+  status.forEach((s, area) => {
+    const type = s.effects.has("hurricane")
+      ? "hurricane"
+      : s.effects.has("tornado")
+        ? "tornado"
+        : undefined;
+    if (!type) return;
+    const age = clocks?.[area]?.[type] ?? frame;
+    for (const p of stormPickups(
+      L,
+      area,
+      s,
+      age,
+      state?.seed ?? 0,
+      type === "hurricane",
+    ))
+      lifted.add(p.id);
+  });
   const climate = state?.climate ?? 0;
   // Warmer seas are murkier seas.
   const ocean = 100 - climate * 12;
@@ -706,9 +1202,19 @@ export function renderWorld(
     out[i * 4 + 2] = c[2];
     out[i * 4 + 3] = 255;
   }
+  for (let i = 0; i < MAP_W * MAP_H; i++)
+    if (paint.under[i * 4 + 3])
+      out.set(paint.under.subarray(i * 4, i * 4 + 4), i * 4);
   const areaAt = (x: number, y: number) =>
     L.area[Math.min(MAP_H - 1, Math.max(0, y)) * MAP_W + x];
-  for (const sp of world.sprites) {
+  for (const [spriteIndex, sp] of world.sprites.entries()) {
+    if (lifted.has(`sprite:${spriteIndex}`)) continue;
+    if (
+      state &&
+      sp.kind === "boat" &&
+      tsunamiImpact(state, sp.x, sp.y, frame, clocks)
+    )
+      continue;
     const fx =
       status[areaAt(sp.x + 1, sp.y + sp.rows.length - 1)]?.effects ??
       new Set<string>();
@@ -744,8 +1250,14 @@ export function renderWorld(
       st = status[a];
     // The town grows into its plots, nearest the keep first, in the order things were built.
     st.buildings.forEach((id, n) => {
+      if (lifted.has(`building:${a}:${n}`)) return;
       const slot = k.slots[n];
       if (!slot) return;
+      if (
+        state &&
+        tsunamiImpact(state, slot[0] + 3, slot[1] + 4, frame, clocks)
+      )
+        return;
       const sprite = BUILDING_SPRITES[id] ?? BUILDING_SPRITES.house;
       const sw = sprite.rows[0].length,
         sh = sprite.rows.length;
@@ -755,7 +1267,16 @@ export function renderWorld(
       blit(out, rows, sprite.pal, x, y);
       if (id === "kiln") puff(out, x + 3, y - 1, frame + n);
     });
-    blit(out, k.rows, { ...k.pal, F: FLAG[town.civ] }, k.x, k.y);
+    const impact =
+      state &&
+      tsunamiImpact(state, k.x + w / 2, k.y + k.rows.length - 3, frame, clocks);
+    blit(out, k.rows, { ...k.pal, F: FLAG[town.civ] }, k.x, k.y, (_, x, y) =>
+      Boolean(
+        impact?.large &&
+        impact.age > 3 &&
+        (y < k.rows.length - 6 || (x + y) % 4 === 0),
+      ),
+    );
     if (st.damaged > 0) {
       puff(out, k.x + 2, k.y + 2, frame, true);
       puff(out, k.x + w - 3, k.y + 3, frame + 3, true);
@@ -765,6 +1286,18 @@ export function renderWorld(
   for (const civ of CIV_IDS) {
     const [x, y] = portRoute(civ)[0];
     blit(out, ["PPPP", ".P.P"], { P: "#b07a45" }, x - 1, y);
+    const a = TOWNS.findIndex((t) => OWNERS[t.civ] === civ);
+    if (
+      !lifted.has(`port:${a}`) &&
+      !(state && tsunamiImpact(state, x, y + 2, frame, clocks))
+    )
+      blit(
+        out,
+        ["..s..", "..ss.", "bbbbb", ".bbb."],
+        { s: "#efe2bc", b: "#6f4826" },
+        x,
+        y + 2,
+      );
   }
   for (const trip of traffic) {
     const route = portRoute(trip.civ);
@@ -774,6 +1307,7 @@ export function renderWorld(
       Math.floor((1 - Math.abs(t * 2 - 1)) * route.length),
     );
     const [x, y] = route[index];
+    if (state && tsunamiImpact(state, x - 2, y - 4, frame, clocks)) continue;
     blit(
       out,
       ["..F..", "..FF.", "..F..", "BBBBB", ".BBB."],
@@ -782,6 +1316,10 @@ export function renderWorld(
       y - 4 + ((frame >> 1) & 1),
     );
   }
+  for (let i = 0; i < MAP_W * MAP_H; i++)
+    if (paint.over[i * 4 + 3])
+      out.set(paint.over.subarray(i * 4, i * 4 + 4), i * 4);
+  shakeHazardRegions(out, L, status, frame, clocks);
 }
 
 const townOfVisual = (civ: CivId) =>

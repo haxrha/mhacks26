@@ -1,11 +1,13 @@
 "use client";
 import { type RefObject, useEffect, useRef, useState } from "react";
+import type { HazardFrames } from "@/game/hazardVisuals";
 import { CIVS, EVENTS } from "@/game/content";
 import { spillTarget } from "@/game/engine";
 import { OWNERS, TOWNS, townOf } from "@/game/towns";
 import { CIV_IDS, type CivId, type GameState } from "@/game/types";
 import {
   OCEAN,
+  areaStatus,
   renderWorldView,
   tsunamiDirection,
   type WorldView,
@@ -18,56 +20,79 @@ const FPS = OCEAN.fps;
 function LiveTerrain({
   state,
   svg,
+  previewFrame,
 }: {
   state: GameState;
   svg: RefObject<SVGSVGElement | null>;
+  previewFrame?: number;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const hazardCanvas = useRef<HTMLCanvasElement>(null);
   const latest = useRef(state);
   latest.current = state;
+  const frameOverride = useRef(previewFrame);
+  frameOverride.current = previewFrame;
   useEffect(() => {
     const ctx = canvas.current?.getContext("2d");
-    if (!ctx) return;
+    const hazardCtx = hazardCanvas.current?.getContext("2d");
+    if (!ctx || !hazardCtx) return;
     const el = canvas.current!;
     let image: ImageData;
+    let hazardImage: ImageData;
     let view: WorldView;
     let frame = 0;
+    const animationStart = performance.now();
     const still = window.matchMedia?.(
       "(prefers-reduced-motion: reduce)",
     ).matches;
     const trips = new Map<number, { civ: CivId; start: number }>();
+    const hazardStarts = new Map<string, number>();
+    const viewportEl = svg.current?.parentElement;
+    let disposed = false;
     const measure = () => {
-      const shell = el.parentElement!.getBoundingClientRect();
-      const map = svg.current!.getBoundingClientRect();
-      const viewport = svg.current!.parentElement!.getBoundingClientRect();
+      const mapEl = svg.current;
+      const shellEl = el.parentElement;
+      if (disposed || !mapEl || !shellEl || !el.isConnected) return false;
+      const shell = shellEl.getBoundingClientRect();
+      const map = mapEl.getBoundingClientRect();
       // The SVG viewBox and canvas share the same native 4px art grid.
-      const scale = Math.min(map.width / 310, map.height / 193.75);
-      if (scale <= 0) return;
+      const scale = Math.min(map.width / 320, map.height / 200);
+      if (!Number.isFinite(scale) || scale <= 0) return false;
       const width = Math.max(1, Math.ceil(shell.width / scale));
       const height = Math.max(1, Math.ceil(shell.height / scale));
-      el.width = width;
-      el.height = height;
-      image = ctx.createImageData(width, height);
+      if (!image || image.width !== width || image.height !== height) {
+        image = ctx.createImageData(width, height);
+        hazardImage = hazardCtx.createImageData(width, height);
+      }
+      if (el.width !== width) el.width = width;
+      if (el.height !== height) el.height = height;
+      if (hazardCanvas.current) {
+        hazardCanvas.current.width = width;
+        hazardCanvas.current.height = height;
+      }
       view = {
         width,
         height,
         originX: Math.round(
-          (map.left - shell.left + (map.width - 310 * scale) / 2) / scale,
+          (map.left - shell.left + (map.width - 320 * scale) / 2) / scale,
         ),
         originY: Math.round(
-          (map.top - shell.top + (map.height - 193.75 * scale) / 2) / scale,
+          (map.top - shell.top + (map.height - 200 * scale) / 2) / scale,
         ),
         clip: {
-          left: (viewport.left - shell.left) / scale,
-          top: (viewport.top - shell.top) / scale,
-          right: (viewport.right - shell.left) / scale,
-          bottom: (viewport.bottom - shell.top) / scale,
+          left: 0,
+          top: 0,
+          right: width,
+          bottom: height,
         },
       };
+      return true;
     };
     const draw = () => {
-      if (!view) measure();
-      if (!view) return;
+      frame = ((performance.now() - animationStart) / 1000) * OCEAN.timelineFps;
+      if (disposed || !svg.current || !el.isConnected) return;
+      if (!view && !measure()) return;
+      if (!view || !image) return;
       const s = latest.current;
       s.news.forEach((n, i) => {
         if (n.kind === "trade" && n.civ && n.round === s.round && !trips.has(i))
@@ -79,33 +104,103 @@ function LiveTerrain({
           return age < OCEAN.trade.frames ? [{ civ: t.civ, frame: age }] : [];
         })
         .slice(-OCEAN.trade.maxBoats);
-      renderWorldView(s, still ? 24 : frame, image.data, view, traffic);
+      const clocks: HazardFrames = {},
+        active = new Set<string>();
+      areaStatus(s).forEach((status, area) => {
+        const civ = OWNERS[TOWNS[area].civ];
+        clocks[area] = {};
+        for (const type of status.effects) {
+          const began =
+            s.civs[civ].hazards?.find((h) => h.type === type)?.started ??
+            (s.events[civ].type === type
+              ? s.events[civ].started
+              : s.minorEvents?.[civ]?.started) ??
+            s.round;
+          const key = `${area}:${type}:${began}`;
+          active.add(key);
+          if (!hazardStarts.has(key)) hazardStarts.set(key, performance.now());
+          clocks[area]![type] =
+            frameOverride.current ??
+            (still
+              ? 24
+              : ((performance.now() - hazardStarts.get(key)!) / 1000) *
+                OCEAN.timelineFps);
+        }
+      });
+      for (const key of hazardStarts.keys())
+        if (!active.has(key)) hazardStarts.delete(key);
+      renderWorldView(
+        s,
+        frameOverride.current ?? (still ? 24 : frame),
+        image.data,
+        view,
+        traffic,
+        clocks,
+        hazardImage.data,
+      );
       ctx.putImageData(image, 0, 0);
-      frame++;
+      hazardCtx.putImageData(hazardImage, 0, 0);
     };
     measure();
     draw();
-    const resize = new ResizeObserver(measure);
-    resize.observe(el.parentElement!);
-    resize.observe(svg.current!);
-    resize.observe(svg.current!.parentElement!);
-    const scroll = () => measure();
-    svg.current!.parentElement!.addEventListener("scroll", scroll);
-    const timer = window.setInterval(draw, still ? 1000 : 1000 / FPS);
-    return () => {
-      window.clearInterval(timer);
-      resize.disconnect();
-      svg.current?.parentElement?.removeEventListener("scroll", scroll);
+    const refresh = () => {
+      if (measure()) draw();
     };
-  }, [svg]);
+    const resize = new ResizeObserver(refresh);
+    resize.observe(el.parentElement!);
+    if (svg.current) resize.observe(svg.current);
+    if (viewportEl) resize.observe(viewportEl);
+    const scroll = refresh;
+    viewportEl?.addEventListener("scroll", scroll);
+    let measuredFrames = 0,
+      measuredAt = performance.now();
+    let animation = 0,
+      lastDraw = performance.now();
+    const animate = (now: number) => {
+      if (disposed) return;
+      const interval = still ? 1000 : 1000 / FPS;
+      if (now - lastDraw >= interval - 0.5) {
+        draw();
+        measuredFrames++;
+        if (now - measuredAt >= 1000) {
+          el.dataset.renderFps = String(
+            Math.round((measuredFrames * 1000) / (now - measuredAt)),
+          );
+          measuredFrames = 0;
+          measuredAt = now;
+        }
+        // Keep the cadence anchored across RAF jitter rather than throwing away
+        // the fractional remainder and repeatedly skipping a refresh.
+        lastDraw +=
+          interval * Math.max(1, Math.floor((now - lastDraw + 0.5) / interval));
+      }
+      animation = window.requestAnimationFrame(animate);
+    };
+    animation = window.requestAnimationFrame(animate);
+    return () => {
+      disposed = true;
+      window.cancelAnimationFrame(animation);
+      resize.disconnect();
+      viewportEl?.removeEventListener("scroll", scroll);
+    };
+  }, [svg, previewFrame]);
   return (
-    <canvas
-      ref={canvas}
-      className="world-canvas"
-      width={320}
-      height={200}
-      aria-hidden="true"
-    />
+    <>
+      <canvas
+        ref={canvas}
+        className="world-canvas"
+        width={320}
+        height={200}
+        aria-hidden="true"
+      />
+      <canvas
+        ref={hazardCanvas}
+        className="world-hazard-canvas"
+        width={320}
+        height={200}
+        aria-hidden="true"
+      />
+    </>
   );
 }
 
@@ -118,14 +213,35 @@ export default function WorldMap({
   state,
   selected,
   onSelect,
+  initialZoom = 1.4,
+  previewFrame,
+  showEventMarkers = true,
 }: {
   state: GameState;
   selected?: CivId;
   onSelect: (civ: CivId) => void;
+  initialZoom?: number;
+  /** Temporary visual test harness only; normal gameplay always uses live time. */
+  previewFrame?: number;
+  showEventMarkers?: boolean;
 }) {
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(initialZoom);
   const svg = useRef<SVGSVGElement>(null);
-  const [arrows, setArrows] = useState(true);
+  const viewport = useRef<HTMLDivElement>(null);
+  const drag = useRef<{
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+    moved: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  useEffect(() => {
+    const el = viewport.current!;
+    el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
+    el.scrollTop = (el.scrollHeight - el.clientHeight) / 2;
+  }, [zoom]);
+
   // Cheap choices push damage onto a neighbor: draw that as an arrow between towns.
   const spills =
     state.phase === "build"
@@ -138,16 +254,80 @@ export default function WorldMap({
   return (
     <div className="map-shell pixel-map">
       <LiveTerrain
-        key={`${state.seed}:${state.round}`}
+        key={state.seed}
         state={state}
         svg={svg}
+        previewFrame={previewFrame}
       />
-      <div className="map-viewport">
+      <div
+        className="map-viewport"
+        ref={viewport}
+        tabIndex={0}
+        aria-label="Map camera. Drag to pan, or use arrow keys."
+        onPointerDown={(e) => {
+          if (e.button !== 0) return;
+          const el = e.currentTarget;
+          suppressClick.current = false;
+          drag.current = {
+            x: e.clientX,
+            y: e.clientY,
+            left: el.scrollLeft,
+            top: el.scrollTop,
+            moved: false,
+          };
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (!d) return;
+          if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 5) {
+            d.moved = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            e.currentTarget.classList.add("panning");
+            e.currentTarget.scrollLeft = d.left - (e.clientX - d.x);
+            e.currentTarget.scrollTop = d.top - (e.clientY - d.y);
+          }
+        }}
+        onPointerUp={(e) => {
+          suppressClick.current = drag.current?.moved ?? false;
+          drag.current = null;
+          e.currentTarget.classList.remove("panning");
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        onPointerCancel={(e) => {
+          drag.current = null;
+          e.currentTarget.classList.remove("panning");
+        }}
+        onClickCapture={(e) => {
+          if (suppressClick.current) {
+            e.stopPropagation();
+            suppressClick.current = false;
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          const delta: Record<string, [number, number]> = {
+            ArrowLeft: [-80, 0],
+            ArrowRight: [80, 0],
+            ArrowUp: [0, -80],
+            ArrowDown: [0, 80],
+          };
+          if (delta[e.key]) {
+            e.preventDefault();
+            e.currentTarget.scrollBy(...delta[e.key]);
+          }
+        }}
+      >
         <svg
           ref={svg}
           className="world-map"
-          viewBox="0 0 1240 775"
-          style={{ width: `${zoom * 100}%`, height: `${zoom * 100}%` }}
+          viewBox="0 0 1280 800"
+          style={{
+            width: `calc((100% - var(--camera-side)) * ${zoom})`,
+            height: `calc((100% - var(--camera-reserve)) * ${zoom})`,
+            marginBottom: "var(--camera-reserve)",
+            marginRight: "var(--camera-side)",
+          }}
           role="group"
           aria-label="The valley: select a town to inspect it"
         >
@@ -163,31 +343,33 @@ export default function WorldMap({
               <path d="M0 0 L8 4 L0 8Z" fill="#fff1b0" />
             </marker>
           </defs>
-          {arrows &&
-            spills.map(({ from, to, e }, i) => {
-              const [x, y] = keep(from),
-                [tx, ty] = keep(to);
-              return (
-                <g key={from}>
-                  <path
-                    className="province-flow"
-                    d={`M${x} ${y} Q${(x + tx) / 2 + 40 + i * 20} ${(y + ty) / 2 - 60} ${tx} ${ty}`}
-                    fill="none"
-                    stroke={e.color}
-                    strokeWidth="7"
-                    strokeDasharray="14 9"
-                    markerEnd="url(#flow-tip)"
-                  />
-                  <title>
-                    {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
-                  </title>
-                </g>
-              );
-            })}
+          {spills.map(({ from, to, e }, i) => {
+            const [x, y] = keep(from),
+              [tx, ty] = keep(to);
+            return (
+              <g key={from}>
+                <path
+                  className="province-flow"
+                  d={`M${x} ${y} Q${(x + tx) / 2 + 40 + i * 20} ${(y + ty) / 2 - 60} ${tx} ${ty}`}
+                  fill="none"
+                  stroke={e.color}
+                  strokeWidth="7"
+                  strokeDasharray="14 9"
+                  markerEnd="url(#flow-tip)"
+                />
+                <title>
+                  {`${CIVS[from].name} chose "${e.cheap.label}": ${CIVS[to].name} takes the damage.`}
+                </title>
+              </g>
+            );
+          })}
           {TOWNS.map((town) => {
             const civ = OWNERS[town.civ];
             const [x, y] = keep(civ);
-            const ev = state.phase !== "ended" ? state.events[civ] : undefined;
+            const ev =
+              showEventMarkers && state.phase !== "ended"
+                ? state.events[civ]
+                : undefined;
             const e = ev ? EVENTS[ev.type] : undefined;
             const open = () => onSelect(civ);
             return (
@@ -273,13 +455,12 @@ export default function WorldMap({
         >
           +
         </button>
-        <button onClick={() => setZoom(1)}>Reset</button>
-        <button aria-pressed={arrows} onClick={() => setArrows(!arrows)}>
-          Spill arrows
-        </button>
+        <button onClick={() => setZoom(initialZoom)}>Reset</button>
       </div>
       {state.phase !== "ended" &&
-        CIV_IDS.some((c) => state.events[c].type === "tsunami") && (
+        CIV_IDS.some((c) =>
+          ["tsunami", "mega_tsunami"].includes(state.events[c].type),
+        ) && (
           <div className="sea-warning" role="status">
             ≋ TSUNAMI FROM THE {tsunamiDirection(state).toUpperCase()} · GO
             INLAND / UPHILL

@@ -2,6 +2,10 @@ import civData from "../../../../src/data/civs.json";
 import buildingData from "../../../../src/data/buildings.json";
 import eventData from "../../../../src/data/events.json";
 import resourceData from "../../../../src/data/resources.json";
+import riskData from "../../../../src/data/risk.json";
+import economyData from "../../../../src/data/economy.json";
+import researchData from "../../../../src/data/research.json";
+import geographyData from "../../../../src/data/geography.json";
 import type { CivId, DisasterId, EventId, Resource, Stock } from "./types";
 
 export const stock = (values: Partial<Stock> = {}): Stock => ({
@@ -67,6 +71,8 @@ export interface BuildingDef {
   protects?: EventId[];
   /** Only earned through a sustainable choice, not built from the build menu. */
   earned?: boolean;
+  upkeep?: Partial<Stock>;
+  requires?: string;
 }
 export const BUILDINGS = buildingData as Record<string, BuildingDef>;
 
@@ -105,3 +111,25 @@ export interface EventDef {
   source: string;
 }
 export const EVENTS = eventData as Record<EventId, EventDef>;
+export const RISK = riskData;
+export const ECONOMY = economyData;
+export const GEOGRAPHY = geographyData as {
+  downstream: Record<CivId, CivId[]>;
+  downwind: Record<CivId, CivId>;
+  shared: Record<CivId, CivId>;
+  coastal: CivId[];
+  stormTrack: Record<CivId, CivId>;
+};
+export interface ResearchDef {
+  name: string;
+  cost: Partial<Stock>;
+  turns: number;
+  prerequisites: string[];
+  description: string;
+  emissions?: number;
+  yields?: Partial<Stock>;
+  protects: EventId[];
+  structureProtection?: boolean;
+  maintenanceReduction?: boolean;
+}
+export const RESEARCH = researchData as Record<string, ResearchDef>;

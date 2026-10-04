@@ -29,7 +29,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "We stay dry, but the levee pushes the water downstream onto {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Restore the wetlands",
@@ -38,7 +38,7 @@
         "sheep": 1
       },
       "build": "wetland",
-      "effect": "Half the damage now, and the marsh soaks up every future flood. Nobody else gets our water."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Levees don't remove floodwater; they move it. Wetlands store it.",
     "source": "https://www.epa.gov/wetlands"
@@ -69,7 +69,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "Our crops are saved, but {target} shares that aquifer and their wells run dry."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Store rainwater, plant hardy crops",
@@ -78,7 +78,7 @@
         "brick": 1
       },
       "build": "cistern",
-      "effect": "Half the damage now, and a cistern carries us through the next dry spell."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Over-pumping a shared aquifer shifts a drought onto your neighbors.",
     "source": "https://www.usgs.gov/special-topics/water-science-school/science/groundwater-depletion"
@@ -105,7 +105,7 @@
       "label": "Clear-cut a wide firebreak",
       "cost": {},
       "climate": 0.12,
-      "effect": "The fire stops at the gap, but we felled a whole forest: +0.12°C for everyone."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Warming rises +0.12°C. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Thin the woods with controlled burns",
@@ -114,7 +114,7 @@
         "wheat": 1
       },
       "build": "firewatch",
-      "effect": "Half the damage now, and a healthier forest burns less next time."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Controlled burns remove dry fuel so wildfires burn cooler and slower.",
     "source": "https://www.nps.gov/subjects/fire/prescribed-fire.htm"
@@ -148,7 +148,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "The walls hold, but the mud washes into the river and silts {target}'s fields."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Replant the slopes in terraces",
@@ -157,7 +157,7 @@
         "wheat": 1
       },
       "build": "terraces",
-      "effect": "Half the damage now, and roots hold the soil for good."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Tree roots bind soil; clear-cut slopes slide.",
     "source": "https://www.usgs.gov/programs/landslide-hazards"
@@ -190,7 +190,7 @@
       "spill": {
         "sheep": 1
       },
-      "effect": "Our air clears, but the smoke just blows farther, onto {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Fit filters to the chimneys",
@@ -198,13 +198,13 @@
         "ore": 2
       },
       "build": "filters",
-      "effect": "Half the damage now, and cleaner air from here on."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Tall smokestacks move pollution downwind; filters remove it.",
     "source": "https://www.epa.gov/criteria-air-pollutants"
   },
   "spill": {
-    "name": "Oil spill",
+    "name": "Oil leak",
     "icon": "☣",
     "color": "#b3a0c9",
     "carrier": "river",
@@ -218,9 +218,9 @@
       "sheep": 2,
       "wheat": 1
     },
-    "cause": "kiln",
-    "tell": "A fuel barge has ruptured. Oil is spreading through the river mouth and coastal fishing grounds.",
-    "caused": "Heavy industry in {cause} put more fuel traffic on the shared waterway.",
+    "cause": "refinery",
+    "tell": "Oil storage or fuel transport has leaked into connected water. Communities still using fossil energy remain exposed, even without a refinery.",
+    "caused": "The leak originated at an oil refinery in {cause}.",
     "neighbor": "The slick is moving with the current toward our nets and marshes. Flushing your harbor clean only sends the poison to us.",
     "cheap": {
       "label": "Flush the slick out with the tide",
@@ -229,7 +229,7 @@
       "spill": {
         "sheep": 1
       },
-      "effect": "Our harbor looks clear again, and {target} gets the slick instead."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Deploy booms and recovery crews",
@@ -238,7 +238,7 @@
         "wood": 1
       },
       "build": "settling",
-      "effect": "Half the damage now, and trained crews contain future spills."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Oil carried away by water is not gone; currents move it onto another shore.",
     "source": "https://www.noaa.gov/education/resource-collections/ocean-coasts/oil-spills"
@@ -271,7 +271,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "The wall holds, but it bounces the surge along the coast onto {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Plant mangroves along the shore",
@@ -280,7 +280,7 @@
         "sheep": 1
       },
       "build": "mangroves",
-      "effect": "Half the damage now, and the mangroves break every future wave."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Hard seawalls deflect waves sideways; mangroves absorb them.",
     "source": "https://oceanservice.noaa.gov/facts/mangroves.html"
@@ -310,7 +310,7 @@
         "ore": 1
       },
       "climate": 0.1,
-      "effect": "We cool off today, and heat the whole planet: +0.1°C."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Warming rises +0.1°C. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Plant shade trees, paint roofs white",
@@ -319,7 +319,7 @@
         "wheat": 1
       },
       "build": "shade",
-      "effect": "Half the damage now, and a cooler town every summer after."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Trees and light roofs cool cities without burning more fuel.",
     "source": "https://www.epa.gov/heatislands"
@@ -352,7 +352,7 @@
         "wheat": 2,
         "wood": 1
       },
-      "effect": "The wall holds for now, but an emergency release floods {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Lower the reservoir and retrofit the dam",
@@ -361,7 +361,7 @@
         "ore": 1
       },
       "build": "dam_retrofit",
-      "effect": "Half the damage now, and monitoring plus reinforcement reduces future failures."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Safe dams combine monitoring, maintenance and controlled reservoir levels.",
     "source": "https://www.fema.gov/emergency-managers/risk-management/dam-safety"
@@ -373,8 +373,7 @@
     "carrier": "coast",
     "quizTypes": ["hurricane"],
     "regions": {
-      "archipelago": 4,
-      "enclave": 2
+      "archipelago": 4
     },
     "loss": {
       "wood": 2,
@@ -394,7 +393,7 @@
         "wood": 1,
         "wheat": 1
       },
-      "effect": "Our waterfront holds, but the reflected surge strikes {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Harden roofs and restore dunes",
@@ -403,7 +402,7 @@
         "brick": 1
       },
       "build": "storm_shelter",
-      "effect": "Half the damage now, with safer roofs and dunes for future storms."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Prepared buildings and natural shorelines reduce both wind and surge damage.",
     "source": "https://www.noaa.gov/education/resource-collections/weather-atmosphere/hurricanes"
@@ -433,7 +432,7 @@
       "spill": {
         "ore": 1
       },
-      "effect": "We reopen first, but failures in the shared network cost {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Rebuild to seismic code",
@@ -442,7 +441,7 @@
         "wood": 1
       },
       "build": "seismic_code",
-      "effect": "Half the damage now, and flexible structures withstand future shaking."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Seismic codes and flexible connections prevent shaking from becoming collapse.",
     "source": "https://www.usgs.gov/programs/earthquake-hazards"
@@ -474,7 +473,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "The harbor mouth is shielded, but redirected water reaches {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Sound warnings and evacuate uphill",
@@ -483,7 +482,7 @@
         "wood": 1
       },
       "build": "tsunami_warning",
-      "effect": "Half the damage now, and warning routes protect every future evacuation."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "After strong coastal shaking, immediate warning and high ground save lives.",
     "source": "https://www.noaa.gov/jetstream/tsunamis"
@@ -511,7 +510,7 @@
       "spill": {
         "wheat": 1
       },
-      "effect": "Our streets clear, but wind carries the loose ash onto {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Shelter water and collect ash safely",
@@ -520,7 +519,7 @@
         "brick": 1
       },
       "build": "ash_shelter",
-      "effect": "Half the damage now, with protected water and safe ash storage next time."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Ash protection focuses on clean water, strong roofs and safe cleanup.",
     "source": "https://www.usgs.gov/programs/VHP/volcanic-ash"
@@ -552,7 +551,7 @@
         "ore": 1,
         "wheat": 1
       },
-      "effect": "Our lights return first, while {target} stays dark longer."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Build a renewable microgrid",
@@ -561,7 +560,7 @@
         "wood": 1
       },
       "build": "microgrid",
-      "effect": "Half the damage now, and local clean power isolates future failures."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Distributed generation and storage keep one grid fault from cascading.",
     "source": "https://www.energy.gov/oe/microgrid-program-strategy"
@@ -592,7 +591,7 @@
         "sheep": 1,
         "wheat": 1
       },
-      "effect": "Trade continues here, but the unreported outbreak reaches {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Fund clinics and paid isolation",
@@ -601,7 +600,7 @@
         "brick": 1
       },
       "build": "clinic",
-      "effect": "Half the damage now, and stronger public health limits future outbreaks."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Early reporting, care and support reduce transmission across every border.",
     "source": "https://www.who.int/emergencies/diseases"
@@ -634,7 +633,7 @@
         "brick": 1,
         "ore": 1
       },
-      "effect": "Our projects continue, while shortages deepen in {target}."
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
     },
     "green": {
       "label": "Pool reserves and diversify suppliers",
@@ -643,9 +642,129 @@
         "wheat": 1
       },
       "build": "reserves",
-      "effect": "Half the damage now, and diverse shared stocks absorb future shocks."
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
     },
     "lesson": "Diverse suppliers and emergency reserves reduce cascading shortages.",
     "source": "https://www.fema.gov/emergency-managers/national-preparedness/supply-chain"
+  },
+  "tornado": {
+    "name": "Tornado",
+    "icon": "↯",
+    "color": "#5d8fd5",
+    "carrier": "wind",
+    "quizTypes": ["tornado"],
+    "regions": {
+      "petrostate": 4,
+      "enclave": 2,
+      "heartland": 1
+    },
+    "loss": {
+      "wood": 3,
+      "brick": 2,
+      "wheat": 1
+    },
+    "climateDriven": false,
+    "tell": "A rotating storm has touched down across the plains. Its narrow track threatens roofs, farms and power lines.",
+    "neighbor": "The storm track is heading across our boundary. Shelter people first; loose roofs and power lines are a danger on both sides.",
+    "cheap": {
+      "label": "Patch roofs and open temporary shelters",
+      "cost": {
+        "wood": 1
+      },
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Neglect can let the incident worsen."
+    },
+    "green": {
+      "label": "Harden roofs and fund storm shelters",
+      "cost": {
+        "wood": 2,
+        "ore": 1
+      },
+      "build": "storm_shelter",
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
+    },
+    "lesson": "Tornado damage follows a narrow path. Sturdy shelters and roof ties reduce exposure.",
+    "source": "https://www.weather.gov/safety/tornado"
+  },
+  "small_quake": {
+    "name": "Small earthquake",
+    "icon": "⌁",
+    "color": "#a58c78",
+    "carrier": "fault",
+    "quizTypes": ["earthquake"],
+    "regions": {
+      "heartland": 3,
+      "petrostate": 2,
+      "archipelago": 2,
+      "enclave": 1
+    },
+    "loss": {
+      "brick": 1
+    },
+    "tell": "A short tremor has cracked roads and loose masonry. Inspect structures before a stronger shock.",
+    "neighbor": "Your damaged roads and utilities connect to ours. A rushed rebuild leaves the whole network brittle for the next shock.",
+    "cheap": {
+      "label": "Rebuild quickly to the old standard",
+      "cost": {
+        "brick": 1
+      },
+      "spillTo": "shared",
+      "spill": {
+        "ore": 1
+      },
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
+    },
+    "green": {
+      "label": "Rebuild to seismic code",
+      "cost": {
+        "wood": 1,
+        "ore": 1
+      },
+      "build": "seismic_code",
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
+    },
+    "lesson": "Small tremors can expose weak structures. Inspections and flexible connections prevent bigger losses.",
+    "source": "https://www.usgs.gov/programs/earthquake-hazards"
+  },
+  "mega_tsunami": {
+    "name": "Major tsunami",
+    "icon": "≋",
+    "color": "#438db8",
+    "carrier": "coast",
+    "quizTypes": ["tsunami"],
+    "regions": {
+      "archipelago": 1
+    },
+    "loss": {
+      "wheat": 8,
+      "wood": 7,
+      "brick": 6,
+      "sheep": 5,
+      "ore": 4
+    },
+    "tell": "A catastrophic offshore wave is tearing the ground apart. In this game, this extremely rare event destroys all four civilizations and ends the world.",
+    "neighbor": "Every civilization has been destroyed. The flooded ruins remain; there is no recovery phase after this catastrophe.",
+    "cheap": {
+      "label": "Close a harbor wall",
+      "cost": {
+        "brick": 2
+      },
+      "spillTo": "shared",
+      "spill": {
+        "wheat": 1
+      },
+      "effect": "Temporary containment reduces local severity but leaves recovery work. Pressure and resource losses also reach {target}. Neglect can let the incident worsen."
+    },
+    "green": {
+      "label": "Sound warnings and evacuate uphill",
+      "cost": {
+        "wheat": 2,
+        "wood": 2,
+        "ore": 1
+      },
+      "build": "tsunami_warning",
+      "effect": "Lower losses now, shorter recovery, and lasting protection. Production remains disrupted until recovery completes."
+    },
+    "lesson": "Offshore earthquakes can send multiple tsunami waves. Evacuate uphill; do not return after the first wave.",
+    "source": "https://www.noaa.gov/jetstream/tsunamis"
   }
 }

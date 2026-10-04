@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  Hammer,
+  FlaskConical,
+  Ship,
   ArrowUpRight,
   BookOpen,
   ChevronRight,
@@ -43,7 +46,13 @@ import {
   type Resource,
   type Stock,
 } from "@/game/types";
-import { decadeLine, eventLines, introLines } from "@/game/leaders";
+import {
+  LEADERS,
+  leaderArt,
+  decadeLine,
+  eventLines,
+  introLines,
+} from "@/game/leaders";
 import { townOf } from "@/game/towns";
 import { useWorld } from "@/game/useWorld";
 import LeaderSelect from "./LeaderSelect";
@@ -52,6 +61,16 @@ import RadioControl from "./RadioControl";
 import WorldMap from "./WorldMap";
 import WorldStage from "./WorldStage";
 import ResourceIcon from "./ResourceIcon";
+import { ECONOMY, RESEARCH } from "@/game/content";
+import {
+  eventLoss,
+  profile,
+  recommendations,
+  recoveryCost,
+  recoveryNeeds,
+  technologies,
+  upkeep,
+} from "@/game/disasters";
 
 const SAVE_KEY = "earthshare-v2";
 
@@ -383,7 +402,20 @@ export default function Game() {
 
         <WorldStage>
           {state.phase === "ended" ? (
-            <Endgame state={state} onRestart={backToSetup} />
+            state.collapseCause ? (
+              <>
+                <WorldMap
+                  state={state}
+                  onSelect={() => {}}
+                  showEventMarkers={false}
+                />
+                <div className="catastrophic-result">
+                  <Endgame state={state} onRestart={backToSetup} />
+                </div>
+              </>
+            ) : (
+              <Endgame state={state} onRestart={backToSetup} />
+            )
           ) : (
             <>
               <WorldMap
@@ -506,6 +538,12 @@ export default function Game() {
         </WorldStage>
 
         <div className="civ-bar">
+          <img
+            className="player-portrait"
+            src={leaderArt(civId)}
+            alt={LEADERS[civId].name}
+            title={LEADERS[civId].name}
+          />
           <div className="civ-identity">
             <span className="crest" style={{ color: meta.color }}>
               {meta.crest}
@@ -669,6 +707,20 @@ function ChoiceBox({
         <b>{c.label}</b>
         <Costs cost={cost} />
         <span>{c.effect.replace("{target}", target)}</span>
+        <span>
+          Potential goods loss: {describe(eventLoss(state, civ, ev, option))}.
+          Recovery affects production for up to {profile(ev.type).duration}{" "}
+          rounds.
+        </span>
+        {profile(ev.type).vulnerable.length > 0 && (
+          <span>
+            Exposed structures:{" "}
+            {profile(ev.type)
+              .vulnerable.map((id) => BUILDINGS[id].name)
+              .join(", ")}
+            . Lasting defenses reduce destruction risk.
+          </span>
+        )}
         {!ok && <em>Not enough resources</em>}
       </button>
     );
@@ -737,8 +789,31 @@ function BuildPanel({
   onEnd: () => void;
 }) {
   const town = state.civs[civ];
-  const [give, setGive] = useState<Resource>("brick");
-  const [get, setGet] = useState<Resource>("wood");
+  const suggestedGive = [...RESOURCES].sort(
+    (a, b) =>
+      town.stock[b] -
+      (upkeep(town)[b] ?? 0) -
+      (town.stock[a] - (upkeep(town)[a] ?? 0)),
+  )[0];
+  const [give, setGive] = useState<Resource>(suggestedGive);
+  const [get, setGet] = useState<Resource>(
+    town.stock.wheat < (upkeep(town).wheat ?? 0) && suggestedGive !== "wheat"
+      ? "wheat"
+      : suggestedGive === "wood"
+        ? "brick"
+        : "wood",
+  );
+  const tradeError = actionError(state, { type: "exchange", civ, give, get });
+  const lastTrade = [...state.news]
+    .reverse()
+    .find(
+      (n) => n.kind === "trade" && n.civ === civ && n.round === state.round,
+    );
+  const foodGap = Math.max(
+    0,
+    (upkeep(town).wheat ?? 0) - town.stock.wheat - income(state, civ).wheat,
+  );
+  const [tab, setTab] = useState<"build" | "research">("build");
   const buildable = Object.entries(BUILDINGS).filter(([, b]) => !b.earned);
   return (
     <section className="build-panel" aria-label="Build">
@@ -750,32 +825,149 @@ function BuildPanel({
           End turn <ArrowRight size={16} />
         </button>
       </header>
+      <div className="planning-summary">
+        <b>
+          {Math.max(0, ECONOMY.actionsPerRound - (town.actionsUsed ?? 0))}/
+          {ECONOMY.actionsPerRound} project actions · storage{" "}
+          {ECONOMY.storageCapacity} per resource
+        </b>
+        <p>
+          Next production: {describe(income(state, civ))}. Upkeep:{" "}
+          {describe(upkeep(town))}.
+        </p>
+        {recommendations(state, civ)
+          .slice(0, 2)
+          .map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        {(state.scheduled ?? [])
+          .filter((h) => h.target === civ)
+          .map((h) => (
+            <p key={`${h.type}:${h.arrives}`}>
+              ⚠ Round {h.arrives}: {EVENTS[h.type].name} from{" "}
+              {CIVS[h.origin].name}. {h.reason}
+            </p>
+          ))}
+        {town.research && (
+          <p>
+            Research: {RESEARCH[town.research.id].name} ·{" "}
+            {town.research.remaining} round(s) remaining.
+          </p>
+        )}
+      </div>
+      <div className="project-tabs" aria-label="Project category">
+        <button aria-pressed={tab === "build"} onClick={() => setTab("build")}>
+          <Hammer size={20} aria-hidden="true" /> Build & recover
+        </button>
+        <button
+          aria-pressed={tab === "research"}
+          onClick={() => setTab("research")}
+        >
+          <FlaskConical size={20} aria-hidden="true" /> Research
+        </button>
+      </div>
       <div className="build-list">
-        {buildable.map(([id, b]) => {
-          const err = actionError(state, { type: "build", civ, building: id });
-          return (
-            <button
-              key={id}
-              className={`build-row ${b.green ? "green" : ""} ${b.dirty ? "dirty" : ""}`}
-              disabled={!!err}
-              title={err ?? b.description}
-              onClick={() => act({ type: "build", civ, building: id })}
-            >
-              <span className="build-icon">{b.icon}</span>
-              <span className="build-name">
-                <b>{b.name}</b>
-                <small>{b.description}</small>
-              </span>
-              <Costs cost={b.cost} />
-              <span className="build-count">
-                {builtCount(town, id)}/{b.max}
-              </span>
-            </button>
-          );
-        })}
+        {tab === "build" &&
+          recoveryNeeds(town).map((h) => {
+            const err = actionError(state, {
+              type: "contain",
+              civ,
+              hazard: h.type,
+            });
+            return (
+              <button
+                key={h.type}
+                className="build-row recovery-row"
+                disabled={!!err}
+                title={
+                  err ?? "Lower severity by 1 and shorten recovery by 2 rounds."
+                }
+                onClick={() => act({ type: "contain", civ, hazard: h.type })}
+              >
+                <span className="build-icon">{EVENTS[h.type].icon}</span>
+                <span className="build-name">
+                  <b>Recover: {EVENTS[h.type].name}</b>
+                  <small>
+                    Severity {h.severity.toFixed(1)} · {h.remaining} rounds.
+                    Reduce severity and recovery time.
+                  </small>
+                </span>
+                <Costs cost={recoveryCost(h.type)} />
+              </button>
+            );
+          })}
+        {tab === "research" &&
+          Object.entries(RESEARCH).map(([id, t]) => {
+            const done = technologies(town).includes(id);
+            const err = actionError(state, {
+              type: "research",
+              civ,
+              technology: id,
+            });
+            return (
+              <button
+                key={id}
+                className="build-row green"
+                disabled={done || !!err}
+                title={err ?? t.description}
+                onClick={() => act({ type: "research", civ, technology: id })}
+              >
+                <span className="build-icon">✧</span>
+                <span className="build-name">
+                  <b>
+                    {t.name}{" "}
+                    {done
+                      ? "✓"
+                      : `· ${t.turns} round${t.turns === 1 ? "" : "s"}`}
+                  </b>
+                  <small>
+                    {t.description}
+                    {err && !done ? ` ${err}` : ""}
+                  </small>
+                </span>
+                <Costs cost={t.cost} />
+              </button>
+            );
+          })}
+        {tab === "build" &&
+          buildable.map(([id, b]) => {
+            const err = actionError(state, {
+              type: "build",
+              civ,
+              building: id,
+            });
+            return (
+              <button
+                key={id}
+                className={`build-row ${b.green ? "green" : ""} ${b.dirty ? "dirty" : ""}`}
+                disabled={!!err}
+                title={err ?? b.description}
+                onClick={() => act({ type: "build", civ, building: id })}
+              >
+                <span className="build-icon">{b.icon}</span>
+                <span className="build-name">
+                  <b>{b.name}</b>
+                  <small>{b.description}</small>
+                </span>
+                <Costs cost={b.cost} />
+                <span className="build-count">
+                  {builtCount(town, id)}/{b.max}
+                </span>
+              </button>
+            );
+          })}
       </div>
       <div className="exchange">
-        <span>Bank trade {EXCHANGE_RATE}:1</span>
+        <div className="trade-heading">
+          <Ship size={20} aria-hidden="true" />
+          <b>Harbor exchange</b>
+          <span>No project action</span>
+        </div>
+        <p className="trade-guidance">
+          {foodGap
+            ? `Food shortfall: ${foodGap} wheat next round. Trade to cover upkeep.`
+            : "Turn spare cargo into supplies for recovery, building and research."}
+        </p>
         <ResourceIcon resource={give} size={24} />
         <select
           aria-label="Give"
@@ -802,11 +994,27 @@ function BuildPanel({
           ))}
         </select>
         <button
-          disabled={!!actionError(state, { type: "exchange", civ, give, get })}
+          disabled={!!tradeError}
+          title={
+            tradeError ??
+            `Ship ${EXCHANGE_RATE} ${RESOURCE_META[give].name} for 1 ${RESOURCE_META[get].name}`
+          }
+          className="trade-submit"
           onClick={() => act({ type: "exchange", civ, give, get })}
         >
-          Trade
+          <Ship size={20} aria-hidden="true" /> Ship cargo
         </button>
+        <p className="trade-preview">
+          {EXCHANGE_RATE} {RESOURCE_META[give].name} → 1{" "}
+          {RESOURCE_META[get].name} · In storage: {town.stock[give]} /{" "}
+          {town.stock[get]}
+        </p>
+        <p className="trade-feedback" role="status">
+          {lastTrade
+            ? `${lastTrade.text}${tradeError ? ` ${tradeError}` : ""}`
+            : (tradeError ??
+              "Ready to sail. Trading does not use your three project actions.")}
+        </p>
       </div>
     </section>
   );
@@ -847,6 +1055,21 @@ function TownWindow({
       <p>
         <b>Makes each decade:</b> {describe(income(state, civ))}
       </p>
+      <p>
+        <b>Upkeep:</b> {describe(upkeep(state.civs[civ]))}
+      </p>
+      {recoveryNeeds(state.civs[civ]).map((h) => (
+        <p key={h.type}>
+          <b>{EVENTS[h.type].name} recovery:</b> severity{" "}
+          {h.severity.toFixed(1)} · {h.remaining} rounds left.
+        </p>
+      ))}
+      <p>
+        <b>Research:</b>{" "}
+        {technologies(state.civs[civ])
+          .map((t) => RESEARCH[t].name)
+          .join(", ") || "None completed"}
+      </p>
       <ul>
         {Object.entries(counts).map(([id, n]) => (
           <li key={id}>
@@ -881,14 +1104,18 @@ function Endgame({
       </div>
       <span className="eyebrow">YOUR LEGACY / DECADE {state.round}</span>
       <h2>
-        {state.outcome === "collapse"
-          ? "No one wins on a broken planet."
-          : "The valley made it through."}
+        {state.collapseCause
+          ? "The catastrophic tsunami destroyed the world."
+          : state.outcome === "collapse"
+            ? "No one wins on a broken planet."
+            : "The valley made it through."}
       </h2>
       <p>
-        {state.outcome === "collapse"
-          ? `Warming crossed +${CLIMATE_LOSS}°C, so every town lost. Cheap fixes and polluting buildings added up.`
-          : `Warming ended at +${state.climate.toFixed(2)}°C. Points come from everything your town built; sustainable choices earn protective buildings that count too.`}
+        {state.collapseCause
+          ? "All four civilizations were destroyed. The ground was torn apart and the world flooded. No civilization survived."
+          : state.outcome === "collapse"
+            ? `Warming crossed +${CLIMATE_LOSS}°C, so every town lost. Cheap fixes and polluting buildings added up.`
+            : `Warming ended at +${state.climate.toFixed(2)}°C. Surviving buildings and completed research earn prosperity; food and maintenance shortages subtract points.`}
       </p>
       {state.outcome !== "collapse" && (
         <div className="ranking">
@@ -965,18 +1192,27 @@ function Help({ onClose }: { onClose: () => void }) {
             right answer softens the losses.
           </li>
           <li>
-            <b>Choose.</b> The cheap fix stops the damage now but pushes it onto
-            a neighbor or warms the planet. The sustainable fix costs more,
-            halves the damage and builds lasting protection.
+            <b>Choose.</b> A cheap fix contains some damage but may shift
+            pressure onto a neighbor or warm the planet. Sustainable responses
+            reduce damage, shorten recovery and build lasting protection.
           </li>
           <li>
             <b>Build.</b> Spend sheep, wheat, wood, brick and ore to grow your
             town. Some buildings pollute; trees and windmills pull warming back.
-            Trade 3:1 with the bank for what you lack.
+            Trade 3:1 with the bank for what you lack. Keep wheat for food
+            upkeep; storage holds {ECONOMY.storageCapacity} of each resource.
           </li>
           <li>
-            <b>Leave a legacy.</b> After ten decades the biggest town wins, but
-            if warming reaches +3°C, every town loses.
+            <b>Plan recovery and research.</b> Each round allows{" "}
+            {ECONOMY.actionsPerRound} project actions for building, recovery or
+            starting research. Disasters reduce output over several rounds and
+            can destroy exposed buildings. Use the Research tab for clean energy
+            and resilience; projects finish over time.
+          </li>
+          <li>
+            <b>Leave a legacy.</b> Research adds prosperity; shortages subtract
+            it. After ten decades the strongest town wins, but if warming
+            reaches +3°C, every town loses.
           </li>
         </ol>
         <button className="primary full" onClick={onClose}>

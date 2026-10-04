@@ -1,0 +1,27 @@
+{
+  "downstream": {
+    "heartland": ["enclave", "petrostate"],
+    "enclave": ["archipelago"],
+    "petrostate": ["archipelago"],
+    "archipelago": []
+  },
+  "downwind": {
+    "petrostate": "heartland",
+    "heartland": "enclave",
+    "enclave": "archipelago",
+    "archipelago": "petrostate"
+  },
+  "shared": {
+    "heartland": "petrostate",
+    "petrostate": "heartland",
+    "enclave": "archipelago",
+    "archipelago": "enclave"
+  },
+  "coastal": ["archipelago"],
+  "stormTrack": {
+    "archipelago": "petrostate",
+    "petrostate": "enclave",
+    "enclave": "heartland",
+    "heartland": "petrostate"
+  }
+}

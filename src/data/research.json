@@ -1,0 +1,79 @@
+{
+  "solar_power": {
+    "name": "Solar power",
+    "cost": {
+      "ore": 2,
+      "brick": 1
+    },
+    "turns": 2,
+    "prerequisites": [],
+    "description": "Unlock solar arrays; industrial emissions fall 25%.",
+    "emissions": 0.75,
+    "protects": []
+  },
+  "energy_storage": {
+    "name": "Energy storage",
+    "cost": {
+      "ore": 2,
+      "wood": 1
+    },
+    "turns": 2,
+    "prerequisites": ["solar_power"],
+    "description": "Storage and backup power reduce hurricane-related outages and recovery losses.",
+    "emissions": 0.9,
+    "protects": ["hurricane"]
+  },
+  "regenerative_farming": {
+    "name": "Regenerative farming",
+    "cost": {
+      "wheat": 2,
+      "wood": 1
+    },
+    "turns": 2,
+    "prerequisites": [],
+    "description": "+1 wheat per round; drought and flood disruption shrink.",
+    "yields": {
+      "wheat": 1
+    },
+    "protects": ["drought", "flood"]
+  },
+  "resilient_design": {
+    "name": "Resilient construction",
+    "cost": {
+      "brick": 2,
+      "ore": 1
+    },
+    "turns": 2,
+    "prerequisites": [],
+    "description": "Quakes and windstorms cause less damage; fewer structures are lost.",
+    "protects": ["small_quake", "earthquake", "tornado", "hurricane"],
+    "structureProtection": true
+  },
+  "early_warning": {
+    "name": "Early warning network",
+    "cost": {
+      "ore": 1,
+      "wood": 2
+    },
+    "turns": 1,
+    "prerequisites": [],
+    "description": "Reduces tsunami and dam-break losses. Read the forecast before spending reserves.",
+    "protects": ["tsunami", "mega_tsunami", "dam_failure"]
+  },
+  "circular_industry": {
+    "name": "Circular industry",
+    "cost": {
+      "ore": 2,
+      "brick": 2
+    },
+    "turns": 2,
+    "prerequisites": ["solar_power"],
+    "description": "+1 brick per round; industry maintenance and emissions fall.",
+    "yields": {
+      "brick": 1
+    },
+    "emissions": 0.7,
+    "maintenanceReduction": true,
+    "protects": ["spill", "supply_shock"]
+  }
+}

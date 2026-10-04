@@ -1,0 +1,59 @@
+{
+  "fire": {
+    "spreadSeconds": 5,
+    "treeSpacing": 3,
+    "spreadChance": 0.3,
+    "maxSteps": 24,
+    "flameSteps": 3
+  },
+  "quake": {
+    "period": 150,
+    "shakeFrames": 36,
+    "majorAmplitude": 2,
+    "minorAmplitude": 1
+  },
+  "flood": {
+    "bankReach": 8,
+    "damReach": 15,
+    "surgeReach": 14,
+    "period": 180
+  },
+  "storm": {
+    "period": 192,
+    "hurricaneRadius": 24,
+    "tornadoHeight": 25,
+    "debrisCount": 6,
+    "trackWidth": 58,
+    "trackHeight": 24,
+    "pickupRadius": 12,
+    "hurricanePickupRadius": 24,
+    "carryFrames": 84
+  },
+  "landslide": {
+    "period": 144,
+    "length": 36,
+    "width": 14
+  },
+  "drought": {
+    "patchRadius": 26
+  },
+  "palette": {
+    "water": "#3f819d",
+    "muddyWater": "#547f87",
+    "foam": "#c1e1dc",
+    "char": "#34271e",
+    "soil": "#92704b",
+    "dry": "#c9ac60",
+    "crack": "#392d26",
+    "cloud": "#c3c7c0",
+    "cloudDark": "#667e87",
+    "fire": "#f37929",
+    "ember": "#ffdf72"
+  },
+  "volcano": {
+    "flowLength": 48,
+    "ashRadius": 35,
+    "plumeHeight": 40,
+    "eruptionFrames": 30
+  }
+}

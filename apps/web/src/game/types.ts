@@ -14,6 +14,7 @@ export type DisasterId =
   | "flood"
   | "dam_failure"
   | "hurricane"
+  | "tornado"
   | "earthquake"
   | "tsunami"
   | "volcano"
@@ -27,9 +28,10 @@ export type DisasterId =
   | "grid_failure"
   | "pandemic"
   | "supply_shock";
+export type AddedDisasterId = "tornado" | "small_quake" | "mega_tsunami";
 
 /** Every hazard in the event matrix is a playable cycle event. */
-export type EventId = DisasterId;
+export type EventId = DisasterId | AddedDisasterId;
 
 /**
  * Each cycle: the event is told → everyone answers a quiz → an affected neighbor responds
@@ -44,6 +46,28 @@ export interface CycleEvent {
   cause?: CivId;
   /** Losses before the quiz and the choice soften them. */
   loss: Partial<Stock>;
+  severity?: number;
+  ongoing?: boolean;
+  origin?: CivId;
+  reason?: string;
+  started?: number;
+}
+export interface RegionalHazard {
+  type: EventId;
+  severity: number;
+  remaining: number;
+  containment: number;
+  started: number;
+  origin: CivId;
+  destroyed: number;
+}
+export interface ScheduledHazard {
+  type: EventId;
+  target: CivId;
+  origin: CivId;
+  arrives: number;
+  severity: number;
+  reason: string;
 }
 export interface QuizRecord {
   questionId: string;
@@ -65,6 +89,22 @@ export interface Civ {
   asked: string[];
   /** What happened to this town this cycle, for the narrator. */
   report: string[];
+  /** Optional fields allow version-2 saves to migrate without losing progress. */
+  hazards?: RegionalHazard[];
+  damageScars?: {
+    type: EventId;
+    started: number;
+    remaining: number;
+    severity: number;
+    destroyed?: number;
+  }[];
+  technologies?: string[];
+  research?: { id: string; remaining: number };
+  actionsUsed?: number;
+  lastMajor?: number;
+  hardship?: number;
+  eliminated?: boolean;
+  productionCarry?: Partial<Stock>;
 }
 export interface News {
   round: number;
@@ -91,6 +131,9 @@ export interface GameState {
   history: { round: number; climate: number }[];
   news: News[];
   outcome?: "collapse" | "survived";
+  collapseCause?: { type: "mega_tsunami"; origin: CivId; started: number };
+  scheduled?: ScheduledHazard[];
+  minorEvents?: Partial<Record<CivId, CycleEvent>>;
 }
 
 export type Action =
@@ -98,6 +141,8 @@ export type Action =
   | { type: "choose"; civ: CivId; option: 0 | 1 | 2 }
   | { type: "build"; civ: CivId; building: string }
   | { type: "exchange"; civ: CivId; give: Resource; get: Resource }
+  | { type: "research"; civ: CivId; technology: string }
+  | { type: "contain"; civ: CivId; hazard: EventId }
   | { type: "ready"; civ: CivId };
 
 export interface Question {

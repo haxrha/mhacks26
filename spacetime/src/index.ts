@@ -93,6 +93,12 @@ function validateAction(value: unknown, civ: CivId): Action {
       !RESOURCES.includes(a.get as never)
     )
       throw new SenderError("Unknown resource.");
+  } else if (a.type === "research") {
+    if (typeof a.technology !== "string" || a.technology.length > 40)
+      throw new SenderError("Invalid research.");
+  } else if (a.type === "contain") {
+    if (typeof a.hazard !== "string" || a.hazard.length > 40)
+      throw new SenderError("Invalid hazard.");
   } else if (a.type !== "ready") throw new SenderError("Unknown action.");
   return a as unknown as Action;
 }

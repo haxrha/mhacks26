@@ -1,0 +1,13 @@
+{
+  "actionsPerRound": 3,
+  "storageCapacity": 16,
+  "houseFoodEvery": 3,
+  "foodUpkeep": 1,
+  "industryUpkeepEvery": 3,
+  "diminishingCopies": 2,
+  "secondaryYieldMultiplier": 0.5,
+  "emergencyAid": {
+    "wheat": 1
+  },
+  "emergencyPenalty": 1
+}
