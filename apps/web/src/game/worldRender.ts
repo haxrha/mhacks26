@@ -765,6 +765,36 @@ export function renderWorld(
       blit(out, rows, sprite.pal, x, y, undefined, FLAG[town.civ]);
       if (id === "kiln") puff(out, x + 3, y - 1, frame + n);
     });
+    // Villagers walk between the keep and the town's plots: tiny 1x3 people that show scale and
+    // life. More of them appear as the town grows.
+    const gateX = k.x + Math.floor(w / 2),
+      gateY = k.y + k.rows.length + 1;
+    const people = Math.min(10, 2 + st.buildings.length);
+    const reach = Math.max(
+      1,
+      Math.min(k.slots.length, st.buildings.length + 4),
+    );
+    for (let i = 0; i < people; i++) {
+      const slot = k.slots[(i * 5 + a) % reach];
+      if (!slot) continue;
+      const tx = slot[0] + 3,
+        ty = slot[1] + 7;
+      const dist = Math.max(1, Math.round(Math.hypot(tx - gateX, ty - gateY)));
+      const t = (frame + i * 17) % (dist * 2);
+      const along = (t < dist ? t : dist * 2 - t) / dist;
+      const px = Math.round(gateX + (tx - gateX) * along),
+        py = Math.round(gateY + (ty - gateY) * along);
+      if (px < 0 || py < 1 || px >= MAP_W || py >= MAP_H - 1) continue;
+      if (L.kind[py * MAP_W + px] <= KIND.water) continue; // no walking on water
+      const step = (frame + i) & 1;
+      blit(
+        out,
+        ["h", "b", step ? "l" : "."],
+        { h: "#f2c79a", b: i % 3 ? FLAG[town.civ] : "#e8e0c8", l: "#3e2414" },
+        px,
+        py - 1,
+      );
+    }
     blit(out, k.rows, { ...k.pal, F: FLAG[town.civ] }, k.x, k.y);
     if (st.damaged > 0) {
       puff(out, k.x + 2, k.y + 2, frame, true);
@@ -786,7 +816,7 @@ export function renderWorld(
       const t = (((frame + b * 50) % PERIOD) / PERIOD) * 2;
       const along = 1 - Math.abs(t - 1); // ping-pong out to sea and back
       const [x, y] = harbor[Math.round(along * (harbor.length - 1))];
-      blit(out, boatRows, boatPal, x - 1, y - 3 + ((frame + b) >> 1 & 1));
+      blit(out, boatRows, boatPal, x - 1, y - 3 + (((frame + b) >> 1) & 1));
     }
   }
   for (const trip of traffic) {

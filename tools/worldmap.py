@@ -264,6 +264,8 @@ def nearest_spot(cx, cy, w, h, region):
     raise RuntimeError(f"no spot near {cx},{cy}")
 
 castles = []
+FARMS = []   # (x, y, w, h) boxes baked into the map that building plots must avoid
+TOWN_LAND = np.zeros((H, W), bool)   # what the mountains must leave alone: clearing, keep, farm
 for (pid, name, c, cap, (cx, cy)) in PROV:
     rows = castle_rows(cap)
     w, h = len(rows[0]), len(rows)
@@ -273,11 +275,32 @@ for (pid, name, c, cap, (cx, cy)) in PROV:
     occupied[y0 - 3:y0 + h + 6, x0 - 3:x0 + w + 5] = True     # keep clear around castles + label
     # a grass clearing for the town to grow into: no trees or mountains, meadow underfoot
     kcx, kcy = x0 + 1 + w // 2, y0 + 1 + h // 2
-    clearing = (((xx - kcx) / TOWN_R[0]) ** 2 + ((yy - kcy) / TOWN_R[1]) ** 2 < 1) & (civ == c) & ~water
-    img[clearing] = P["grass"]
-    img[clearing & (rnd < 0.25)] = P["grass_l"]
-    img[clearing & (rnd > 0.93)] = P["meadow"]
+    # Organic edge: a noisy oval whose rim dithers into the surrounding terrain (no hard box).
+    r = ((xx - kcx) / TOWN_R[0]) ** 2 + ((yy - kcy) / TOWN_R[1]) ** 2 + (n_c - 0.5) * 0.45
+    rim = np.clip((r - 0.7) / 0.3, 0, 1)
+    clearing = (r < 1) & (rnd >= rim) & (civ == c) & ~water
+    if c == 0:
+        # Highland: an alpine pasture with rocks poking through, so it sits in the mountains.
+        img[clearing] = P["pasture"]
+        img[clearing & (rnd < 0.2)] = P["grass"]
+        img[clearing & (rnd > 0.95)] = P["rock"]
+        img[clearing & (rim > 0) & (rnd > 0.8)] = P["rock_d"]
+    else:
+        img[clearing] = P["grass"]
+        img[clearing & (rnd < 0.25)] = P["grass_l"]
+        img[clearing & (rnd > 0.93)] = P["meadow"]
     occupied |= clearing
+    TOWN_LAND[clearing] = True
+    TOWN_LAND[y0:y0 + h + 2, x0:x0 + w + 2] = True
+    if c == 0:
+        # A fenced wheat farm at the edge of Frostpeak's pasture (kept out of the building plots).
+        fx, fy = kcx - 21, kcy - 4
+        for j in range(6):
+            for i in range(9):
+                edge = i in (0, 8) or j in (0, 5)
+                img[fy + j, fx + i] = P["soil_d"] if edge else P["wheat" if j % 2 else "wheat_d"]
+        FARMS.append((fx - 1, fy - 1, 11, 8))
+        TOWN_LAND[fy - 1:fy + 7, fx - 1:fx + 10] = True
 
 # one area per civilization, owned by its town
 prov = np.where(civ >= 0, civ, -1)
@@ -325,7 +348,7 @@ def peak_sprite(hgt, seed):
     return mask, grid
 
 # where the range may go: highland land that isn't the town, water, ice or the dam
-protect = occupied.copy()
+protect = (occupied & (civ != 0)) | TOWN_LAND
 protect |= dist_from(ice | lake | water, 2) <= 2
 dam_x = int(round(river_x(DAM_Y)))
 protect[DAM_Y - 6:DAM_Y + 4, dam_x - 9:dam_x + 10] = True
@@ -595,6 +618,8 @@ def town_slots(k, ci, n=44):
     taken = np.zeros((H, W), bool)
     taken[k["y0"] - 1:k["y0"] + k["h"] + 1, k["x0"] - 1:k["x0"] + k["w"] + 1] = True
     taken[k["y0"] + k["h"]:k["y0"] + k["h"] + 8, k["cx"] - 16:k["cx"] + 16] = True   # nameplate
+    for fx, fy, fw, fh in FARMS:
+        taken[fy:fy + fh, fx:fx + fw] = True
     kcx, kcy = k["x0"] + k["w"] / 2, k["y0"] + k["h"] / 2
     cands = []
     for y in range(max(0, int(kcy) - 34), min(H - SLOT_H, int(kcy) + 34)):
